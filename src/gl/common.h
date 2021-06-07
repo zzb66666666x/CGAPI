@@ -30,6 +30,13 @@ GL_FLOAT,
 GL_INT,
 GL_UNSIGNED_BYTE,
 
+//shader
+GL_VERTEX_SHADER,
+GL_FRAGMENT_SHADER,
+
+// capbilities
+GL_DEPTH_TEST
+
 }GLenum;
 
 typedef int8_t byte;
