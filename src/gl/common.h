@@ -3,11 +3,11 @@
 
 #include <stdint.h>
 
-#define GL_UNDEF                -1
 #define GL_FAILURE              -1
 #define GL_SUCCESS               0
 
 typedef enum{
+GL_UNDEF = -1,
 // objects
 GLOBJ_VERTEX_BUFFER,
 GLOBJ_VERTEX_ATTRIB,
@@ -28,6 +28,7 @@ GL_STATIC_DRAW,
 //types
 GL_FLOAT,
 GL_INT,
+GL_BYTE,
 GL_UNSIGNED_BYTE,
 
 //shader
@@ -38,7 +39,5 @@ GL_FRAGMENT_SHADER,
 GL_DEPTH_TEST
 
 }GLenum;
-
-typedef int8_t byte;
 
 #endif 

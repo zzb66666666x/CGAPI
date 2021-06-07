@@ -8,16 +8,34 @@
 #include "common.h"
 #include "../utils/id.h"
 
+class glObject{
+    public: 
+    glObject():activated(false), type(GL_UNDEF), bind(GL_UNDEF){}
+    glObject(bool act, GLenum t, GLenum b):activated(act), type(t), bind(b){}
+    virtual ~glObject(){}
+    virtual void* getDataPtr() const = 0;
+    virtual int allocEltSpace(int nelts) = 0;
+    virtual int allocByteSpace(int nbytes) = 0;
+    virtual int loadElts(void* src, int nelts) = 0;
+    virtual int loadBytes(void* src, int nbytes) = 0;
+    virtual int getSize() const = 0;
+    virtual int byteCapacity() const = 0;
+
+    bool activated;
+    GLenum type;
+    GLenum bind;
+};
+
 template<class T>
-class glStorage{
+class glStorage: public glObject{
     public:
-        glStorage():activated(false), type(GL_UNDEF), bind(GL_UNDEF), size(0), data(nullptr){}
-        glStorage(int s):activated(false), type(GL_UNDEF), bind(GL_UNDEF), size(s){
+        glStorage(): glObject(), size(0), data(nullptr){}
+        glStorage(int s):glObject(), size(s){
             data = new T[s];
             if (data==nullptr)
                 throw std::runtime_error("memory resource exhausted");
         }
-        glStorage(int s, bool act, int t, int b):activated(act), type(t), bind(b), size(s){
+        glStorage(int s, bool act, GLenum t, GLenum b):glObject(act, t, b), size(s){
             data = new T[s];
             if (data==nullptr)
                 throw std::runtime_error("memory resource exhausted");
@@ -44,85 +62,110 @@ class glStorage{
             throw std::runtime_error("don't initialize glStorge<T> with another type");
         }
 
-        ~glStorage(){delete[] data;}
+        virtual ~glStorage(){delete[] data;}
 
-        inline T* getDataPtr() const{
-            return data;
+        virtual void* getDataPtr() const{
+            return (void*)data;
         }
 
-        int allocEltSpace(int nelts){
+        virtual int allocEltSpace(int nelts){
             T* temp = new T[nelts];
             if (temp==nullptr)
                 return GL_FAILURE;
+            // first free old data
+            delete[] data;
             data = temp;
             size = nelts;
             return GL_SUCCESS;
         }
 
-        int loadElts(T* src, int nelts){
-            if (nelts>size || src==nullptr || nelts<=0)
+        virtual int allocByteSpace(int nbytes){
+            int nelts = (int)(nbytes/sizeof(T));
+            T* temp = new T[nelts];
+            if (temp==nullptr)
                 return GL_FAILURE;
-            memcpy(data, src, nelts*sizeof(T));
+            // first free old data
+            delete[] data;
+            data = temp;
+            size = nelts;
             return GL_SUCCESS;
         }
 
-        template<class T2>
-        int loadElts(T* src, int nelts){
-            throw std::runtime_error("don't load data to glStorage with different type");
+        virtual int loadElts(void* src, int nelts){
+            if (nelts>size || src==nullptr || nelts<=0)
+                return GL_FAILURE;
+            memcpy((void*)data, src, nelts*sizeof(T));
+            return GL_SUCCESS;
         }
 
-        int getSize() const{
+        virtual int loadBytes(void* src, int nbytes){
+            if (nbytes > sizeof(T)*size || src==nullptr || nbytes<=0)
+                return GL_FAILURE;
+            memcpy((void*)data, src, nbytes);
+            return GL_SUCCESS;
+        }
+
+        virtual int getSize() const{
             return size;
         }
 
-        bool activated;
-        int type;
-        int bind;
+        virtual int byteCapacity() const{
+            return sizeof(T)*size;
+        }
+
     private:
         T* data = nullptr;
         // in the unit of sizeof(T), not bytes
         int size = 0;
 };
 
-template<class T>
 class glManager{
     public:
+        glManager(){}
+        virtual ~glManager(){}
+
         // register storage space in map
+        template<class T>
         int insertStorage(const glStorage<T>& obj){
             // pass in object directly, we should use deep copy of data
             // otherwise we are not sure if the the obj's memory is 
             // on stack or on heap, which is dangerous
-            glStorage<T> * objptr = new glStorage<T>(obj.getSize(), obj.activated, obj.type, obj.bind);
+            glObject * objptr = new glStorage<T>(obj.getSize(), obj.activated, obj.type, obj.bind);
             if (objptr==nullptr)
                 return GL_FAILURE;
             int id = idMgr.AllocateId();
             if (obj.getDataPtr() != nullptr)
-                memcpy(objptr->getDataPtr(), obj.getDataPtr(), obj.getSize()*sizeof(T));
+                memcpy(objptr->getDataPtr(), obj.getDataPtr(), obj.byteCapacity());
             return __insert(objptr, id);
         }
 
-        template<class T2>
-        int insertStorage(const glStorage<T2>& obj){
-            throw std::runtime_error("don't initialize glStorge<T> with another type");
+        int insertStorage(GLenum dtype, glObject& obj){
+            glObject * objptr = __storage(dtype, obj.getSize(), obj.activated, obj.type, obj.bind);
+            if (objptr==nullptr)
+                return GL_FAILURE;
+            int id = idMgr.AllocateId();
+            if (obj.getDataPtr() != nullptr)
+                memcpy(objptr->getDataPtr(), obj.getDataPtr(), obj.byteCapacity());
+            return __insert(objptr, id);            
         }
 
-        int insertStorage(int size){
-            glStorage<T> * objptr = new glStorage<T>(size);
+        int insertStorage(GLenum dtype, int size){
+            glObject * objptr = __storage(dtype, size, false, GL_UNDEF, GL_UNDEF);
             if (objptr==nullptr)
                 return GL_FAILURE;
             int id = idMgr.AllocateId();
             return __insert(objptr, id);
         }
 
-        int insertStorage(int size, bool activated, int type, int bind){
-            glStorage<T> * objptr = new glStorage<T>(size, activated, type, bind);
+        int insertStorage(GLenum dtype, int size, bool activated, GLenum type, GLenum bind){
+            glObject * objptr = __storage(dtype, size, activated, type, bind);
             if (objptr==nullptr)
                 return GL_FAILURE;
             int id = idMgr.AllocateId();
             return __insert(objptr, id);
         }
 
-        int searchStorage(glStorage<T>** ptr, int id){
+        int searchStorage(glObject** ptr, int id){
             auto it = hash.find(id);
             if ((it->first)==id){
                 *ptr = it->second;
@@ -133,16 +176,11 @@ class glManager{
             }
         }
 
-        template<class T2>
-        int searchStorage(glStorage<T2>** ptr, int id){
-            throw std::runtime_error("please don't search in glManager<T> but expect output storage with another type");
-        }
-
     private:
-        std::map<int, glStorage<T>*> hash;
+        std::map<int, glObject*> hash;
         IdManager idMgr;
 
-        int __insert(glStorage<T>* objptr, int id){
+        int __insert(glObject* objptr, int id){
             auto ret = hash.emplace(id, objptr);
             if (!ret.second){
                 idMgr.FreeId(id);
@@ -150,16 +188,20 @@ class glManager{
             }
             return id;
         }
+
+        glObject* __storage(GLenum dtype, int size, bool activated, GLenum type, GLenum bind){
+            switch(dtype){
+                case GL_FLOAT:
+                    return new glStorage<float>(size, activated, type, bind);
+                case GL_INT:
+                    return new glStorage<int>(size, activated, type, bind);
+                case GL_BYTE:
+                    return new glStorage<char>(size, activated, type, bind);
+                default:
+                    break;
+            }
+            return nullptr;
+        }
 };
-
-typedef glStorage<int> glSi;
-typedef glStorage<float> glSf;
-typedef glStorage<int> * glSi_p;
-typedef glStorage<float> * glSf_p;
-
-typedef glManager<int> glMi;
-typedef glManager<float> glMf;
-typedef glManager<int> * glMi_p;
-typedef glManager<float> * glMf_p;
 
 #endif
