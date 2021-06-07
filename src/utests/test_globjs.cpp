@@ -5,13 +5,13 @@
 
 using namespace std;
 
-glManager mgr;
 
 float data[] = {1,2,3,4,5,6,7,8,9,10};
 
 float more_data[] = {1,2,3,4,5,6,7,8,9,10,11};
 
 int main(){
+    glManager mgr;
     int id1, id2, id3;
     glObject * ptr1;
     glObject* ptr2;
@@ -20,8 +20,8 @@ int main(){
     cout<<id1<<" : "<<id2<<endl;
     int ret = mgr.searchStorage(&ptr1, id1);
     assert(ret==0);
-    cout<<"size in float"<<ptr1->getSize()<<endl;
-    cout<<"size in bytes"<<ptr1->byteCapacity()<<endl;
+    cout<<"size in float "<<ptr1->getSize()<<endl;
+    cout<<"size in bytes "<<ptr1->byteCapacity()<<endl;
     // ptr1->loadElts(data, 10);
     ptr1->loadBytes((void*)data, sizeof(float)*10);
     float * temp = (float*)(ptr1->getDataPtr());

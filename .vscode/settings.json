@@ -10,5 +10,6 @@
         "type_traits": "cpp",
         "utility": "cpp"
     },
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "terminal.integrated.fontFamily": "monospace"
 }

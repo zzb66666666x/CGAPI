@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <iostream>
 #include <map>
 #include "common.h"
@@ -62,7 +63,10 @@ class glStorage: public glObject{
             throw std::runtime_error("don't initialize glStorge<T> with another type");
         }
 
-        virtual ~glStorage(){delete[] data;}
+        virtual ~glStorage(){
+            // std::cout<<"free space!!!"<<std::endl;
+            delete[] data;
+        }
 
         virtual void* getDataPtr() const{
             return (void*)data;
@@ -122,7 +126,11 @@ class glStorage: public glObject{
 class glManager{
     public:
         glManager(){}
-        virtual ~glManager(){}
+        virtual ~glManager(){
+            for(const auto& it : hash){
+                delete it.second;
+            }
+        }
 
         // register storage space in map
         template<class T>
@@ -184,6 +192,7 @@ class glManager{
             auto ret = hash.emplace(id, objptr);
             if (!ret.second){
                 idMgr.FreeId(id);
+                delete objptr;
                 return GL_FAILURE;
             }
             return id;
