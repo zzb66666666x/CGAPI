@@ -25,9 +25,9 @@ typedef struct{
     glPipeline          pipeline;
 } gl_context;
 
-extern gl_context* ctx;
-
-#define GET_CURRENT_CONTEXT(C) struct gl_context *C = ctx
+extern gl_context* glapi_ctx;
+extern void set_global_gl_context(gl_context* ptr);
+#define GET_CURRENT_CONTEXT(C) struct gl_context *C = glapi_ctx
 
 extern int _cg_create_context();
 extern int _cg_make_current();
