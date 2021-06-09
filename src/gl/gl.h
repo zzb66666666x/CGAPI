@@ -30,5 +30,6 @@ extern void glCompileShader(unsigned int shader);
 extern unsigned int glCreateProgram();
 extern void glAttachShader(unsigned int shaderProgram, unsigned int shader);
 extern void glLinkProgram(unsigned int shaderProgram);
+extern void glUseProgram(unsigned int shaderProgram);
 
 #endif

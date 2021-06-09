@@ -6,7 +6,12 @@
 #include <string.h>
 #include <iostream>
 #include <map>
+#include <queue>
+#include <list>
+#include <pthread.h>
 #include "common.h"
+#include "geometry.h"
+#include "render.h"
 #include "../utils/id.h"
 
 class glObject{
@@ -211,6 +216,53 @@ class glManager{
             }
             return nullptr;
         }
+};
+
+class glShareData{
+    public:
+    glManager buffers;
+    glManager vertex_attribs;
+    glManager textures;
+};
+
+class glThreads{
+    public:
+    pthread_t thr_arr[THREAD_NUM];
+};
+
+typedef struct{
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+    uint8_t padding;
+}color_t; //32 bits
+
+class glProgram{
+    public: 
+
+};
+
+class glRenderPayload{
+    public: 
+
+};
+
+template<class T>
+class output_stream{
+    public:
+    output_stream(){
+        mtx = PTHREAD_MUTEX_INITIALIZER;
+    }
+    std::queue<T> stream;
+    pthread_mutex_t mtx;
+};
+
+class glPipeline{
+    public:
+        glPipeline(){}
+        // data needed for render functions
+        output_stream<Triangle> triStream;
+        std::list<render_fp> exec;
 };
 
 #endif

@@ -1,9 +1,28 @@
 #ifndef _GLCONTEXT_H
 #define _GLCONTEXT_H
 
+#include "globj.h"
+
 typedef struct{
-
-
+    // data
+    glShareData         share;
+    // multi-threading
+    glThreads           threads;
+    // frame buffer info and depth test
+    glStorage<color_t> *framebuf;
+    glStorage<float>   *zbuf;
+    glStorage<color_t> *windowbuf;
+    glStorage<color_t>  framebuf_1;
+    glStorage<color_t>  framebuf_2;
+    glStorage<float>    zbuf;
+    glStorage<float>    zbuf;
+    bool                use_double_buf;
+    // shader
+    glProgram           shader;
+    // redering pipeline requirement
+    glRenderPayload     payload;
+    // pipeline of function pointers and their data 
+    glPipeline          pipeline;
 } gl_context;
 
 extern gl_context* ctx;

@@ -40,4 +40,6 @@ GL_DEPTH_TEST
 
 }GLenum;
 
+#define THREAD_NUM  7
+
 #endif 
