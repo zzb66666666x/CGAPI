@@ -14,8 +14,8 @@ typedef struct{
     glStorage<color_t> *windowbuf;
     glStorage<color_t>  framebuf_1;
     glStorage<color_t>  framebuf_2;
-    glStorage<float>    zbuf;
-    glStorage<float>    zbuf;
+    glStorage<float>    zbuf_1;
+    glStorage<float>    zbuf_2;
     bool                use_double_buf;
     // shader
     glProgram           shader;
