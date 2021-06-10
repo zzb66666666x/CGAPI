@@ -4,7 +4,7 @@ project(glite LANGUAGES CXX C)
 
 include_directories(
 	src/gl
-	src/glView
+	src/glv
 	src/utils
 	src/utests
 )
