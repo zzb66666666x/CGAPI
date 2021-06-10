@@ -9,10 +9,10 @@
 #include <queue>
 #include <list>
 #include <pthread.h>
-#include "common.h"
 #include "geometry.h"
 #include "render.h"
 #include "../utils/id.h"
+#include "../../include/gl/common.h"
 
 class glObject{
     public: 

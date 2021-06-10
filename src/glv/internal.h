@@ -13,7 +13,7 @@ typedef struct{
 
     int width;
     int height;
-    char *filename;
+    const char *filename;
     int type;
 
 }_GLVFile;

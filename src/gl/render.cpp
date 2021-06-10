@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include "render.h"
 #include "glcontext.h"
-#include "common.h"
+#include "../../include/gl/common.h"
 
 // wrapper of vertex shader
 void process_vertex(){

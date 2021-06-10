@@ -3,6 +3,9 @@
 
 #include "common.h"
 
+// helloworld
+extern void glHelloWorld();
+
 // Gen
 extern void glGenBufffers(int num, int * ID);
 extern void glGenVertexArrays(int num, int* ID);

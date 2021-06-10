@@ -1,7 +1,7 @@
 #include<iostream>
 #include <assert.h>
 #include "../gl/globj.h"
-#include "../gl/common.h"
+#include "../../include/gl/common.h"
 
 using namespace std;
 

@@ -3,9 +3,6 @@
 #ifndef _glv_h_
 #define _glv_h_
 
-#include "../gl/glcontext.h"
-#include "internal.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,7 +19,8 @@ extern "C" {
  * GLV API types
  *************************************************************************/
 
-typedef _GLVFile* GLVFile;
+typedef struct GLVFile GLVFile;
+typedef struct GLVContext GLVContext;
 
 /*************************************************************************
  * GLV API functions
@@ -43,7 +41,7 @@ int glvInit(void);
  * 
  * @return file pointer
  */
-GLVFile glvCreateFile(int width, int height, char *filename);
+GLVFile* glvCreateFile(int width, int height, char *filename);
 
 /**
  * the function writes framebuffer result in file.
@@ -51,7 +49,7 @@ GLVFile glvCreateFile(int width, int height, char *filename);
  * @param file file pointer
  * @return GLV_TRUE or GLV_FALSE
  */
-int glvWriteFile(GLVFile file);
+int glvWriteFile(GLVFile* file);
 
 #ifdef __cplusplus
 }
