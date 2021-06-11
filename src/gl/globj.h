@@ -27,9 +27,22 @@ class glObject{
     virtual int getSize() const = 0;
     virtual int byteCapacity() const = 0;
 
-    bool activated;
+    bool activated; // reserved for VAO
     GLenum type;
     GLenum bind;
+};
+
+class glPlaceHolder: public glObject{
+    public:
+        glPlaceHolder(): glObject(false, GL_PLACE_HOLDER, GL_UNDEF){}
+        virtual ~glPlaceHolder(){}
+        virtual void* getDataPtr() const{return nullptr;}
+        virtual int allocEltSpace(int nelts){return GL_FAILURE;};
+        virtual int allocByteSpace(int nbytes){return GL_FAILURE;};
+        virtual int loadElts(void* src, int nelts){return GL_FAILURE;};
+        virtual int loadBytes(void* src, int nbytes){return GL_FAILURE;};
+        virtual int getSize() const{return GL_FAILURE;};
+        virtual int byteCapacity() const{return GL_FAILURE;}
 };
 
 template<class T>
@@ -46,7 +59,7 @@ class glStorage: public glObject{
             if (data==nullptr)
                 throw std::runtime_error("memory resource exhausted");
         }
-        glStorage(const glStorage& other){
+        glStorage(const glStorage<T>& other){
             // time consuming !
             printf("LARGE SCALE COPY HAPPENS IN GL_STORAGE\n");
             activated = other.activated;
@@ -153,6 +166,9 @@ class glManager{
         }
 
         int insertStorage(GLenum dtype, glObject& obj){
+            if (obj.type==GL_PLACE_HOLDER){
+                return GL_FAILURE;
+            }
             glObject * objptr = __storage(dtype, obj.getSize(), obj.activated, obj.type, obj.bind);
             if (objptr==nullptr)
                 return GL_FAILURE;
@@ -176,6 +192,27 @@ class glManager{
                 return GL_FAILURE;
             int id = idMgr.AllocateId();
             return __insert(objptr, id);
+        }
+
+        int insertPlaceHolder(){
+            glObject * objptr = __storage(GL_UNDEF, 0, false, GL_PLACE_HOLDER, GL_UNDEF);
+            if (objptr==nullptr)
+                return GL_FAILURE;
+            int id = idMgr.AllocateId();
+            return __insert(objptr, id);
+        }
+
+        int castPlaceHolder(int id, GLenum dtype, int size, bool activated = false, GLenum type = GL_UNDEF, GLenum bind = GL_UNDEF){
+            glObject* ptr;
+            int ret = searchStorage(&ptr, id);
+            if (ret == GL_FAILURE){
+                printf("No such place holder exists!\n");
+                return GL_FAILURE;
+            }
+            glObject * objptr = __storage(dtype, size, activated, type, bind);
+            hash[id] = objptr;
+            delete ptr;
+            return GL_SUCCESS;
         }
 
         int searchStorage(glObject** ptr, int id){
@@ -211,6 +248,8 @@ class glManager{
                     return new glStorage<int>(size, activated, type, bind);
                 case GL_BYTE:
                     return new glStorage<char>(size, activated, type, bind);
+                case GL_UNDEF:
+                    return new glPlaceHolder();
                 default:
                     break;
             }

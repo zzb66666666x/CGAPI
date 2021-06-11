@@ -9,11 +9,22 @@ void glHelloWorld(){
 
 // Gen
 void glGenBuffers(int num, int * ID){
-
+    GET_CURRENT_CONTEXT(C);
+    auto& bufs = C->share.buffers;
+    int ret;
+    for (int i=0; i<num; i++){
+        ret = bufs.insertPlaceHolder();
+        ID[i] = ret;
+    }
 }
 
 void glGenVertexArrays(int num, int* ID){
-
+    GET_CURRENT_CONTEXT(C);
+    auto& attribs = C->share.vertex_attribs;
+    int ret;
+    for (int i=0; i<num; i++){
+        
+    }
 }
 
 void glGenTexture(int num, int* ID){

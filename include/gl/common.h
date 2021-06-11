@@ -8,15 +8,16 @@
 
 typedef enum{
 GL_UNDEF = -1,
-// objects
+// object types (type)
 GLOBJ_VERTEX_BUFFER,
 GLOBJ_VERTEX_ATTRIB,
 GLOBJ_FRAMEBUF,
- GLOBJ_ZBUF ,
-//  mode
-GL_ARRAY_BUFFER ,
-GL_TRIANGLE ,
-//target
+GLOBJ_ZBUF,
+GL_PLACE_HOLDER,
+// mode
+GL_ARRAY_BUFFER,
+GL_TRIANGLE,
+// target
 GL_TEXTURE_2D, 
 
 //fotmat
@@ -25,7 +26,7 @@ GL_RGB,
 // usage
 GL_STATIC_DRAW,
 
-//types
+//data types (dtype)
 GL_FLOAT,
 GL_INT,
 GL_BYTE,
