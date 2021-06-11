@@ -32,7 +32,6 @@ extern void set_global_gl_context(gl_context* ptr);
 
 extern int _cg_create_context();
 extern int _cg_make_current();
-extern int _cg_init_context();
 extern int _cg_free_context_data();
 
 #endif

@@ -44,6 +44,7 @@ void glBindBuffer(GLenum buf_type,  int ID){
     GET_CURRENT_CONTEXT(C);
     auto& bufs = C->share.buffers;
     int ret;
+    glObject* ptr;
     switch(buf_type){
         case GL_ARRAY_BUFFER:
             if (ID<0){
@@ -55,14 +56,13 @@ void glBindBuffer(GLenum buf_type,  int ID){
             }
             else{
                 // try search out the ID
-                glObject* ptr;
                 ret = bufs.searchStorage(&ptr, ID);
                 if (ret==GL_FAILURE)
                     return;
                 ptr->bind = GL_ARRAY_BUFFER;
                 if (ptr->type != GLOBJ_VERTEX_BUFFER){
                     printf("The GL OBJ type is surpisingly not GLOBJ_VERTEX_BUFFER");
-                    ptr->type = GLOBJ_VERTEX_BUFFER;
+                    // ptr->type = GLOBJ_VERTEX_BUFFER;
                 }
                 C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
             }
@@ -74,7 +74,24 @@ void glBindBuffer(GLenum buf_type,  int ID){
 }
 
 void glBindVertexArray(int ID){
-
+    GET_CURRENT_CONTEXT(C);
+    auto& mgr = C->share.vertex_attribs;
+    if (ID<0)
+        return;
+    else if (ID == 0){
+        //unbind
+        C->payload.renderMap[GL_BIND_VAO] = -1;
+    }
+    else{
+        // verify that the ID is valid
+        glObject* ptr;
+        int ret;
+        ret = mgr.searchStorage(&ptr, ID);
+        if (ret == GL_FAILURE){
+            return;
+        }
+        C->payload.renderMap[GL_BIND_VAO] = ID;
+    }
 }
 
 void glBindTexture(GLenum target,  int ID){
@@ -162,12 +179,45 @@ void glEnableVertexAttribArray(int ID){
 }
 
 void glEnable(GLenum cap){
-
+    GET_CURRENT_CONTEXT(C);
+    switch(cap){
+        case GL_DEPTH_TEST:
+            C->use_z_test = true;
+            break;
+    }
 }
 
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
-
+    GET_CURRENT_CONTEXT(C);
+    auto& bufs = C->share.buffers;
+    auto& vaos = C->share.vertex_attribs;
+    auto& texs = C->share.textures;
+    glObject* ptr;
+    int ret;
+    int attrib_tot_nbytes = 0;
+    int num_attribs;
+    // check if the VAO is ready
+    int vao_id = C->payload.renderMap[GL_BIND_VAO];
+    if (vao_id == -1)
+        return; //or do other things?
+    ret = vaos.searchStorage(&ptr, vao_id);
+    if (ret ==GL_FAILURE)
+        return;
+    // valid vao_id, check the vertex config data inside
+    num_attribs = ptr->getSize(); // in the unit of struct vertex_attribs_t
+    vertex_attrib_t* va_data = (vertex_attrib_t*) ptr->getDataPtr();
+    if (va_data == nullptr)
+        return;
+    attrib_tot_nbytes = va_data[0].stride;
+    // parse the vertex data and process them by MVP
+    switch(mode){
+        case GL_TRIANGLE:
+            
+            break;
+        default:
+            break;
+    }
 }
 
 // IO
