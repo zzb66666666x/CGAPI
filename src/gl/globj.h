@@ -31,8 +31,8 @@ class glObject{
     virtual void* getDataPtr() const = 0;
     virtual int allocEltSpace(int nelts) = 0;
     virtual int allocByteSpace(int nbytes) = 0;
-    virtual int loadElts(void* src, int nelts) = 0;
-    virtual int loadBytes(void* src, int nbytes) = 0;
+    virtual int loadElts(const void* src, int nelts) = 0;
+    virtual int loadBytes(const void* src, int nbytes) = 0;
     virtual int getSize() const = 0;
     virtual int byteCapacity() const = 0;
 
@@ -49,8 +49,8 @@ class glObject{
 //         virtual void* getDataPtr() const{return nullptr;}
 //         virtual int allocEltSpace(int nelts){return GL_FAILURE;};
 //         virtual int allocByteSpace(int nbytes){return GL_FAILURE;};
-//         virtual int loadElts(void* src, int nelts){return GL_FAILURE;};
-//         virtual int loadBytes(void* src, int nbytes){return GL_FAILURE;};
+//         virtual int loadElts(const void* src, int nelts){return GL_FAILURE;};
+//         virtual int loadBytes(const void* src, int nbytes){return GL_FAILURE;};
 //         virtual int getSize() const{return GL_FAILURE;};
 //         virtual int byteCapacity() const{return GL_FAILURE;}
 // };
@@ -133,14 +133,14 @@ class glStorage: public glObject{
             return GL_SUCCESS;
         }
 
-        virtual int loadElts(void* src, int nelts){
+        virtual int loadElts(const void* src, int nelts){
             if (nelts>size || src==nullptr || nelts<=0)
                 return GL_FAILURE;
             memcpy((void*)data, src, nelts*sizeof(T));
             return GL_SUCCESS;
         }
 
-        virtual int loadBytes(void* src, int nbytes){
+        virtual int loadBytes(const void* src, int nbytes){
             if (nbytes > sizeof(T)*size || src==nullptr || nbytes<=0)
                 return GL_FAILURE;
             memcpy((void*)data, src, nbytes);

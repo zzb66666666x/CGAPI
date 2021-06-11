@@ -17,6 +17,7 @@ typedef struct{
     glStorage<float>    zbuf_1;
     glStorage<float>    zbuf_2;
     bool                use_double_buf;
+    bool                use_z_test;
     // shader
     glProgram           shader;
     // redering pipeline requirement

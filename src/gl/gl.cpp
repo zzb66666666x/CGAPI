@@ -15,7 +15,7 @@ void glGenBuffers(int num, int * ID){
     auto& bufs = C->share.buffers;
     int ret;
     for (int i=0; i<num; i++){
-        ret = bufs.insertStorage(GL_BYTE, 0, true,GLOBJ_VERTEX_BUFFER, GL_UNDEF);
+        ret = bufs.insertStorage(GL_BYTE, 0, true, GLOBJ_VERTEX_BUFFER, GL_UNDEF);
         ID[i] = ret;
     }
 }
@@ -61,7 +61,7 @@ void glBindBuffer(GLenum buf_type,  int ID){
                     return;
                 ptr->bind = GL_ARRAY_BUFFER;
                 if (ptr->type != GLOBJ_VERTEX_BUFFER){
-                    printf("The GLOBJ type is surpisingly not GLOBJ_VERTEX_BUFFER");
+                    printf("The GL OBJ type is surpisingly not GLOBJ_VERTEX_BUFFER");
                     ptr->type = GLOBJ_VERTEX_BUFFER;
                 }
                 C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
@@ -93,11 +93,13 @@ void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
                 case GL_ARRAY_BUFFER:
                     ID = C->payload.renderMap[GL_ARRAY_BUFFER];
                     if (ID<0)
-                        return;
+                        return; // not binded yet 
                     ret = bufs.searchStorage(&ptr, ID);
                     if (ret == GL_FAILURE)
                         return;
-                    
+                    // copy data inside glStorage<char>
+                    ptr->allocByteSpace(nbytes);
+                    ptr->loadBytes(data, nbytes);
                     break;
                 case GL_ELEMENT_ARRAY_BUFFER:
                     throw std::runtime_error("not written for EBO\n");
@@ -146,7 +148,17 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
 
 // Enable
 void glEnableVertexAttribArray(int ID){
-
+    GET_CURRENT_CONTEXT(C);
+    glObject* ptr;
+    int ret;
+    auto& mgr = C->share.vertex_attribs;
+    if (ID<0){
+        return;
+    }
+    ret = mgr.searchStorage(&ptr, ID);
+    if (ret == GL_FAILURE)
+        return;
+    ptr->activated = true;
 }
 
 void glEnable(GLenum cap){
