@@ -1,5 +1,6 @@
 #include <iostream>
 #include "../../include/gl/gl.h"
+#include "../../include/gl/common.h"
 #include "glcontext.h"
 
 // helloworld
@@ -13,7 +14,7 @@ void glGenBuffers(int num, int * ID){
     auto& bufs = C->share.buffers;
     int ret;
     for (int i=0; i<num; i++){
-        ret = bufs.insertPlaceHolder();
+        ret = bufs.insertPlaceHolder(GLOBJ_VERTEX_BUFFER);
         ID[i] = ret;
     }
 }
@@ -22,8 +23,13 @@ void glGenVertexArrays(int num, int* ID){
     GET_CURRENT_CONTEXT(C);
     auto& attribs = C->share.vertex_attribs;
     int ret;
+    // use glStorage<vertex_attrib_t> 
+    // each VAO owns on set of properties, stored in one glStorage
+    // each property are entries to the data array of the glStorage
+    // within each property, the config are wrapped in struct vertex_attrib_t
     for (int i=0; i<num; i++){
-        
+        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, DEFAULT_VERTEX_ATTRIB_NUM, false, GLOBJ_VERTEX_ATTRIB, GL_BIND_VAO);
+        ID[i] = ret;    // if failure, then ID will be -1
     }
 }
 

@@ -14,6 +14,15 @@
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 
+typedef struct{
+    int index;      // No. of vertex attrib
+    int size;       // size of attrib (in the unit of float/int/etc.)
+    int type;       // dtype 
+    bool normalized;// should we normalize the attrib
+    int stride;     // stride to get info.
+    void* pointer;  // offset
+}vertex_attrib_t;
+
 class glObject{
     public: 
     glObject():activated(false), type(GL_UNDEF), bind(GL_UNDEF){}
@@ -34,7 +43,8 @@ class glObject{
 
 class glPlaceHolder: public glObject{
     public:
-        glPlaceHolder(): glObject(false, GL_PLACE_HOLDER, GL_UNDEF){}
+        glPlaceHolder(): glObject(false, GLOBJ_PLACE_HOLDER, GL_UNDEF){}
+        glPlaceHolder(GLenum type): glObject(false, type, GL_UNDEF){} 
         virtual ~glPlaceHolder(){}
         virtual void* getDataPtr() const{return nullptr;}
         virtual int allocEltSpace(int nelts){return GL_FAILURE;};
@@ -166,7 +176,7 @@ class glManager{
         }
 
         int insertStorage(GLenum dtype, glObject& obj){
-            if (obj.type==GL_PLACE_HOLDER){
+            if (obj.type==GLOBJ_PLACE_HOLDER){
                 return GL_FAILURE;
             }
             glObject * objptr = __storage(dtype, obj.getSize(), obj.activated, obj.type, obj.bind);
@@ -194,8 +204,8 @@ class glManager{
             return __insert(objptr, id);
         }
 
-        int insertPlaceHolder(){
-            glObject * objptr = __storage(GL_UNDEF, 0, false, GL_PLACE_HOLDER, GL_UNDEF);
+        int insertPlaceHolder(GLenum type=GLOBJ_PLACE_HOLDER){
+            glObject * objptr = __storage(GL_UNDEF, 0, false, type, GL_UNDEF);
             if (objptr==nullptr)
                 return GL_FAILURE;
             int id = idMgr.AllocateId();
@@ -209,6 +219,8 @@ class glManager{
                 printf("No such place holder exists!\n");
                 return GL_FAILURE;
             }
+            if (ptr->type != GL_UNDEF)
+                type = ptr->type; // If the original place holder has a type, then we won't change it
             glObject * objptr = __storage(dtype, size, activated, type, bind);
             hash[id] = objptr;
             delete ptr;
@@ -248,8 +260,10 @@ class glManager{
                     return new glStorage<int>(size, activated, type, bind);
                 case GL_BYTE:
                     return new glStorage<char>(size, activated, type, bind);
+                case GL_VERTEX_ATTRIB_CONFIG:
+                    return new glStorage<vertex_attrib_t>(size, activated, type, bind);
                 case GL_UNDEF:
-                    return new glPlaceHolder();
+                    return new glPlaceHolder(type);
                 default:
                     break;
             }
