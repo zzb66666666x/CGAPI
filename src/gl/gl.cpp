@@ -8,7 +8,7 @@ void glHelloWorld(){
 }
 
 // Gen
-void glGenBufffers(int num, int * ID){
+void glGenBuffers(int num, int * ID){
 
 }
 
