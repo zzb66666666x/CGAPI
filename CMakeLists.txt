@@ -21,14 +21,23 @@ set(GLV_HEADERS
 	src/glv/internal.h
 )
 
-set(GL_SOURCE
+set(GL_SOURCES
 	src/gl/gl.cpp 
+	src/gl/globj.cpp
 	src/gl/glcontext.cpp
 	src/gl/render.cpp
 )
 
-set(GLV_SOURCE
+set(GLV_SOURCES
 	src/glv/glv.cpp
+)
+
+set(UTILS_HEADERS
+	src/utils/id.h
+)
+
+set(UTILS_SOURCES
+	src/utils/id.cpp
 )
 
 ################################################
@@ -37,10 +46,12 @@ set(GLV_SOURCE
 
 # foo lib, hello world
 add_library(glhello SHARED 	
-	${GLV_SOURCE}
-	${GL_SOURCE}
+	${GLV_SOURCES}
+	${GL_SOURCES}
+	${UTILS_SOURCES}
 	${GLV_HEADERS}
 	${GL_HEADERS}
+	${UTILS_HEADERS}
 )
 
 ################################################
@@ -48,6 +59,7 @@ add_library(glhello SHARED
 ################################################
 add_executable(
 	test_globjs 
+	src/gl/globj.cpp
 	src/utests/test_globjs.cpp
 	src/utils/id.cpp
 )

@@ -3,7 +3,10 @@
 
 #include "globj.h"
 
-typedef struct{
+class gl_context{
+    public:
+    // construct 
+    gl_context(int npixels, bool double_buf);
     // data
     glShareData         share;
     // multi-threading
@@ -24,13 +27,13 @@ typedef struct{
     glRenderPayload     payload;
     // pipeline of function pointers and their data 
     glPipeline          pipeline;
-} gl_context;
+};
 
 extern gl_context* glapi_ctx;
 extern void set_global_gl_context(gl_context* ptr);
 #define GET_CURRENT_CONTEXT(C) gl_context *C = glapi_ctx
 
-extern int _cg_create_context();
+extern int _cg_create_context(int width, int height, bool double_buf);
 extern int _cg_make_current();
 extern int _cg_free_context_data();
 
