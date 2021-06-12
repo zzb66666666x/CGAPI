@@ -113,8 +113,11 @@ glObject* glManager::__storage(GLenum dtype, int size, bool activated, GLenum ty
 }
 
 
-glShareData::glShareData(){
-
+glRenderPayload::glRenderPayload(){
+    renderMap.emplace(GL_ARRAY_BUFFER, -1);
+    renderMap.emplace(GL_BIND_VAO, -1);
+    renderMap.emplace(GL_ELEMENT_ARRAY_BUFFER, -1);
+    renderMap.emplace(GL_FRAMEBUFFER, -1);
 }
 
 glThreads::glThreads(){

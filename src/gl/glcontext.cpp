@@ -22,8 +22,8 @@ gl_context::gl_context(int npixels, bool double_buf){
     windowbuf = nullptr;
 }
 
-int _cg_create_context(int width, int height, bool double_buf){
+gl_context* _cg_create_context(int width, int height, bool double_buf){
     int npixels = width*height;
     gl_context * ctx = new gl_context(npixels, double_buf);
-    return 0;
+    return ctx;
 }   

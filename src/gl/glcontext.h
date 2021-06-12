@@ -33,7 +33,7 @@ extern gl_context* glapi_ctx;
 extern void set_global_gl_context(gl_context* ptr);
 #define GET_CURRENT_CONTEXT(C) gl_context *C = glapi_ctx
 
-extern int _cg_create_context(int width, int height, bool double_buf);
+extern gl_context* _cg_create_context(int width, int height, bool double_buf);
 extern int _cg_make_current();
 extern int _cg_free_context_data();
 

@@ -187,7 +187,7 @@ class glManager{
 
 class glShareData{
     public:
-    glShareData();
+    glShareData(){}
     glManager buffers;
     glManager vertex_attribs;
     glManager textures;
@@ -214,12 +214,7 @@ class glProgram{
 
 class glRenderPayload{
     public: 
-    glRenderPayload(){
-        renderMap.emplace(GL_ARRAY_BUFFER, -1);
-        renderMap.emplace(GL_BIND_VAO, -1);
-        renderMap.emplace(GL_ELEMENT_ARRAY_BUFFER, -1);
-        renderMap.emplace(GL_FRAMEBUFFER, -1);
-    }
+    glRenderPayload();
     // GL_XXX : ID
     std::map<GLenum, int> renderMap;
 };
