@@ -36,6 +36,7 @@ int main(){
     ptr2->allocEltSpace(11);
     ptr2->loadElts(more_data, 11);
     temp = (float *)(ptr2->getDataPtr());
+    ptr2->loadElts(more_data, 11);
     for (int i=0; i<11; i++){
         cout<<temp[i]<<"   ";
     }
@@ -71,11 +72,5 @@ int main(){
         cout<<temp[i]<<"   ";
     }
     cout<<endl;
-    // use gl storage to keep some struct
-    glStorage<color_t> frame = glStorage<color_t>(240000, true, GLOBJ_FRAMEBUF, GL_FRAMEBUFFER);
-    color_t * data = (color_t*) frame.getDataPtr();
-    color_t color = {1,2,3};
-    data[100] = color;
-    cout<<data[100].R<<data[100].G<<data[100].B<<endl;
     return 0;
 }

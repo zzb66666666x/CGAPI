@@ -43,35 +43,6 @@ int glManager::insertStorage(GLenum dtype, int size, bool activated, GLenum type
     return __insert(objptr, id);
 }
 
-// int glManager::insertPlaceHolder(GLenum type=GLOBJ_PLACE_HOLDER){
-//     glObject * objptr = __storage(GL_UNDEF, 0, false, type, GL_UNDEF);
-//     if (objptr==nullptr)
-//         return GL_FAILURE;
-//     int id = idMgr.AllocateId();
-//     return __insert(objptr, id);
-// }
-
-// int glManager::castPlaceHolder(int id, GLenum dtype, int size, bool activated, GLenum type, GLenum bind = GL_UNDEF){
-//     if (type == GLOBJ_PLACE_HOLDER){
-//         printf("Please don't case place holder again to place holder!");
-//         return GL_FAILURE;
-//     }
-//     glObject* ptr;
-//     int ret = searchStorage(&ptr, id);
-//     if (ret == GL_FAILURE){
-//         printf("No such place holder exists!\n");
-//         return GL_FAILURE;
-//     }
-//     if (ptr->type != GL_UNDEF && type == GL_UNDEF)
-//         type = ptr->type; // If the original place holder has a type, and caller uses default value, then we won't change it
-//     if (ptr->bind != GL_UNDEF && bind == GL_UNDEF)
-//         bind = ptr->bind;
-//     glObject * objptr = __storage(dtype, size, activated, type, bind);
-//     table[id] = objptr;
-//     delete ptr;
-//     return GL_SUCCESS;
-// }
-
 int glManager::searchStorage(glObject** ptr, int id){
     auto it = table.find(id);
     if ((it->first)==id){
@@ -104,8 +75,6 @@ glObject* glManager::__storage(GLenum dtype, int size, bool activated, GLenum ty
             return new glStorage<char>(size, activated, type, bind);
         case GL_VERTEX_ATTRIB_CONFIG:
             return new glStorage<vertex_attrib_t>(size, activated, type, bind);
-        // case GL_UNDEF:
-        //     return new glPlaceHolder(type);
         default:
             break;
     }

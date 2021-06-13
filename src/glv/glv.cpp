@@ -51,12 +51,13 @@ int glvWriteFile(GLVFile* file){
         printf("%d: %f, %f, %f\n", i, framebuf_data[i].R, framebuf_data[i].G, framebuf_data[i].B);
     }
     // opencv 
-    // int w = _file->width;
-    // int h = _file->height;
-    // cv::Mat image(w, h, CV_32FC3, framebuf_data);
-    // image.convertTo(image, CV_8UC3, 1.0f);
-    // cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
-    // cv::imwrite(_file->filename, image);
+    int w = _file->width;
+    int h = _file->height;
+    printf("%d, %d\n", w, h);
+    cv::Mat image(w, h, CV_32FC3, framebuf_data);
+    image.convertTo(image, CV_8UC3, 1.0f);
+    cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
+    cv::imwrite(_file->filename, image);
     return GLV_TRUE;
 }
 
