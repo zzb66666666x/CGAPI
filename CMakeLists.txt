@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
-
-# include_directories(
-# 	include/gl
-# 	include/glv
-# )
+set(CMAKE_CXX_FLAGS "-g -Wall")
+include_directories(
+	include/gl
+	include/glv
+)
 
 set(GL_HEADERS 
 	include/gl/gl.h
@@ -40,12 +40,15 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
+set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 ################################################
 ################# library make #################
 ################################################
 
-# foo lib, hello world
-add_library(glhello SHARED 	
+add_library(glite SHARED 	
 	${GLV_SOURCES}
 	${GL_SOURCES}
 	${UTILS_SOURCES}
@@ -53,6 +56,7 @@ add_library(glhello SHARED
 	${GL_HEADERS}
 	${UTILS_HEADERS}
 )
+target_link_libraries(glite ${OpenCV_LIBRARIES})
 
 ################################################
 ################# utest make ###################
@@ -68,4 +72,4 @@ add_executable(
 ################## test make ###################
 ################################################
 add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
-target_link_libraries(basic_lib_usage glhello)
+target_link_libraries(basic_lib_usage glite)

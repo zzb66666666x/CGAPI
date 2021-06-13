@@ -3,6 +3,8 @@
 
 #include "../gl/glcontext.h"
 
+#define FILE_TYPE_UNDEF 0
+
 typedef struct{
     gl_context ctx;
     

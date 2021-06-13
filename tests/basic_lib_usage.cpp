@@ -4,20 +4,14 @@
 
 using namespace std;
 
-typedef struct{
-
-    int width;
-    int height;
-    char *filename;
-    int type;
-
-}ptr_parser;
-
 
 int main(){
-    glHelloWorld();
-    GLVFile* ptr = glvCreateFile(0, 0, NULL);
-    ptr_parser* pp = (ptr_parser*)ptr;
-    cout<<"ptr contains: "<<pp->width<<" "<<pp->height<<"  "<<pp->filename<<"  "<<pp->type<<endl;
+    glvInit();
+    GLVFile* file = glvCreateFile(300, 290, "result.jpg");
+    cout<<"finish creating file"<<endl;
+    glClearColor(0.2f, 0.5f, 0.6f, 1.0f);
+    cout<<"finish clearing framebuffer, write to output image"<<endl;
+    glvWriteFile(file);
+    glvTerminate();
     return 0;
 }

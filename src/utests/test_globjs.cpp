@@ -11,6 +11,7 @@ float data[] = {1,2,3,4,5,6,7,8,9,10};
 float more_data[] = {1,2,3,4,5,6,7,8,9,10,11};
 
 int main(){
+    // gl manager test
     glManager mgr;
     int id1, id2, id3;
     glObject * ptr1;
@@ -70,5 +71,11 @@ int main(){
         cout<<temp[i]<<"   ";
     }
     cout<<endl;
+    // use gl storage to keep some struct
+    glStorage<color_t> frame = glStorage<color_t>(240000, true, GLOBJ_FRAMEBUF, GL_FRAMEBUFFER);
+    color_t * data = (color_t*) frame.getDataPtr();
+    color_t color = {1,2,3};
+    data[100] = color;
+    cout<<data[100].R<<data[100].G<<data[100].B<<endl;
     return 0;
 }

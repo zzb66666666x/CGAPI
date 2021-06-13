@@ -24,6 +24,8 @@ extern void glEnableVertexAttribArray(int ID);
 extern void glEnable(GLenum cap);
 // draw
 extern void glDrawArrays(GLenum mode, int first, int count);
+extern void glClearColor(float R, float G, float B, float A);
+extern void glClear(int bitfields);
 // IO
 extern void glReadPixels(int x, int y, int width, int height, GLenum format, GLenum type, void* data);
 // shader API

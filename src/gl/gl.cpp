@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdio.h>
+#include <assert.h>
 #include "../../include/gl/gl.h"
 #include "../../include/gl/common.h"
 #include "glcontext.h"
@@ -184,40 +185,66 @@ void glEnable(GLenum cap){
         case GL_DEPTH_TEST:
             C->use_z_test = true;
             break;
+        default:
+            break;
     }
 }
 
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
-    GET_CURRENT_CONTEXT(C);
-    auto& bufs = C->share.buffers;
-    auto& vaos = C->share.vertex_attribs;
-    auto& texs = C->share.textures;
-    glObject* ptr;
-    int ret;
-    int attrib_tot_nbytes = 0;
-    int num_attribs;
-    // check if the VAO is ready
-    int vao_id = C->payload.renderMap[GL_BIND_VAO];
-    if (vao_id == -1)
-        return; //or do other things?
-    ret = vaos.searchStorage(&ptr, vao_id);
-    if (ret ==GL_FAILURE)
-        return;
-    // valid vao_id, check the vertex config data inside
-    num_attribs = ptr->getSize(); // in the unit of struct vertex_attribs_t
-    vertex_attrib_t* va_data = (vertex_attrib_t*) ptr->getDataPtr();
-    if (va_data == nullptr)
-        return;
-    attrib_tot_nbytes = va_data[0].stride;
-    // parse the vertex data and process them by MVP
-    switch(mode){
-        case GL_TRIANGLE:
+    // GET_CURRENT_CONTEXT(C);
+    // auto& bufs = C->share.buffers;
+    // auto& vaos = C->share.vertex_attribs;
+    // auto& texs = C->share.textures;
+    // glObject* ptr;
+    // int ret;
+    // int attrib_tot_nbytes = 0;
+    // int num_attribs;
+    // // check if the VAO is ready
+    // int vao_id = C->payload.renderMap[GL_BIND_VAO];
+    // if (vao_id == -1)
+    //     return; //or do other things?
+    // ret = vaos.searchStorage(&ptr, vao_id);
+    // if (ret ==GL_FAILURE)
+    //     return;
+    // // valid vao_id, check the vertex config data inside
+    // num_attribs = ptr->getSize(); // in the unit of struct vertex_attribs_t
+    // vertex_attrib_t* va_data = (vertex_attrib_t*) ptr->getDataPtr();
+    // if (va_data == nullptr)
+    //     return;
+    // attrib_tot_nbytes = va_data[0].stride;
+    // // parse the vertex data and process them by MVP
+    // switch(mode){
+    //     case GL_TRIANGLE:
             
-            break;
-        default:
-            break;
+    //         break;
+    //     default:
+    //         break;
+    // }
+}
+
+void glClearColor(float R, float G, float B, float A){
+    // baseline version note:
+    // first ignore the alpha channel
+    // and don't wait for glClear() to clear the buffer
+    // for simplicity, just clear the framebuffer by the RGB here
+    color_t color = {R*255,G*255,B*255};
+    GET_CURRENT_CONTEXT(C);
+    std::cout<<"current context is: "<<C<<std::endl;
+    if (C->framebuf == nullptr)
+        return;
+    color_t * data = (color_t*) (C->framebuf->getDataPtr());
+    // assert(C->framebuf == &(C->framebuf_1));
+    int size = C->framebuf->getSize();
+    std::cout<<"data array: "<<data<<std::endl;
+    std::cout<<"size: "<<size<<std::endl;
+    for (int i=0; i<size; i++){
+        data[i] = color;
     }
+}
+
+void glClear(int bitfields){
+
 }
 
 // IO

@@ -23,6 +23,18 @@ typedef struct{
     void* pointer;  // offset
 }vertex_attrib_t;
 
+// typedef struct{
+//     uint8_t R;
+//     uint8_t G;
+//     uint8_t B;
+// }color_t;
+
+typedef struct{
+    float R;
+    float G;
+    float B;
+}color_t;
+
 class glObject{
     public: 
     glObject():activated(false), type(GL_UNDEF), bind(GL_UNDEF){}
@@ -71,7 +83,9 @@ class glStorage: public glObject{
         }
         glStorage(int s, bool act, GLenum t, GLenum b):glObject(act, t, b), size(s){
             if(s>0){
+                // std::cout<<"internal size: "<<s<<std::endl;
                 data = new T[s];
+                std::cout<<"internal data: "<<data<<std::endl;
                 if (data==nullptr)
                     throw std::runtime_error("memory resource exhausted");
             }else{
@@ -141,7 +155,7 @@ class glStorage: public glObject{
         }
 
         virtual int loadBytes(const void* src, int nbytes){
-            if (nbytes > sizeof(T)*size || src==nullptr || nbytes<=0)
+            if (nbytes > (int)sizeof(T)*size || src==nullptr || nbytes<=0)
                 return GL_FAILURE;
             memcpy((void*)data, src, nbytes);
             return GL_SUCCESS;
@@ -152,13 +166,13 @@ class glStorage: public glObject{
         }
 
         virtual int byteCapacity() const{
-            return sizeof(T)*size;
+            return (int)sizeof(T)*size;
         }
 
     private:
-        T* data = nullptr;
         // in the unit of sizeof(T), not bytes
-        int size = 0;
+        int size;
+        T* data;
 };
 
 class glManager{
@@ -199,13 +213,6 @@ class glThreads{
     glThreads();
     pthread_t thr_arr[THREAD_NUM];
 };
-
-typedef struct{
-    uint8_t R;
-    uint8_t G;
-    uint8_t B;
-    uint8_t padding;
-}color_t; //32 bits
 
 class glProgram{
     public: 

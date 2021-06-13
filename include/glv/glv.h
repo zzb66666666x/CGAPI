@@ -11,9 +11,8 @@ extern "C" {
  * GLV API tokens
  *************************************************************************/
 
-#define GLV_FALSE       0x00000000
-
-#define GLV_TRUE        0x00000001
+#define GLV_FALSE       0
+#define GLV_TRUE        1
 
 /*************************************************************************
  * GLV API types
@@ -41,7 +40,7 @@ int glvInit(void);
  * 
  * @return file pointer
  */
-GLVFile* glvCreateFile(int width, int height, char *filename);
+GLVFile* glvCreateFile(int width, int height, const char *filename);
 
 /**
  * the function writes framebuffer result in file.
@@ -50,6 +49,8 @@ GLVFile* glvCreateFile(int width, int height, char *filename);
  * @return GLV_TRUE or GLV_FALSE
  */
 int glvWriteFile(GLVFile* file);
+
+void glvTerminate();
 
 #ifdef __cplusplus
 }
