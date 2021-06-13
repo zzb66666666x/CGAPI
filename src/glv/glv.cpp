@@ -7,9 +7,10 @@
 #include "../gl/glcontext.h"
 #include "../gl/globj.h"
 
-
 int glvInit(void)
 {
+    _glvContext = MALLOC(_GLVContext, 1);
+    memset(_glvContext, 0, sizeof(_GLVContext));
     return GLV_TRUE;
 }
 
@@ -20,25 +21,27 @@ GLVFile *glvCreateFile(int width, int height, const char *filename)
 {
     if (filename == nullptr || width <= 0 || height <= 0)
         return nullptr;
-    int file_len = strlen(filename);
-    if (file_len > MAX_FILENAME_LEN - 4)
+    int filename_len = strlen(filename);
+    if (filename_len > MAX_FILENAME_LEN - 5)
     {
         printf("The filename is too long!\n");
         return nullptr;
     }
-    _GLVFile *curfile = MALLOC(_GLVFile, 1);
-    memcpy(curfile->filename ,filename ,file_len);
-    
-    curfile->filename[file_len] = '.';
-    curfile->filename[file_len + 1] = 'b';
-    curfile->filename[file_len + 2] = 'm';
-    curfile->filename[file_len + 3] = 'p';
-    curfile->height = height;
-    curfile->width = width;
-    curfile->type = FILE_TYPE_BMP;
+    _GLVFile *file = MALLOC(_GLVFile, 1);
+    memcpy(file->filename, filename, filename_len);
+
+    file->filename[filename_len] = '.';
+    file->filename[filename_len + 1] = 'b';
+    file->filename[filename_len + 2] = 'm';
+    file->filename[filename_len + 3] = 'p';
+    file->filename[filename_len + 4] = '\0';
+    file->height = height;
+    file->width = width;
+    file->type = FILE_TYPE_BMP;
     gl_context *ctx = _cg_create_context(width, height, false);
     _cg_make_current(ctx);
-    return (GLVFile *)(curfile);
+    _glvContext->curFile = file;
+    return (GLVFile *)(file);
 }
 
 int glvWriteFile(GLVFile *file)
@@ -52,7 +55,9 @@ int glvWriteFile(GLVFile *file)
 
     int w = _file->width;
     int h = _file->height;
-    unsigned char *img = MALLOC(unsigned char, w * h * 3);
+
+    // to generate a bmp image.
+    unsigned char *img = MALLOC(unsigned char, w *h * 3);
     for (int i = 0; i < total_size; ++i)
     {
         img[i * 3 + 2] = framebuf_data[i].R;
@@ -66,11 +71,13 @@ int glvWriteFile(GLVFile *file)
     fwrite(&bmi, 52, 1, fp);
     fwrite(img, 1, l * h, fp);
     fclose(fp);
-    free(img);
+    FREE(img);
     return GLV_TRUE;
 }
 
 void glvTerminate()
 {
     _cg_free_context_data();
+    FREE(_glvContext->curFile);
+    FREE(_glvContext);
 }

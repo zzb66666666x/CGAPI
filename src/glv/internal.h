@@ -14,16 +14,15 @@
  * macro function
  */
 #define MALLOC(T,LEN) ((T*)malloc(sizeof(T) * (LEN)))
+#define FREE(p) do{                 \
+                    free(p);        \
+                    p = NULL;       \
+                }while(0)           \
+
 
 /**
  * glv type
  */ 
-
-typedef struct{
-    gl_context ctx;
-    
-}_GLVContext;
-
 
 typedef struct{
 
@@ -33,5 +32,13 @@ typedef struct{
     int type;
 
 }_GLVFile;
+
+typedef struct{
+    gl_context ctx;
+    _GLVFile *curFile;
+}_GLVContext;
+
+_GLVContext *_glvContext = nullptr;
+
 
 #endif
