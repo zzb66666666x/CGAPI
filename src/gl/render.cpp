@@ -3,6 +3,8 @@
 #include "glcontext.h"
 #include "../../include/gl/common.h"
 
+#define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
+
 // wrapper of vertex shader
 void process_vertex(){
     

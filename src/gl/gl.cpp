@@ -35,7 +35,7 @@ void glGenVertexArrays(int num, int* ID){
     // each property are entries to the data array of the glStorage<vertex_attrib_t>
     // within each property, the config are wrapped in struct vertex_attrib_t
     for (int i=0; i<num; i++){
-        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, DEFAULT_VERTEX_ATTRIB_NUM, false, GLOBJ_VERTEX_ATTRIB, GL_BIND_VAO);
+        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, GL_MAX_VERTEX_ATTRIB_NUM, false, GLOBJ_VERTEX_ATTRIB, GL_BIND_VAO);
         ID[i] = ret;    // if failure, then ID will be -1
     }
 }
@@ -216,23 +216,43 @@ void glDrawArrays(GLenum mode, int first, int count){
     auto& vaos = C->share.vertex_attribs;
     auto& texs = C->share.textures;
     glObject* vao_ptr;
-    int ret;
-    int attrib_tot_nbytes = 0;
+    glObject* vbo_ptr;
+    int ret, vao_id, vbo_id;
+    int vao_check_flag = 1;
     int num_attribs;
-    // check if the VAO is ready
-    int vao_id = C->payload.renderMap[GL_BIND_VAO];
-    if (vao_id == -1)
-        return; //or do other things?
+    // sanity checks for VAO
+    vao_id = C->payload.renderMap[GL_BIND_VAO];
+    if (vao_id < 0)
+        return;
     ret = vaos.searchStorage(&vao_ptr, vao_id);
-    if (ret ==GL_FAILURE)
+    if (ret ==GL_FAILURE || 
+        vao_ptr->activated==false || 
+        vao_ptr->type != GLOBJ_VERTEX_ATTRIB || 
+        vao_ptr->bind != GL_BIND_VAO)
         return;
     // valid vao_id, check the vertex config data inside
-    num_attribs = vao_ptr->getSize(); // in the unit of struct vertex_attribs_t
     vertex_attrib_t* va_data = (vertex_attrib_t*) vao_ptr->getDataPtr();
-    if (va_data == nullptr)
+    if (va_data == nullptr || vao_ptr->getSize()<=0)
         return;
-    attrib_tot_nbytes = va_data[0].stride;
-    // 
+    // sanity check for GL_ARRAY_BUFFER
+    vbo_id = C->payload.renderMap[GL_ARRAY_BUFFER];
+    if (vbo_id<0)
+        return;
+    ret = bufs.searchStorage(&vbo_ptr, vbo_id);
+    if (ret == GL_FAILURE ||
+        vbo_ptr->activated == false ||
+        vbo_ptr->type != GLOBJ_VERTEX_BUFFER ||
+        vbo_ptr->bind != GL_ARRAY_BUFFER)
+        return;
+    char* vb_data = (char*) vbo_ptr->getDataPtr();
+    if (vb_data == nullptr || vbo_ptr->getSize()<=0)
+        return;
+    // sanity check for texture resources
+    // TODO: check active textures, tell pipeline what are the useful textures
+    // prepare pipeline environment
+    C->pipeline.vao_ptr = vao_ptr;
+    C->pipeline.vbo_ptr = vbo_ptr;
+    // draw
     switch(mode){
         case GL_TRIANGLE:
             auto& exec_list = C->pipeline.exec; 
