@@ -36,6 +36,7 @@ extern gl_context* glapi_ctx;
 extern void _cg_context_sanity_check(gl_context * ctx);
 extern gl_context* _cg_create_context(int width, int height, bool double_buf);
 extern void _cg_make_current(gl_context* ctx);
-extern void _cg_free_context_data();
+extern void _cg_free_context_data(gl_context* ctx);
+extern void _cg_reset_current_context();
 
 #endif

@@ -33,8 +33,11 @@ void _cg_make_current(gl_context* ctx){
     glapi_ctx = ctx;
 }
 
-extern void _cg_free_context_data(){
-    delete glapi_ctx;
+extern void _cg_free_context_data(gl_context* ctx){
+    delete ctx;
+}
+
+void _cg_reset_current_context(){
     glapi_ctx = nullptr;
 }
 

@@ -13,6 +13,8 @@ void glHelloWorld(){
 // Gen
 void glGenBuffers(int num, int * ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& bufs = C->share.buffers;
     int ret;
     for (int i=0; i<num; i++){
@@ -23,6 +25,8 @@ void glGenBuffers(int num, int * ID){
 
 void glGenVertexArrays(int num, int* ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& attribs = C->share.vertex_attribs;
     int ret;
     // use glStorage<vertex_attrib_t> 
@@ -43,6 +47,8 @@ void glGenTexture(int num, int* ID){
 // Bind
 void glBindBuffer(GLenum buf_type,  int ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& bufs = C->share.buffers;
     int ret;
     glObject* ptr;
@@ -76,6 +82,8 @@ void glBindBuffer(GLenum buf_type,  int ID){
 
 void glBindVertexArray(int ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& mgr = C->share.vertex_attribs;
     if (ID<0)
         return;
@@ -102,6 +110,8 @@ void glBindTexture(GLenum target,  int ID){
 // Pass data
 void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& bufs = C->share.buffers;
     int ID, ret;
     glObject* ptr;
@@ -141,6 +151,8 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
     // based on the id, modify the glStorage<vertex_attrib_t>
     // if we haven't bind, the setting here has not effect
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& mgr = C->share.vertex_attribs;
     auto& payload_map = C->payload.renderMap;
     int ID = payload_map[GL_BIND_VAO];
@@ -167,6 +179,8 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
 // Enable
 void glEnableVertexAttribArray(int ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glObject* ptr;
     int ret;
     auto& mgr = C->share.vertex_attribs;
@@ -181,6 +195,8 @@ void glEnableVertexAttribArray(int ID){
 
 void glEnable(GLenum cap){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     switch(cap){
         case GL_DEPTH_TEST:
             C->use_z_test = true;
@@ -193,6 +209,8 @@ void glEnable(GLenum cap){
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
     // GET_CURRENT_CONTEXT(C);
+    // if (C==nullptr)
+    //     throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     // auto& bufs = C->share.buffers;
     // auto& vaos = C->share.vertex_attribs;
     // auto& texs = C->share.textures;
@@ -230,6 +248,8 @@ void glClearColor(float R, float G, float B, float A){
     // for simplicity, just clear the framebuffer by the RGB here
     color_t color = {R*255,G*255,B*255};
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     std::cout<<"current context is: "<<C<<std::endl;
     if (C->framebuf == nullptr)
         return;
