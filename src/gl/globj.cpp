@@ -96,3 +96,10 @@ glThreads::glThreads(){
 glProgram::glProgram(){
 
 }
+
+glPipeline::glPipeline(){
+    exec.emplace_back(process_vertex);
+    exec.emplace_back(assemble_triangle);
+    exec.emplace_back(rasterize);
+    exec.emplace_back(calculate_color);
+}

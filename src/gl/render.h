@@ -6,7 +6,7 @@ typedef void (*render_fp)();
 // interface
 void process_vertex();
 void assemble_triangle();
-void raterize();
+void rasterize();
 void calculate_color();
 
 // thread task functions

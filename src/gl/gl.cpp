@@ -200,6 +200,7 @@ void glEnable(GLenum cap){
     switch(cap){
         case GL_DEPTH_TEST:
             C->use_z_test = true;
+            C->zbuf = &C->zbuf_1;
             break;
         default:
             break;
@@ -208,37 +209,42 @@ void glEnable(GLenum cap){
 
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
-    // GET_CURRENT_CONTEXT(C);
-    // if (C==nullptr)
-    //     throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    // auto& bufs = C->share.buffers;
-    // auto& vaos = C->share.vertex_attribs;
-    // auto& texs = C->share.textures;
-    // glObject* ptr;
-    // int ret;
-    // int attrib_tot_nbytes = 0;
-    // int num_attribs;
-    // // check if the VAO is ready
-    // int vao_id = C->payload.renderMap[GL_BIND_VAO];
-    // if (vao_id == -1)
-    //     return; //or do other things?
-    // ret = vaos.searchStorage(&ptr, vao_id);
-    // if (ret ==GL_FAILURE)
-    //     return;
-    // // valid vao_id, check the vertex config data inside
-    // num_attribs = ptr->getSize(); // in the unit of struct vertex_attribs_t
-    // vertex_attrib_t* va_data = (vertex_attrib_t*) ptr->getDataPtr();
-    // if (va_data == nullptr)
-    //     return;
-    // attrib_tot_nbytes = va_data[0].stride;
-    // // parse the vertex data and process them by MVP
-    // switch(mode){
-    //     case GL_TRIANGLE:
-            
-    //         break;
-    //     default:
-    //         break;
-    // }
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto& bufs = C->share.buffers;
+    auto& vaos = C->share.vertex_attribs;
+    auto& texs = C->share.textures;
+    glObject* vao_ptr;
+    int ret;
+    int attrib_tot_nbytes = 0;
+    int num_attribs;
+    // check if the VAO is ready
+    int vao_id = C->payload.renderMap[GL_BIND_VAO];
+    if (vao_id == -1)
+        return; //or do other things?
+    ret = vaos.searchStorage(&vao_ptr, vao_id);
+    if (ret ==GL_FAILURE)
+        return;
+    // valid vao_id, check the vertex config data inside
+    num_attribs = vao_ptr->getSize(); // in the unit of struct vertex_attribs_t
+    vertex_attrib_t* va_data = (vertex_attrib_t*) vao_ptr->getDataPtr();
+    if (va_data == nullptr)
+        return;
+    attrib_tot_nbytes = va_data[0].stride;
+    // 
+    switch(mode){
+        case GL_TRIANGLE:
+            auto& exec_list = C->pipeline.exec; 
+            auto iter = exec_list.begin();
+            while (iter != exec_list.end()){
+                (*iter)();
+                iter++;
+            }
+            break;
+        default:
+            break;
+    }
 }
 
 void glClearColor(float R, float G, float B, float A){

@@ -210,7 +210,7 @@ class output_stream{
 
 class glPipeline{
     public:
-        glPipeline(){}
+        glPipeline();
         // data needed for render functions
         output_stream<Triangle> triStream;
         std::list<render_fp> exec;

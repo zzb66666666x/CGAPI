@@ -13,8 +13,8 @@ void assemble_triangle(){
 
 }
 
-// raterize one triangle per call 
-void raterize(){
+// rasterize one triangle per call 
+void rasterize(){
 
 }
 
