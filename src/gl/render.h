@@ -4,10 +4,9 @@
 typedef void (*render_fp)();
 
 // interface
-void process_vertex();
-void assemble_triangle();
+void process_geometry();
 void rasterize();
-void calculate_color();
+void process_pixel();
 
 // thread task functions
 void* _thr_process_vertex(void* thread_id);

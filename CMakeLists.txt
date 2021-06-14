@@ -48,6 +48,8 @@ set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
 include_directories(${Boost_INCLUDE_DIR})
 find_package(Boost REQUIRED)
 
+set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+find_package(glm CONFIG REQUIRED)
 
 # set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
 # find_package(OpenCV REQUIRED)
@@ -66,6 +68,8 @@ add_library(glite SHARED
 	${UTILS_HEADERS}
 )
 target_link_libraries(glite ${OpenCV_LIBRARIES})
+target_link_libraries(glite ${Boost_LIBRARIES})
+target_link_libraries(glite glm::glm)
 
 ################################################
 ################# utest make ###################
@@ -82,4 +86,3 @@ add_executable(
 ################################################
 add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
 target_link_libraries(basic_lib_usage glite)
-target_link_libraries(basic_lib_usage PRIVATE ${Boost_LIBRARIES})

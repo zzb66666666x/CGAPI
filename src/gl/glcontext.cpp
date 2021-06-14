@@ -9,7 +9,7 @@ gl_context::gl_context(int npixels, bool double_buf){
     framebuf_1 = glStorage<color_t>(npixels, true, GLOBJ_FRAMEBUF, GL_FRAMEBUFFER);
     zbuf_1 = glStorage<float>(npixels, false, GLOBJ_ZBUF, GL_FRAMEBUFFER_ATTACH_ZBUF);
     use_double_buf = double_buf;
-    zbuf = nullptr;
+    zbuf = &zbuf_1;
     use_z_test = false;
     framebuf = &framebuf_1;
     if (double_buf){
@@ -25,6 +25,8 @@ gl_context::gl_context(int npixels, bool double_buf){
 gl_context* _cg_create_context(int width, int height, bool double_buf){
     int npixels = width*height;
     gl_context * ctx = new gl_context(npixels, double_buf);
+    ctx->width = width;
+    ctx->height = height;
     // _cg_context_sanity_check(ctx);
     std::cout<<"context ptr: "<<ctx<<std::endl;
     return ctx;

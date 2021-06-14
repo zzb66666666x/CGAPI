@@ -11,7 +11,7 @@ void glHelloWorld(){
 }
 
 // Gen
-void glGenBuffers(int num, int * ID){
+void glGenBuffers(int num, unsigned int * ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -23,7 +23,7 @@ void glGenBuffers(int num, int * ID){
     }
 }
 
-void glGenVertexArrays(int num, int* ID){
+void glGenVertexArrays(int num, unsigned int* ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -45,7 +45,7 @@ void glGenTexture(int num, int* ID){
 }
 
 // Bind
-void glBindBuffer(GLenum buf_type,  int ID){
+void glBindBuffer(GLenum buf_type, unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -80,7 +80,7 @@ void glBindBuffer(GLenum buf_type,  int ID){
     }
 }
 
-void glBindVertexArray(int ID){
+void glBindVertexArray(unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -177,7 +177,7 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
 }
 
 // Enable
-void glEnableVertexAttribArray(int ID){
+void glEnableVertexAttribArray(unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -254,12 +254,12 @@ void glDrawArrays(GLenum mode, int first, int count){
     C->pipeline.vbo_ptr = vbo_ptr;
     // draw
     switch(mode){
-        case GL_TRIANGLE:
+        case GL_TRIANGLES:
             auto& exec_list = C->pipeline.exec; 
             auto iter = exec_list.begin();
             while (iter != exec_list.end()){
                 (*iter)();
-                iter++;
+                ++iter;
             }
             break;
     }
@@ -287,8 +287,13 @@ void glClearColor(float R, float G, float B, float A){
     }
 }
 
-void glClear(int bitfields){
-
+void glClear(unsigned int bitfields){
+    GET_CURRENT_CONTEXT(C);
+    // clear depth
+    if((bitfields & GL_DEPTH_BUFFER_BIT) == GL_DEPTH_BUFFER_BIT){
+        float* zbuf = (float *)C->zbuf->getDataPtr();
+        std::fill(zbuf,zbuf + C->zbuf->getSize(), 1);
+    }
 }
 
 // IO

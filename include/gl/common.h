@@ -5,6 +5,10 @@
 
 #define GL_FAILURE              -1
 #define GL_SUCCESS               0
+#define GL_FALSE                 0
+#define GL_TRUE                  1
+#define GL_DEPTH_BUFFER_BIT 0x00000100
+#define GL_COLOR_BUFFER_BIT 0x00004000
 
 typedef enum{
 GL_UNDEF = -1,
@@ -18,7 +22,7 @@ GL_ARRAY_BUFFER,
 GL_BIND_VAO,
 GL_ELEMENT_ARRAY_BUFFER,
 // output draw mode
-GL_TRIANGLE,
+GL_TRIANGLES,
 // target
 GL_TEXTURE_2D, 
 

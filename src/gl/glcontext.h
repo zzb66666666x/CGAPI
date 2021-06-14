@@ -11,6 +11,9 @@ class gl_context{
     glShareData         share;
     // multi-threading
     glThreads           threads;
+    // width & height
+    int width;
+    int height;
     // frame buffer info and depth test
     glStorage<color_t> *framebuf;
     glStorage<float>   *zbuf;
