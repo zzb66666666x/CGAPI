@@ -23,7 +23,6 @@
 /**
  * glv type
  */ 
-
 typedef struct{
 
     int width;
