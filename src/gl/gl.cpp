@@ -212,9 +212,9 @@ void glDrawArrays(GLenum mode, int first, int count){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    auto& bufs = C->share.buffers;
-    auto& vaos = C->share.vertex_attribs;
-    auto& texs = C->share.textures;
+    glManager& bufs = C->share.buffers;
+    glManager& vaos = C->share.vertex_attribs;
+    glManager& texs = C->share.textures;
     glObject* vao_ptr;
     glObject* vbo_ptr;
     int ret, vao_id, vbo_id;
@@ -261,8 +261,6 @@ void glDrawArrays(GLenum mode, int first, int count){
                 (*iter)();
                 iter++;
             }
-            break;
-        default:
             break;
     }
 }
