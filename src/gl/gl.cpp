@@ -13,6 +13,8 @@ void glHelloWorld(){
 // Gen
 void glGenBuffers(int num, int * ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& bufs = C->share.buffers;
     int ret;
     for (int i=0; i<num; i++){
@@ -23,6 +25,8 @@ void glGenBuffers(int num, int * ID){
 
 void glGenVertexArrays(int num, int* ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& attribs = C->share.vertex_attribs;
     int ret;
     // use glStorage<vertex_attrib_t> 
@@ -31,7 +35,7 @@ void glGenVertexArrays(int num, int* ID){
     // each property are entries to the data array of the glStorage<vertex_attrib_t>
     // within each property, the config are wrapped in struct vertex_attrib_t
     for (int i=0; i<num; i++){
-        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, DEFAULT_VERTEX_ATTRIB_NUM, false, GLOBJ_VERTEX_ATTRIB, GL_BIND_VAO);
+        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, GL_MAX_VERTEX_ATTRIB_NUM, false, GLOBJ_VERTEX_ATTRIB, GL_BIND_VAO);
         ID[i] = ret;    // if failure, then ID will be -1
     }
 }
@@ -43,6 +47,8 @@ void glGenTexture(int num, int* ID){
 // Bind
 void glBindBuffer(GLenum buf_type,  int ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& bufs = C->share.buffers;
     int ret;
     glObject* ptr;
@@ -76,6 +82,8 @@ void glBindBuffer(GLenum buf_type,  int ID){
 
 void glBindVertexArray(int ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& mgr = C->share.vertex_attribs;
     if (ID<0)
         return;
@@ -102,6 +110,8 @@ void glBindTexture(GLenum target,  int ID){
 // Pass data
 void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& bufs = C->share.buffers;
     int ID, ret;
     glObject* ptr;
@@ -141,6 +151,8 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
     // based on the id, modify the glStorage<vertex_attrib_t>
     // if we haven't bind, the setting here has not effect
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto& mgr = C->share.vertex_attribs;
     auto& payload_map = C->payload.renderMap;
     int ID = payload_map[GL_BIND_VAO];
@@ -167,6 +179,8 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
 // Enable
 void glEnableVertexAttribArray(int ID){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glObject* ptr;
     int ret;
     auto& mgr = C->share.vertex_attribs;
@@ -181,9 +195,12 @@ void glEnableVertexAttribArray(int ID){
 
 void glEnable(GLenum cap){
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     switch(cap){
         case GL_DEPTH_TEST:
             C->use_z_test = true;
+            C->zbuf = &C->zbuf_1;
             break;
         default:
             break;
@@ -192,35 +209,62 @@ void glEnable(GLenum cap){
 
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
-    // GET_CURRENT_CONTEXT(C);
-    // auto& bufs = C->share.buffers;
-    // auto& vaos = C->share.vertex_attribs;
-    // auto& texs = C->share.textures;
-    // glObject* ptr;
-    // int ret;
-    // int attrib_tot_nbytes = 0;
-    // int num_attribs;
-    // // check if the VAO is ready
-    // int vao_id = C->payload.renderMap[GL_BIND_VAO];
-    // if (vao_id == -1)
-    //     return; //or do other things?
-    // ret = vaos.searchStorage(&ptr, vao_id);
-    // if (ret ==GL_FAILURE)
-    //     return;
-    // // valid vao_id, check the vertex config data inside
-    // num_attribs = ptr->getSize(); // in the unit of struct vertex_attribs_t
-    // vertex_attrib_t* va_data = (vertex_attrib_t*) ptr->getDataPtr();
-    // if (va_data == nullptr)
-    //     return;
-    // attrib_tot_nbytes = va_data[0].stride;
-    // // parse the vertex data and process them by MVP
-    // switch(mode){
-    //     case GL_TRIANGLE:
-            
-    //         break;
-    //     default:
-    //         break;
-    // }
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto& bufs = C->share.buffers;
+    auto& vaos = C->share.vertex_attribs;
+    auto& texs = C->share.textures;
+    glObject* vao_ptr;
+    glObject* vbo_ptr;
+    int ret, vao_id, vbo_id;
+    int vao_check_flag = 1;
+    int num_attribs;
+    // sanity checks for VAO
+    vao_id = C->payload.renderMap[GL_BIND_VAO];
+    if (vao_id < 0)
+        return;
+    ret = vaos.searchStorage(&vao_ptr, vao_id);
+    if (ret ==GL_FAILURE || 
+        vao_ptr->activated==false || 
+        vao_ptr->type != GLOBJ_VERTEX_ATTRIB || 
+        vao_ptr->bind != GL_BIND_VAO)
+        return;
+    // valid vao_id, check the vertex config data inside
+    vertex_attrib_t* va_data = (vertex_attrib_t*) vao_ptr->getDataPtr();
+    if (va_data == nullptr || vao_ptr->getSize()<=0)
+        return;
+    // sanity check for GL_ARRAY_BUFFER
+    vbo_id = C->payload.renderMap[GL_ARRAY_BUFFER];
+    if (vbo_id<0)
+        return;
+    ret = bufs.searchStorage(&vbo_ptr, vbo_id);
+    if (ret == GL_FAILURE ||
+        vbo_ptr->activated == false ||
+        vbo_ptr->type != GLOBJ_VERTEX_BUFFER ||
+        vbo_ptr->bind != GL_ARRAY_BUFFER)
+        return;
+    char* vb_data = (char*) vbo_ptr->getDataPtr();
+    if (vb_data == nullptr || vbo_ptr->getSize()<=0)
+        return;
+    // sanity check for texture resources
+    // TODO: check active textures, tell pipeline what are the useful textures
+    // prepare pipeline environment
+    C->pipeline.vao_ptr = vao_ptr;
+    C->pipeline.vbo_ptr = vbo_ptr;
+    // draw
+    switch(mode){
+        case GL_TRIANGLE:
+            auto& exec_list = C->pipeline.exec; 
+            auto iter = exec_list.begin();
+            while (iter != exec_list.end()){
+                (*iter)();
+                iter++;
+            }
+            break;
+        default:
+            break;
+    }
 }
 
 void glClearColor(float R, float G, float B, float A){
@@ -230,6 +274,8 @@ void glClearColor(float R, float G, float B, float A){
     // for simplicity, just clear the framebuffer by the RGB here
     color_t color = {R*255,G*255,B*255};
     GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     std::cout<<"current context is: "<<C<<std::endl;
     if (C->framebuf == nullptr)
         return;

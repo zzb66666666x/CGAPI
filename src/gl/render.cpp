@@ -3,6 +3,8 @@
 #include "glcontext.h"
 #include "../../include/gl/common.h"
 
+#define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
+
 // wrapper of vertex shader
 void process_vertex(){
     
@@ -13,8 +15,8 @@ void assemble_triangle(){
 
 }
 
-// raterize one triangle per call 
-void raterize(){
+// rasterize one triangle per call 
+void rasterize(){
 
 }
 

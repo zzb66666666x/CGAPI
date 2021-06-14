@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
-set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
-  CACHE STRING "Vcpkg toolchain file")
+# set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
+#   CACHE STRING "Vcpkg toolchain file")
 set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 set(CMAKE_CXX_FLAGS "-g -Wall")
@@ -32,6 +32,7 @@ set(GL_SOURCES
 
 set(GLV_SOURCES
 	src/glv/glv.cpp
+	src/glv/internal.cpp
 )
 
 set(UTILS_HEADERS
@@ -42,11 +43,11 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_RUNTIME ON)
-set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-include_directories(${Boost_INCLUDE_DIR})
-find_package(Boost REQUIRED)
+# set(Boost_USE_STATIC_LIBS ON)
+# set(Boost_USE_STATIC_RUNTIME ON)
+# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+# include_directories(${Boost_INCLUDE_DIR})
+# find_package(Boost REQUIRED)
 
 
 # set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
@@ -82,4 +83,4 @@ add_executable(
 ################################################
 add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
 target_link_libraries(basic_lib_usage glite)
-target_link_libraries(basic_lib_usage PRIVATE ${Boost_LIBRARIES})
+# target_link_libraries(basic_lib_usage PRIVATE ${Boost_LIBRARIES})

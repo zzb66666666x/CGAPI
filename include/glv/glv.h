@@ -19,7 +19,6 @@ extern "C" {
  *************************************************************************/
 
 typedef struct GLVFile GLVFile;
-typedef struct GLVContext GLVContext;
 
 /*************************************************************************
  * GLV API functions
@@ -41,6 +40,15 @@ int glvInit(void);
  * @return file pointer
  */
 GLVFile* glvCreateFile(int width, int height, const char *filename);
+
+/**
+ * The function creates file pointer for storing framebuffer result.
+ * 
+ * @param file file pointer
+ * 
+ * @return GLV_TRUE or GLV_FALSE
+ */
+int glvMakeFileCurrent(GLVFile* file);
 
 /**
  * the function writes framebuffer result in file.

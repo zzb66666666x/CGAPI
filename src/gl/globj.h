@@ -210,10 +210,15 @@ class output_stream{
 
 class glPipeline{
     public:
-        glPipeline(){}
+        glPipeline();
         // data needed for render functions
         output_stream<Triangle> triStream;
         std::list<render_fp> exec;
+        // glManager search cache  
+        // then in rendering pipeline, we don't have to search in glManager
+        glObject* vao_ptr;
+        glObject* vbo_ptr;
+        glObject* textures[GL_MAX_TEXTURE_UNITS];
 };
 
 #endif

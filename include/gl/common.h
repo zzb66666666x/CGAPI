@@ -48,6 +48,7 @@ GL_DEPTH_TEST
 }GLenum;
 
 #define THREAD_NUM  7
-#define DEFAULT_VERTEX_ATTRIB_NUM   16
+#define GL_MAX_VERTEX_ATTRIB_NUM    16
+#define GL_MAX_TEXTURE_UNITS        16
 
 #endif 

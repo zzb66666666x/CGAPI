@@ -96,3 +96,15 @@ glThreads::glThreads(){
 glProgram::glProgram(){
 
 }
+
+glPipeline::glPipeline(){
+    exec.emplace_back(process_vertex);
+    exec.emplace_back(assemble_triangle);
+    exec.emplace_back(rasterize);
+    exec.emplace_back(calculate_color);
+    vao_ptr = nullptr;
+    vbo_ptr = nullptr;
+    for (int i=0; i<GL_MAX_TEXTURE_UNITS; i++){
+        textures[i] = nullptr;
+    }
+}
