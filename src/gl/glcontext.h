@@ -14,6 +14,8 @@ class gl_context{
     // width & height
     int width;
     int height;
+    float znear;
+    float zfar;
     // frame buffer info and depth test
     glStorage<color_t> *framebuf;
     glStorage<float>   *zbuf;
