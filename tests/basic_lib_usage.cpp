@@ -3,7 +3,7 @@
 #include "../include/glv/glv.h"
 
 using namespace std;
-
+#define GET_INDEX(x, y, width, height) ((height - 1 - y) * width + x)
 static void testDrawNaiveImage()
 {
     const char *vertexShaderSource = "#version 330 core\n"
@@ -24,7 +24,7 @@ static void testDrawNaiveImage()
                                        "    FragColor = vertexColor;\n"
                                        "}\n";
 
-    const int WIDTH = 600, HEIGHT = 600;
+    const int WIDTH = 800, HEIGHT = 600;
     if (!glvInit())
     {
         std::cout << "glv Init failed\n";

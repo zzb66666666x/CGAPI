@@ -24,22 +24,23 @@ void process_geometry()
 
     // naive impelment
     float vertices[] = {
-        0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f};
+        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f};
     Triangle *triangle = new Triangle();
     for (int i = 0; i < 3; ++i)
     {
         triangle->screen_pos[i].x = 0.5 * C->width * (vertices[i * 6] + 1);
         triangle->screen_pos[i].y = 0.5 * C->height * (vertices[i * 6 + 1] + 1);
         triangle->screen_pos[i].z = vertices[i * 6 + 2];
-        // z
+        
         triangle->color[i].x = vertices[i * 6 + 3] * 255;
         triangle->color[i].y = vertices[i * 6 + 4] * 255;
         triangle->color[i].z = vertices[i * 6 + 5] * 255;
     }
     P->triangle_stream.push(triangle);
 }
+
 static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight)
 {
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;

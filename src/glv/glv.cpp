@@ -51,18 +51,23 @@ int glvWriteFile(GLVFile *file)
     _GLVFile *_file = (_GLVFile *)file;
     gl_context *ctx = _glvContext->ctx;
     color_t *framebuf_data = (color_t *)ctx->framebuf->getDataPtr();
-    int total_size = ctx->framebuf->getSize();
+    // int total_size = ctx->framebuf->getSize();
 
     int w = _file->width;
     int h = _file->height;
 
     // to generate a bmp image.
     unsigned char *img = MALLOC(unsigned char, w *h * 3);
-    for (int i = 0; i < total_size; ++i)
+    int index = 0;
+    for (int y = h - 1; y >= 0; --y)
     {
-        img[i * 3 + 2] = framebuf_data[i].R;
-        img[i * 3 + 1] = framebuf_data[i].G;
-        img[i * 3] = framebuf_data[i].B;
+        for (int x = 0; x < w; ++x)
+        {
+            img[index * 3] = framebuf_data[y * w + x].B;
+            img[index * 3 + 1] = framebuf_data[y * w + x].G;
+            img[index * 3 + 2] = framebuf_data[y * w + x].R;
+            ++index;
+        }
     }
     int l = (w * 3 + 3) / 4 * 4;
     int bmi[] = {l * h + 54, 0, 54, 40, w, h, 1 | 3 * 8 << 16, 0, l * h, 0, 0, 100, 0};
