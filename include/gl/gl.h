@@ -20,7 +20,7 @@ extern void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int w
 // Attrib
 extern void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, int stride, void * pointer);
 // Enable
-extern void glEnableVertexAttribArray(unsigned int ID);
+extern void glEnableVertexAttribArray(unsigned int idx);
 extern void glEnable(GLenum cap);
 // draw
 extern void glDrawArrays(GLenum mode, int first, int count);

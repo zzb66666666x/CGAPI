@@ -12,11 +12,7 @@
 
 typedef enum{
 GL_UNDEF = -1,
-// object types (type)
-GLOBJ_VERTEX_BUFFER,
-GLOBJ_VERTEX_ATTRIB,
-GLOBJ_FRAMEBUF,
-GLOBJ_ZBUF,
+
 // input mode
 GL_ARRAY_BUFFER,
 GL_BIND_VAO,
