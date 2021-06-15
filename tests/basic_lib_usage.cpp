@@ -24,7 +24,7 @@ static void testDrawNaiveImage()
     //                                    "    FragColor = vertexColor;\n"
     //                                    "}\n";
 
-    const int WIDTH = 600, HEIGHT = 600;
+    const int WIDTH = 800, HEIGHT = 600;
     if (!glvInit())
     {
         std::cout << "glv Init failed\n";
