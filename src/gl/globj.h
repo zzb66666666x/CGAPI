@@ -19,10 +19,10 @@ typedef struct{
     int     index;      // No. of vertex attrib
     int     size;       // size of attrib (in the unit of float/int/etc.)
     GLenum  type;       // dtype 
-    bool    normalized;// should we normalize the attrib
-    bool    activated; // should this vertex attrib be used 
+    bool    normalized; // should we normalize the attrib
+    bool    activated;  // should this vertex attrib be used 
     int     stride;     // stride to get info.
-    void*   pointer;  // offset
+    void*   pointer;    // offset
 }vertex_attrib_t;
 
 // typedef struct{
@@ -209,11 +209,15 @@ class glPipeline{
     public:
         glPipeline();
         // data needed for render functions
-        // output_stream<Triangle> triStream;
+        // multi-threading
+        // output_stream<Triangle> triangle_Stream;
+        // signal threading
         std::queue<Triangle*> triangle_stream;
         std::list<render_fp> exec;
         // glManager search cache  
         // then in rendering pipeline, we don't have to search in glManager
+        int first_vertex;
+        int vertex_num;
         glObject* vao_ptr;
         glObject* vbo_ptr;
         glObject* ebo_ptr;

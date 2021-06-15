@@ -241,6 +241,8 @@ void glDrawArrays(GLenum mode, int first, int count){
     // prepare pipeline environment
     C->pipeline.vao_ptr = vao_ptr;
     C->pipeline.vbo_ptr = vbo_ptr;
+    C->pipeline.first_vertex = first;
+    C->pipeline.vertex_num = count;
     // draw
     auto& exec_list = C->pipeline.exec; 
     auto iter = exec_list.begin();
