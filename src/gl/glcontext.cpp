@@ -6,15 +6,15 @@ gl_context* glapi_ctx = nullptr;
 gl_context::gl_context(int npixels, bool double_buf){
     std::cout<<"npixels: "<<npixels<<std::endl;
     share = glShareData();
-    framebuf_1 = glStorage<color_t>(npixels, true, GLOBJ_FRAMEBUF, GL_FRAMEBUFFER);
-    zbuf_1 = glStorage<float>(npixels, false, GLOBJ_ZBUF, GL_FRAMEBUFFER_ATTACH_ZBUF);
+    framebuf_1 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
+    zbuf_1 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
     use_double_buf = double_buf;
     zbuf = &zbuf_1;
     use_z_test = false;
     framebuf = &framebuf_1;
     if (double_buf){
-        framebuf_2 = glStorage<color_t>(npixels, true, GLOBJ_FRAMEBUF, GL_FRAMEBUFFER);
-        zbuf_2 = glStorage<float>(npixels, true, GLOBJ_ZBUF, GL_FRAMEBUFFER_ATTACH_ZBUF);
+        framebuf_2 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
+        zbuf_2 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
     }
     shader = glProgram();
     payload = glRenderPayload();

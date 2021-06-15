@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
-set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
-  CACHE STRING "Vcpkg toolchain file")
+# set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
+#   CACHE STRING "Vcpkg toolchain file")
 set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 set(CMAKE_CXX_FLAGS "-g -Wall")
@@ -42,14 +42,14 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_RUNTIME ON)
-set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-include_directories(${Boost_INCLUDE_DIR})
-find_package(Boost REQUIRED)
+# set(Boost_USE_STATIC_LIBS ON)
+# set(Boost_USE_STATIC_RUNTIME ON)
+# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+# include_directories(${Boost_INCLUDE_DIR})
+# find_package(Boost REQUIRED)
 
-set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
-find_package(glm CONFIG REQUIRED)
+# set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+# find_package(glm REQUIRED)
 
 # set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
 # find_package(OpenCV REQUIRED)
@@ -67,18 +67,18 @@ add_library(glite SHARED
 	${GL_HEADERS}
 	${UTILS_HEADERS}
 )
-target_link_libraries(glite ${OpenCV_LIBRARIES})
-target_link_libraries(glite ${Boost_LIBRARIES})
-target_link_libraries(glite glm::glm)
+# target_link_libraries(glite ${OpenCV_LIBRARIES})
+# target_link_libraries(glite ${Boost_LIBRARIES})
+# target_link_libraries(glite glm::glm)
 
 ################################################
 ################# utest make ###################
 ################################################
 add_executable(
 	test_globjs 
-	src/gl/globj.cpp
 	src/utests/test_globjs.cpp
-	src/utils/id.cpp
+	${GL_SOURCES}
+	${UTILS_SOURCES}
 )
 
 ################################################

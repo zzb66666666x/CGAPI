@@ -6,23 +6,23 @@ using namespace std;
 #define GET_INDEX(x, y, width, height) ((height - 1 - y) * width + x)
 static void testDrawNaiveImage()
 {
-    const char *vertexShaderSource = "#version 330 core\n"
-                                     "layout (location = 0) in vec3 aPos;\n"
-                                     "layout (location = 1) in vec3 color;\n"
-                                     "out vec4 vertexColor;\n"
-                                     "void main()\n"
-                                     "{\n"
-                                     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-                                     "   vertexColor = vec4(color.x, color.y, color.z, 1.0);\n"
-                                     "}\0";
-    const char *fragmentShaderSource = "#version 330 core\n"
-                                       "out vec4 FragColor;\n"
-                                       "in vec4 vertexColor;\n"
-                                       ""
-                                       "void main()\n"
-                                       "{\n"
-                                       "    FragColor = vertexColor;\n"
-                                       "}\n";
+    // const char *vertexShaderSource = "#version 330 core\n"
+    //                                  "layout (location = 0) in vec3 aPos;\n"
+    //                                  "layout (location = 1) in vec3 color;\n"
+    //                                  "out vec4 vertexColor;\n"
+    //                                  "void main()\n"
+    //                                  "{\n"
+    //                                  "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    //                                  "   vertexColor = vec4(color.x, color.y, color.z, 1.0);\n"
+    //                                  "}\0";
+    // const char *fragmentShaderSource = "#version 330 core\n"
+    //                                    "out vec4 FragColor;\n"
+    //                                    "in vec4 vertexColor;\n"
+    //                                    ""
+    //                                    "void main()\n"
+    //                                    "{\n"
+    //                                    "    FragColor = vertexColor;\n"
+    //                                    "}\n";
 
     const int WIDTH = 800, HEIGHT = 600;
     if (!glvInit())
@@ -106,7 +106,7 @@ static void testBasic()
 
 int main()
 {
-    // testBasic();
+    testBasic();
     testDrawNaiveImage();
     return 0;
 }

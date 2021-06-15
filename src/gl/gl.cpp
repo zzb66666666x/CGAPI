@@ -18,7 +18,7 @@ void glGenBuffers(int num, unsigned int * ID){
     auto& bufs = C->share.buffers;
     int ret;
     for (int i=0; i<num; i++){
-        ret = bufs.insertStorage(GL_BYTE, 0, true, GLOBJ_VERTEX_BUFFER, GL_UNDEF);
+        ret = bufs.insertStorage(GL_BYTE, 0, GL_UNDEF);
         ID[i] = ret;
     }
 }
@@ -35,7 +35,7 @@ void glGenVertexArrays(int num, unsigned int* ID){
     // each property are entries to the data array of the glStorage<vertex_attrib_t>
     // within each property, the config are wrapped in struct vertex_attrib_t
     for (int i=0; i<num; i++){
-        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, GL_MAX_VERTEX_ATTRIB_NUM, false, GLOBJ_VERTEX_ATTRIB, GL_BIND_VAO);
+        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, GL_MAX_VERTEX_ATTRIB_NUM,  GL_BIND_VAO);
         ID[i] = ret;    // if failure, then ID will be -1
     }
 }
@@ -54,12 +54,8 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
     glObject* ptr;
     switch(buf_type){
         case GL_ARRAY_BUFFER:
-            if (ID<0){
+            if (ID<=0){
                 return;
-            }
-            else if (ID==0){
-                // unbind the GL_ARRAY_BUFFER
-                C->payload.renderMap[GL_ARRAY_BUFFER] = -1;
             }
             else{
                 // try search out the ID
@@ -67,10 +63,6 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
                 if (ret==GL_FAILURE)
                     return;
                 ptr->bind = GL_ARRAY_BUFFER;
-                if (ptr->type != GLOBJ_VERTEX_BUFFER){
-                    printf("The GL OBJ type is surpisingly not GLOBJ_VERTEX_BUFFER");
-                    // ptr->type = GLOBJ_VERTEX_BUFFER;
-                }
                 C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
             }
         case GL_ELEMENT_ARRAY_BUFFER:
@@ -170,27 +162,30 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
         printf("Cannot hold that many vertex attribs!\n");
         return;
     }
-    assert(ptr->bind == GL_BIND_VAO && ptr->type == GLOBJ_VERTEX_ATTRIB);
+    assert(ptr->bind == GL_BIND_VAO);
     vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
-    vertex_attrib_t new_entry = {index, size, dtype, normalized, stride};
+    vertex_attrib_t new_entry = {index, size, dtype, normalized, false, stride, pointer};
     data[index] = new_entry;
 }
 
 // Enable
-void glEnableVertexAttribArray(unsigned int ID){
+void glEnableVertexAttribArray(unsigned int idx){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glObject* ptr;
     int ret;
     auto& mgr = C->share.vertex_attribs;
-    if (ID<0){
+    int ID = C->payload.renderMap[GL_BIND_VAO];
+    if (idx<0 || ID<0){
         return;
     }
     ret = mgr.searchStorage(&ptr, ID);
-    if (ret == GL_FAILURE)
+    if (ret == GL_FAILURE || (unsigned)ptr->getSize()<=idx || ptr->getDataPtr()==nullptr)
         return;
-    ptr->activated = true;
+    // mark the activated vertex attribs
+    vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
+    data[idx].activated = true;
 }
 
 void glEnable(GLenum cap){
@@ -214,20 +209,16 @@ void glDrawArrays(GLenum mode, int first, int count){
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glManager& bufs = C->share.buffers;
     glManager& vaos = C->share.vertex_attribs;
-    glManager& texs = C->share.textures;
+    // glManager& texs = C->share.textures;
     glObject* vao_ptr;
     glObject* vbo_ptr;
     int ret, vao_id, vbo_id;
-    int vao_check_flag = 1;
-    int num_attribs;
     // sanity checks for VAO
     vao_id = C->payload.renderMap[GL_BIND_VAO];
     if (vao_id < 0)
         return;
     ret = vaos.searchStorage(&vao_ptr, vao_id);
     if (ret ==GL_FAILURE || 
-        vao_ptr->activated==false || 
-        vao_ptr->type != GLOBJ_VERTEX_ATTRIB || 
         vao_ptr->bind != GL_BIND_VAO)
         return;
     // valid vao_id, check the vertex config data inside
@@ -240,8 +231,6 @@ void glDrawArrays(GLenum mode, int first, int count){
         return;
     ret = bufs.searchStorage(&vbo_ptr, vbo_id);
     if (ret == GL_FAILURE ||
-        vbo_ptr->activated == false ||
-        vbo_ptr->type != GLOBJ_VERTEX_BUFFER ||
         vbo_ptr->bind != GL_ARRAY_BUFFER)
         return;
     char* vb_data = (char*) vbo_ptr->getDataPtr();
@@ -253,14 +242,16 @@ void glDrawArrays(GLenum mode, int first, int count){
     C->pipeline.vao_ptr = vao_ptr;
     C->pipeline.vbo_ptr = vbo_ptr;
     // draw
+    auto& exec_list = C->pipeline.exec; 
+    auto iter = exec_list.begin();
     switch(mode){
         case GL_TRIANGLES:
-            auto& exec_list = C->pipeline.exec; 
-            auto iter = exec_list.begin();
             while (iter != exec_list.end()){
                 (*iter)();
                 ++iter;
             }
+            break;
+        default:
             break;
     }
 }

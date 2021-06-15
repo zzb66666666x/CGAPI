@@ -16,12 +16,13 @@
 #include "../../include/gl/common.h"
 
 typedef struct{
-    int index;      // No. of vertex attrib
-    int size;       // size of attrib (in the unit of float/int/etc.)
-    int type;       // dtype 
-    bool normalized;// should we normalize the attrib
-    int stride;     // stride to get info.
-    void* pointer;  // offset
+    int     index;      // No. of vertex attrib
+    int     size;       // size of attrib (in the unit of float/int/etc.)
+    GLenum  type;       // dtype 
+    bool    normalized;// should we normalize the attrib
+    bool    activated; // should this vertex attrib be used 
+    int     stride;     // stride to get info.
+    void*   pointer;  // offset
 }vertex_attrib_t;
 
 // typedef struct{
@@ -38,8 +39,8 @@ typedef struct{
 
 class glObject{
     public: 
-    glObject():activated(false), type(GL_UNDEF), bind(GL_UNDEF){}
-    glObject(bool act, GLenum t, GLenum b):activated(act), type(t), bind(b){}
+    glObject():bind(GL_UNDEF){}
+    glObject(GLenum b): bind(b){}
     virtual ~glObject(){}
     virtual void* getDataPtr() const = 0;
     virtual int allocEltSpace(int nelts) = 0;
@@ -49,8 +50,6 @@ class glObject{
     virtual int getSize() const = 0;
     virtual int byteCapacity() const = 0;
 
-    bool activated; // reserved for VAO
-    GLenum type;
     GLenum bind;
 };
 
@@ -66,7 +65,7 @@ class glStorage: public glObject{
                 data.resize(0);
             }
         }
-        glStorage(int s, bool act, GLenum t, GLenum b):glObject(act, t, b), size(s){
+        glStorage(int s, GLenum b):glObject(b), size(s){
             if(s>0){
                 data.resize(s);
             }else{
@@ -77,8 +76,6 @@ class glStorage: public glObject{
         glStorage(glStorage<T>& other){
             // time consuming !
             printf("LARGE SCALE COPY HAPPENS IN GL_STORAGE\n");
-            activated = other.activated;
-            type = other.type;
             bind = other.bind;
             size = other.size;
             // deep copy
@@ -160,7 +157,7 @@ class glManager{
 
         int insertStorage(GLenum dtype, glObject& obj);
         int insertStorage(GLenum dtype, int size);
-        int insertStorage(GLenum dtype, int size, bool activated, GLenum type, GLenum bind);
+        int insertStorage(GLenum dtype, int size, GLenum bind);
         int searchStorage(glObject** ptr, int id);
 
     private:
@@ -168,7 +165,7 @@ class glManager{
         IdManager idMgr;
 
         int __insert(glObject* objptr, int id);
-        glObject* __storage(GLenum dtype, int size, bool activated, GLenum type, GLenum bind);
+        glObject* __storage(GLenum dtype, int size, GLenum bind);
 };
 
 class glShareData{
