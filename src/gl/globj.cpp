@@ -89,7 +89,6 @@ glPipeline::glPipeline(){
     first_vertex = 0;
     exec.emplace_back(process_geometry);
     exec.emplace_back(rasterize);
-    exec.emplace_back(process_pixel);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
     ebo_ptr = nullptr;

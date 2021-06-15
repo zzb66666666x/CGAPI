@@ -34,7 +34,6 @@ static void testDrawNaiveImage()
 
     // unsigned int vertexShader;
     // vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    // // shader对象 字符串数 源码 null
     // glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     // glCompileShader(vertexShader);
 
@@ -53,29 +52,31 @@ static void testDrawNaiveImage()
     // glDeleteShader(fragmentShader);
 
     float vertices[] = {
-        0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f};
-
+        0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f};
+    // Gen
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
     glGenBuffers(1, &VBO);
+
+    // Bind
+    glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // VAO config
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
-    // 激活顶点属性0
+
+    // activate VAO attribs
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
-
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     // glEnable(GL_DEPTH_TEST);
     
     // render
-    // ------
-    // 激活shader
     // glUseProgram(shaderProgram);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

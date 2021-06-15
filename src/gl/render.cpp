@@ -13,7 +13,6 @@
 static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight);
 static void default_vertex_shader();
 static void default_vertex_shader();
-static void vertex_shader_caller(char* vbuf_data, int vbuf_size, vertex_attrib_t*  vattrib_data, int vattrib_size, int vertex_num);
 // gl inner variables
 glm::vec4 gl_Position;
 glm::vec3 gl_VertexColor;
@@ -23,73 +22,17 @@ int layout_cnt = 2;
 glm::vec3 input_Pos;
 glm::vec3 vert_Color;
 // fragment shader input
-
+glm::vec3 diffuse_Color;
 // fragment shader output, pixel value
 glm::vec3 frag_Color;
 
 static void default_vertex_shader(){
-
+    gl_Position = glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f);
+    gl_VertexColor = vert_Color;
 }
 
 static void default_fragment_shader(){
-
-}
-
-static void vertex_shader_caller(char* vbuf_data, int vbuf_size, vertex_attrib_t*  vattrib_data, int vattrib_size, int vertex_num){
-    // layout data feeder
-    GET_PIPELINE(P);
-    int cnt = 0;
-    char* buf;
-    int indices[] = {0,0};
-    glm::vec3* vec3_ptr;
-    int flag = 1;
-    Triangle* tri = new Triangle();
-    while (cnt<vertex_num){
-        if (!flag){
-            delete tri;
-            break;
-        }
-        if (cnt>0 && cnt % 3 == 0)
-            P->triangle_stream.push(tri);
-            tri = nullptr;
-            if (cnt+3<=vertex_num)
-                tri = new Triangle();
-        for (int i=0; i<layout_cnt; i++){
-            vec3_ptr = nullptr;
-            switch(i){
-                case 0:
-                    vec3_ptr = &input_Pos;
-                    break;
-                case 1:
-                    vec3_ptr = &frag_Color;
-                    break;
-                default:
-                    throw ("invalid layout\n");
-            }
-            vertex_attrib_t& config = vattrib_data[0];
-            buf = vbuf_data + (indices[i] + (int)config.pointer);
-            switch(config.type){
-                case GL_FLOAT:
-                    switch(config.size){
-                        case 3:
-                            (*vec3_ptr)[0] = (float)buf[0];
-                            (*vec3_ptr)[1] = (float)buf[sizeof(float)*1];
-                            (*vec3_ptr)[2] = (float)buf[sizeof(float)*2];
-                        default: 
-                            throw ("not supported size\n");
-                    }
-                    break;
-                default: 
-                    throw std::runtime_error("not supported type\n");
-            }
-            indices[i] += config.stride;
-            if (indices[i] >= vbuf_size)
-                flag = 0;
-                break;
-        }
-        default_vertex_shader();
-        cnt += 1;
-    }
+    frag_Color = diffuse_Color;
 }
 
 // geometry processing
@@ -101,15 +44,19 @@ void process_geometry()
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*) P->vao_ptr->getDataPtr();
     char* vbuf_data = (char *) P->vbo_ptr->getDataPtr();
     int vbuf_size = P->vbo_ptr->getSize();
-    int vattrib_size = P->vao_ptr->getSize();
     int vertex_num = P->vertex_num;
     // 2. check if the config is activated
     for (int i=0; i<layout_cnt; i++){
-        if (!vattrib_data[i].activated)
+        if (!vattrib_data[layouts[i]].activated)
             throw std::runtime_error("using inactive layout\n");
     }
     // 3. parse vertex data
     vbuf_data += (P->first_vertex)*(vattrib_data[0].stride); // use the first stride to determine start of vertex buffer
+    // float * temp = (float*) vbuf_data;
+    // for (int i=0; i<18; i++){
+    //     std::cout<<temp[i]<<std::endl;
+    // }
+    
     int cnt = 0;
     char* buf;
     int indices[] = {0,0};
@@ -121,43 +68,40 @@ void process_geometry()
             delete tri;
             break;
         }
-        if (cnt>0 && cnt % 3 == 0)
-            P->triangle_stream.push(tri);
-            tri = nullptr;
-            if (cnt+3<=vertex_num)
-                tri = new Triangle();
         for (int i=0; i<layout_cnt; i++){
             vec3_ptr = nullptr;
-            switch(i){
+            switch(layouts[i]){
                 case 0:
                     vec3_ptr = &input_Pos;
                     break;
                 case 1:
-                    vec3_ptr = &frag_Color;
+                    vec3_ptr = &vert_Color;
                     break;
                 default:
-                    throw ("invalid layout\n");
+                    throw std::runtime_error("invalid layout\n");
             }
-            vertex_attrib_t& config = vattrib_data[0];
-            buf = vbuf_data + (indices[i] + (int)config.pointer);
+            vertex_attrib_t& config = vattrib_data[layouts[i]];
+            buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
             switch(config.type){
                 case GL_FLOAT:
                     switch(config.size){
                         case 3:
-                            (*vec3_ptr).x = (float)buf[0];
-                            (*vec3_ptr).y = (float)buf[sizeof(float)*1];
-                            (*vec3_ptr).z = (float)buf[sizeof(float)*2];
+                            (*vec3_ptr).x = *(float*)(buf+0);
+                            (*vec3_ptr).y = *(float*)(buf+sizeof(float)*1);
+                            (*vec3_ptr).z = *(float*)(buf+sizeof(float)*2);
+                            std::cout<<"extracted float: "<<(*vec3_ptr).x<<" "<< (*vec3_ptr).y<<" "<< (*vec3_ptr).z<<std::endl;
+                            break;
                         default: 
-                            throw ("not supported size\n");
+                            throw std::runtime_error("not supported size\n");
                     }
                     break;
                 default: 
                     throw std::runtime_error("not supported type\n");
             }
             indices[i] += config.stride;
-            if (indices[i] >= vbuf_size)
+            if (indices[i] >= vbuf_size){
                 flag = 0;
-                break;
+            }
         }
         default_vertex_shader();
         // view port transformation
@@ -169,6 +113,12 @@ void process_geometry()
         tri->screen_pos[cnt%3] = glm::vec3(gl_Position);
         tri->color[cnt%3] = gl_VertexColor;
         cnt += 1;
+        if (cnt>0 && cnt % 3 == 0){
+            P->triangle_stream.push(tri);
+            tri = nullptr;
+            if (cnt+3<=vertex_num)
+                tri = new Triangle();
+        }
     }
     
     // naive impelment
@@ -231,10 +181,13 @@ void rasterize()
                 if (zp < zbuf[index])
                 {
                     zbuf[index] = zp;
-                    glm::vec3 color = interpolate(coef[0], coef[1], coef[2], t->color[0], t->color[1], t->color[2], 1);
-                    frame_buf[index].R = color.x;
-                    frame_buf[index].G = color.y;
-                    frame_buf[index].B = color.z;
+                    // set input to fragment shader
+                    diffuse_Color = interpolate(coef[0], coef[1], coef[2], t->color[0], t->color[1], t->color[2], 1);
+                    default_fragment_shader();
+                    // calculated fragment color
+                    frame_buf[index].R = frag_Color.x * 255.0f;
+                    frame_buf[index].G = frag_Color.y * 255.0f;
+                    frame_buf[index].B = frag_Color.z * 255.0f;
                 }
             }
         }
@@ -243,9 +196,9 @@ void rasterize()
     }
 }
 
-void process_pixel()
-{
-}
+// void process_pixel()
+// {
+// }
 
 void *_thr_process_vertex(void *thread_id)
 {
