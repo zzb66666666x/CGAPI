@@ -34,6 +34,9 @@ glm::mat4 model;
 glm::mat4 view;
 glm::mat4 projection;
 
+// for test
+float angle = 0.0f;
+
 static void default_vertex_shader(){
     frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
     // glm::vec4 test = view*glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
@@ -51,7 +54,7 @@ void set_transform_matrices(){
     view          = glm::mat4(1.0f);
     projection    = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(100.0f), glm::vec3(0.6f, 1.0f, 0.8f));
+    model = glm::rotate(model, glm::radians(angle = angle + 1.0f), glm::vec3(0.6f, 1.0f, 0.8f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -120,7 +123,7 @@ void process_geometry()
                             (*vec3_ptr).x = *(float*)(buf+0);
                             (*vec3_ptr).y = *(float*)(buf+sizeof(float)*1);
                             (*vec3_ptr).z = *(float*)(buf+sizeof(float)*2);
-                            std::cout<<"extracted float: "<<(*vec3_ptr).x<<" "<< (*vec3_ptr).y<<" "<< (*vec3_ptr).z<<std::endl;
+                            // std::cout<<"extracted float: "<<(*vec3_ptr).x<<" "<< (*vec3_ptr).y<<" "<< (*vec3_ptr).z<<std::endl;
                             break;
                         default: 
                             throw std::runtime_error("not supported size\n");
@@ -192,7 +195,7 @@ void rasterize()
                     continue;
 
                 // alpha beta gamma
-                std::array<float, 3> coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
                 // perspective correction
                 float Z_viewspace = 1.0/(coef[0]/screen_pos[0].w + coef[1]/screen_pos[1].w + coef[2]/screen_pos[2].w);
                 float alpha = coef[0]*Z_viewspace/screen_pos[0].w;
@@ -253,11 +256,6 @@ void *_thr_process_vertex(void *thread_id)
             frame_buf[i].B = frag_Color.z * 255.0f;
         }
     }
-}
-
-void *_thr_process_vertex(void *thread_id){
-
-    return nullptr;
 }
 
 void *_thr_rasterize(void *thread_id)

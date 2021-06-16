@@ -14,11 +14,15 @@ extern "C" {
 #define GLV_FALSE       0
 #define GLV_TRUE        1
 
+#define GLV_STREAM_FILE    0
+#define GLV_STREAM_WINDOW  1
+#define GLV_STREAM_NETWORK 2
+
 /*************************************************************************
  * GLV API types
  *************************************************************************/
 
-typedef struct GLVFile GLVFile;
+typedef struct GLVStream GLVStream;
 
 /*************************************************************************
  * GLV API functions
@@ -31,32 +35,24 @@ typedef struct GLVFile GLVFile;
 int glvInit(void);
 
 /**
- * The function creates file pointer for storing framebuffer result.
+ * The function creates io stream for storing framebuffer result.
  * 
  * @param width image width
  * @param height image height
- * @param filename image name
+ * @param name stream name
+ * @param type stream type,maybe it is file stream, window stream or network stream
  * 
- * @return file pointer
+ * @return io stream
  */
-GLVFile* glvCreateFile(int width, int height, const char *filename);
-
-/**
- * The function creates file pointer for storing framebuffer result.
- * 
- * @param file file pointer
- * 
- * @return GLV_TRUE or GLV_FALSE
- */
-int glvMakeFileCurrent(GLVFile* file);
+GLVStream* glvCreateStream(int width, int height, const char *name, int type);
 
 /**
  * the function writes framebuffer result in file.
  * 
- * @param file file pointer
+ * @param stream stream
  * @return GLV_TRUE or GLV_FALSE
  */
-int glvWriteFile(GLVFile* file);
+int glvWriteStream(GLVStream* stream);
 
 /**
  * release glv memory.

@@ -284,8 +284,8 @@ void glClear(unsigned int bitfields){
         color_t * data = (color_t*) (C->framebuf->getDataPtr());
         // assert(C->framebuf == &(C->framebuf_1));
         int size = C->framebuf->getSize();
-        std::cout<<"data array: "<<data<<std::endl;
-        std::cout<<"size: "<<size<<std::endl;
+        // std::cout<<"data array: "<<data<<std::endl;
+        // std::cout<<"size: "<<size<<std::endl;
         for (int i=0; i<size; i++){
             data[i] = C->clear_color;
         }
