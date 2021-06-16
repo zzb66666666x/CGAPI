@@ -22,9 +22,9 @@ int layout_cnt = 2;
 glm::vec3 input_Pos;
 glm::vec3 vert_Color;
 // fragment shader input
-glm::vec3 diffuse_Color;
+glm::vec3 diffuse_color;
 // fragment shader output, pixel value
-glm::vec3 frag_Color;
+glm::vec3 frag_color;
 
 static void default_vertex_shader(){
     gl_Position = glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f);
@@ -32,7 +32,7 @@ static void default_vertex_shader(){
 }
 
 static void default_fragment_shader(){
-    frag_Color = diffuse_Color;
+    frag_color = diffuse_color;
 }
 
 // geometry processing
@@ -103,10 +103,12 @@ void process_geometry()
                 flag = 0;
             }
         }
+
+        // vertex shading
         default_vertex_shader();
         // view port transformation
-        gl_Position.x = 0.5*C->width*(gl_Position.x+1.0);
-        gl_Position.y = 0.5*C->height*(gl_Position.y+1.0);
+        gl_Position.x = 0.5f * C->width * (gl_Position.x + 1.0f);
+        gl_Position.y = 0.5f * C->height * (gl_Position.y + 1.0f);
         // float f1 = (50 - 0.1) / 2.0;
         // float f2 = (50 + 0.1) / 2.0;
         // gl_Position.z = gl_Position.z * f1 + f2;
@@ -150,6 +152,9 @@ void rasterize()
     GET_CURRENT_CONTEXT(C);
     std::queue<Triangle *> &triangle_stream = C->pipeline.triangle_stream;
     int width = C->width, height = C->height;
+    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
+    pixel_tasks.resize(width * height);
+    // color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
 
     while (!triangle_stream.empty())
     {
@@ -163,7 +168,6 @@ void rasterize()
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
         float *zbuf = (float *)C->zbuf->getDataPtr();
-        color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
         // AABB algorithm
         for (y = miny; y <= maxy; ++y)
         {
@@ -174,7 +178,7 @@ void rasterize()
                     continue;
 
                 // alpha beta gamma
-                std::array<float, 3> coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
                 float zp = coef[0] * screen_pos[0].z + coef[1] * screen_pos[1].z + coef[2] * screen_pos[2].z;
                 float Z = 1.0 / (coef[0] + coef[1] + coef[2]);
                 zp *= Z;
@@ -182,13 +186,15 @@ void rasterize()
                 if (zp < zbuf[index])
                 {
                     zbuf[index] = zp;
+                    pixel_tasks[index].write = true;
+                    pixel_tasks[index].vertexColor = interpolate(coef[0], coef[1], coef[2], t->color[0], t->color[1], t->color[2], 1);
                     // set input to fragment shader
-                    diffuse_Color = interpolate(coef[0], coef[1], coef[2], t->color[0], t->color[1], t->color[2], 1);
-                    default_fragment_shader();
-                    // calculated fragment color
-                    frame_buf[index].R = frag_Color.x * 255.0f;
-                    frame_buf[index].G = frag_Color.y * 255.0f;
-                    frame_buf[index].B = frag_Color.z * 255.0f;
+                    // diffuse_color = interpolate(coef[0], coef[1], coef[2], t->color[0], t->color[1], t->color[2], 1);
+                    // default_fragment_shader();
+                    // // calculated fragment color
+                    // frame_buf[index].R = frag_color.x * 255.0f;
+                    // frame_buf[index].G = frag_color.y * 255.0f;
+                    // frame_buf[index].B = frag_color.z * 255.0f;
                 }
             }
         }
@@ -197,12 +203,25 @@ void rasterize()
     }
 }
 
-// void process_pixel()
-// {
-// }
-
-void *_thr_process_vertex(void *thread_id)
+void process_pixel()
 {
+    GET_CURRENT_CONTEXT(C);
+    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
+    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
+    for(int i = 0,len = pixel_tasks.size();i < len;++i)
+    {
+        if(pixel_tasks[i].write){
+            diffuse_color = pixel_tasks[i].vertexColor;
+            default_fragment_shader();
+
+            frame_buf[i].R = frag_color.x * 255.0f;
+            frame_buf[i].G = frag_color.y * 255.0f;
+            frame_buf[i].B = frag_color.z * 255.0f;
+        }
+    }
+}
+
+void *_thr_process_vertex(void *thread_id){
 
     return nullptr;
 }

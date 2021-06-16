@@ -205,6 +205,14 @@ class output_stream{
     pthread_mutex_t mtx;
 };
 
+struct Pixel{
+    Pixel():write(false){}
+    bool write;
+    
+    // programmable input
+    glm::vec3 vertexColor;
+};
+
 class glPipeline{
     public:
         glPipeline();
@@ -214,6 +222,8 @@ class glPipeline{
         // signal threading
         std::queue<Triangle*> triangle_stream;
         std::list<render_fp> exec;
+        // pixel processing task list
+        std::vector<Pixel> pixel_tasks;
         // glManager search cache  
         // then in rendering pipeline, we don't have to search in glManager
         int first_vertex;

@@ -58,6 +58,9 @@ int glvMakeFileCurrent(GLVFile* file);
  */
 int glvWriteFile(GLVFile* file);
 
+/**
+ * release glv memory.
+ */
 void glvTerminate();
 
 #ifdef __cplusplus

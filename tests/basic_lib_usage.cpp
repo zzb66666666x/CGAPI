@@ -107,7 +107,7 @@ static void testBasic()
 
 int main()
 {
-    testBasic();
+    // testBasic();
     testDrawNaiveImage();
     return 0;
 }
