@@ -168,7 +168,8 @@ void rasterize()
     GET_CURRENT_CONTEXT(C);
     std::queue<Triangle *> &triangle_stream = C->pipeline.triangle_stream;
     int width = C->width, height = C->height;
-
+    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
+    pixel_tasks.resize(width * height);
     while (!triangle_stream.empty())
     {
         Triangle *t = triangle_stream.front();
@@ -181,7 +182,6 @@ void rasterize()
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
         float *zbuf = (float *)C->zbuf->getDataPtr();
-        color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
         // AABB algorithm
         for (y = miny; y <= maxy; ++y)
         {
@@ -198,19 +198,20 @@ void rasterize()
                 float alpha = coef[0]*Z_viewspace/screen_pos[0].w;
                 float beta = coef[1]*Z_viewspace/screen_pos[1].w;
                 float gamma = coef[2]*Z_viewspace/screen_pos[2].w;
-                // zp: z value after interpolation
-                float zp = alpha*screen_pos[0].z + beta*screen_pos[1].z + gamma*screen_pos[2].z;
-
-                if (zp < zbuf[index])
+               
+                if (!C->use_z_test)
                 {
-                    zbuf[index] = zp;
-                    // set input to fragment shader
-                    diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
-                    default_fragment_shader();
-                    // calculated fragment color
-                    frame_buf[index].R = frag_Color.x * 255.0f;
-                    frame_buf[index].G = frag_Color.y * 255.0f;
-                    frame_buf[index].B = frag_Color.z * 255.0f;
+                    pixel_tasks[index].write = true;
+                    pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                }
+                else{
+                    // zp: z value after interpolation
+                    float zp = alpha*screen_pos[0].z + beta*screen_pos[1].z + gamma*screen_pos[2].z;
+                    if (zp < zbuf[index]){
+                        zbuf[index] = zp;
+                        pixel_tasks[index].write = true;
+                        pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                    }
                 }
             }
         }
@@ -219,9 +220,22 @@ void rasterize()
     }
 }
 
-// void process_pixel()
-// {
-// }
+void process_pixel()
+{
+    GET_CURRENT_CONTEXT(C);
+    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
+    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
+    for(int i = 0,len = pixel_tasks.size();i < len;++i)
+    {
+        if(pixel_tasks[i].write){
+            diffuse_Color = pixel_tasks[i].vertexColor;
+            default_fragment_shader();
+            frame_buf[i].R = frag_Color.x * 255.0f;
+            frame_buf[i].G = frag_Color.y * 255.0f;
+            frame_buf[i].B = frag_Color.z * 255.0f;
+        }
+    }
+}
 
 void *_thr_process_vertex(void *thread_id)
 {

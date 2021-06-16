@@ -31,6 +31,7 @@ static void testDrawNaiveImage()
         return;
     }
     GLVFile *file = glvCreateFile(WIDTH, HEIGHT, "cube");
+    glEnable(GL_DEPTH_TEST);
 
     // unsigned int vertexShader;
     // vertexShader = glCreateShader(GL_VERTEX_SHADER);

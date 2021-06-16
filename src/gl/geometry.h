@@ -49,7 +49,7 @@ public:
 private:
     inline int _sanity_check(float c1, float c2, float c3){
         printf("%f, %f, %f\n", c1, c2, c3);
-        if (abs(1-c1-c3-c3) < 0.01)
+        if (abs(1-c1-c2-c3) < 0.01)
             return 1;
         return 0;
     }
