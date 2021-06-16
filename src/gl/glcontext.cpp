@@ -20,6 +20,9 @@ gl_context::gl_context(int npixels, bool double_buf){
     payload = glRenderPayload();
     pipeline = glPipeline();
     windowbuf = nullptr;
+    clear_color.R = 0;
+    clear_color.G = 0;
+    clear_color.B = 0;
 }
 
 gl_context* _cg_create_context(int width, int height, bool double_buf){
@@ -29,6 +32,8 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     ctx->height = height;
     ctx->znear = 0.1;
     ctx->zfar = 50;
+    ctx->zmid = (ctx->znear + ctx->zfar)/2;
+    ctx->zdepth_half = (ctx->zfar - ctx->znear)/2;
     // _cg_context_sanity_check(ctx);
     std::cout<<"context ptr: "<<ctx<<std::endl;
     return ctx;

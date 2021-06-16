@@ -267,17 +267,8 @@ void glClearColor(float R, float G, float B, float A){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    std::cout<<"current context is: "<<C<<std::endl;
-    if (C->framebuf == nullptr)
-        return;
-    color_t * data = (color_t*) (C->framebuf->getDataPtr());
-    // assert(C->framebuf == &(C->framebuf_1));
-    int size = C->framebuf->getSize();
-    std::cout<<"data array: "<<data<<std::endl;
-    std::cout<<"size: "<<size<<std::endl;
-    for (int i=0; i<size; i++){
-        data[i] = color;
-    }
+    // std::cout<<"current context is: "<<C<<std::endl;
+    C->clear_color = color;
 }
 
 void glClear(unsigned int bitfields){
@@ -285,7 +276,19 @@ void glClear(unsigned int bitfields){
     // clear depth
     if((bitfields & GL_DEPTH_BUFFER_BIT) == GL_DEPTH_BUFFER_BIT){
         float* zbuf = (float *)C->zbuf->getDataPtr();
-        std::fill(zbuf,zbuf + C->zbuf->getSize(), 1);
+        std::fill(zbuf,zbuf + C->zbuf->getSize(), C->zfar+0.01);
+    }
+    if ((bitfields & GL_COLOR_BUFFER_BIT) == GL_COLOR_BUFFER_BIT){
+        if (C->framebuf == nullptr)
+            return;
+        color_t * data = (color_t*) (C->framebuf->getDataPtr());
+        // assert(C->framebuf == &(C->framebuf_1));
+        int size = C->framebuf->getSize();
+        std::cout<<"data array: "<<data<<std::endl;
+        std::cout<<"size: "<<size<<std::endl;
+        for (int i=0; i<size; i++){
+            data[i] = C->clear_color;
+        }
     }
 }
 
