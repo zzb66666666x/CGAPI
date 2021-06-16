@@ -16,6 +16,8 @@ class gl_context{
     int height;
     float znear;
     float zfar;
+    float zmid;
+    float zdepth_half;
     // frame buffer info and depth test
     glStorage<color_t> *framebuf;
     glStorage<float>   *zbuf;
@@ -32,6 +34,8 @@ class gl_context{
     glRenderPayload     payload;
     // pipeline of function pointers and their data 
     glPipeline          pipeline;
+    // framebuffer clear color
+    color_t             clear_color;
 };
 
 extern gl_context* glapi_ctx;

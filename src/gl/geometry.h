@@ -13,8 +13,9 @@ public:
     /**
      * counter clockwise order
      */
-    glm::vec3 screen_pos[3];
+    glm::vec4 screen_pos[3];
     glm::vec3 color[3];
+    glm::vec3 frag_shading_pos[3];
 
     bool inside(float x, float y)
     {
@@ -37,7 +38,7 @@ public:
 
     std::array<float, 3> computeBarycentric2D(float x, float y)
     {
-        glm::vec3 *v = screen_pos;
+        glm::vec4 *v = screen_pos;
         float c1 = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y - v[2].x * v[1].y) / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
         float c2 = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y - v[0].x * v[2].y) / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
         // float c3 = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y - v[1].x * v[0].y) / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);

@@ -1,5 +1,7 @@
 #include <pthread.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "render.h"
 #include "glcontext.h"
 #include "../../include/gl/common.h"
@@ -13,6 +15,7 @@
 static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight);
 static void default_vertex_shader();
 static void default_vertex_shader();
+static void set_transform_matrices();
 // gl inner variables
 glm::vec4 gl_Position;
 glm::vec3 gl_VertexColor;
@@ -23,16 +26,44 @@ glm::vec3 input_Pos;
 glm::vec3 vert_Color;
 // fragment shader input
 glm::vec3 diffuse_Color;
+glm::vec3 frag_Pos;
 // fragment shader output, pixel value
 glm::vec3 frag_Color;
+// MVP matrices
+glm::mat4 model; 
+glm::mat4 view;
+glm::mat4 projection;
 
 static void default_vertex_shader(){
-    gl_Position = glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f);
+    frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
+    // glm::vec4 test = view*glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
+    gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
     gl_VertexColor = vert_Color;
 }
 
 static void default_fragment_shader(){
     frag_Color = diffuse_Color;
+}
+
+void set_transform_matrices(){
+    GET_CURRENT_CONTEXT(C);
+    model         = glm::mat4(1.0f); 
+    view          = glm::mat4(1.0f);
+    projection    = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(100.0f), glm::vec3(0.6f, 1.0f, 0.8f));
+    glm::vec3 eyepos(0.0f,0.0f,5.0f);
+    glm::vec3 front(0.0f, 0.0f, -1.0f);
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
+    view  = glm::lookAt(eyepos, eyepos+front, up);
+    projection = glm::perspective(glm::radians(45.0f), (float)(C->width) / (float)(C->height), C->znear, C->zfar);
+    // print
+    // for (int i=0; i<4; i++){
+    //     for (int j=0; j<4; j++){
+    //         std::cout<<view[j][i]<<"     ";
+    //     }
+    //     std::cout<<"\n";
+    // }
 }
 
 // geometry processing
@@ -103,15 +134,20 @@ void process_geometry()
                 flag = 0;
             }
         }
+        // 4. vertex shading
+        set_transform_matrices();
         default_vertex_shader();
-        // view port transformation
+        gl_Position.x /= gl_Position.w;
+        gl_Position.y /= gl_Position.w;
+        gl_Position.z /= gl_Position.w;
+        // 5. view port transformation
         gl_Position.x = 0.5*C->width*(gl_Position.x+1.0);
         gl_Position.y = 0.5*C->height*(gl_Position.y+1.0);
-        // float f1 = (50 - 0.1) / 2.0;
-        // float f2 = (50 + 0.1) / 2.0;
-        // gl_Position.z = gl_Position.z * f1 + f2;
-        tri->screen_pos[cnt%3] = glm::vec3(gl_Position);
+        gl_Position.z = gl_Position.z * C->zdepth_half + C->zmid;
+        // 6. assemble triangle
+        tri->screen_pos[cnt%3] = gl_Position;
         tri->color[cnt%3] = gl_VertexColor;
+        tri->frag_shading_pos[cnt%3] = frag_Pos;
         cnt += 1;
         if (cnt>0 && cnt % 3 == 0){
             P->triangle_stream.push(tri);
@@ -120,26 +156,9 @@ void process_geometry()
                 tri = new Triangle();
         }
     }
-    
-    // naive impelment
-    // float vertices[] = {
-    //     0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-    //     -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-    //     0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f};
-    // Triangle *triangle = new Triangle();
-    // for (int i = 0; i < 3; ++i)
-    // {
-    //     triangle->screen_pos[i].x = 0.5 * C->width * (vertices[i * 6] + 1);
-    //     triangle->screen_pos[i].y = 0.5 * C->height * (vertices[i * 6 + 1] + 1);
-    //     triangle->screen_pos[i].z = vertices[i * 6 + 2];
-    //     // z
-    //     triangle->color[i].x = vertices[i * 6 + 3] * 255;
-    //     triangle->color[i].y = vertices[i * 6 + 4] * 255;
-    //     triangle->color[i].z = vertices[i * 6 + 5] * 255;
-    // }
-    // P->triangle_stream.push(triangle);
 }
-static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight)
+
+inline static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight)
 {
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
@@ -154,7 +173,7 @@ void rasterize()
     {
         Triangle *t = triangle_stream.front();
         triangle_stream.pop();
-        glm::vec3 *screen_pos = t->screen_pos;
+        glm::vec4 *screen_pos = t->screen_pos;
         int minx, maxx, miny, maxy, x, y;
         minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
         miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
@@ -174,15 +193,19 @@ void rasterize()
 
                 // alpha beta gamma
                 std::array<float, 3> coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
-                float zp = coef[0] * screen_pos[0].z + coef[1] * screen_pos[1].z + coef[2] * screen_pos[2].z;
-                float Z = 1.0 / (coef[0] + coef[1] + coef[2]);
-                zp *= Z;
+                // perspective correction
+                float Z_viewspace = 1.0/(coef[0]/screen_pos[0].w + coef[1]/screen_pos[1].w + coef[2]/screen_pos[2].w);
+                float alpha = coef[0]*Z_viewspace/screen_pos[0].w;
+                float beta = coef[1]*Z_viewspace/screen_pos[1].w;
+                float gamma = coef[2]*Z_viewspace/screen_pos[2].w;
+                // zp: z value after interpolation
+                float zp = alpha*screen_pos[0].z + beta*screen_pos[1].z + gamma*screen_pos[2].z;
 
                 if (zp < zbuf[index])
                 {
                     zbuf[index] = zp;
                     // set input to fragment shader
-                    diffuse_Color = interpolate(coef[0], coef[1], coef[2], t->color[0], t->color[1], t->color[2], 1);
+                    diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                     default_fragment_shader();
                     // calculated fragment color
                     frame_buf[index].R = frag_Color.x * 255.0f;
