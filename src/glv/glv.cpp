@@ -36,6 +36,7 @@ static _GLVStream *create_window_stream(int width, int height, const char *name)
 static int write_window_stream(_GLVStream *_window)
 {
     gl_context *ctx = _glvContext->ctx;
+    
     color_t *framebuf_data = (color_t *)ctx->framebuf->getDataPtr();
     // int total_size = ctx->framebuf->getSize();
 
@@ -46,7 +47,10 @@ static int write_window_stream(_GLVStream *_window)
     frame.convertTo(frame, CV_8UC3, 1.0f);
     cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
     cv::imshow(_window->name, frame);
-    cv::waitKey(1);
+    cv::waitKey(10);
+    if(ctx->use_double_buf){
+        _cg_swap_framebuffer(ctx);
+    }
     return GLV_TRUE;
 }
 

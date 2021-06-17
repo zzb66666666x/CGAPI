@@ -1,6 +1,10 @@
 #include <iostream>
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
+#include <windows.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
 
@@ -83,15 +87,18 @@ static void testDrawInWindow()
     glBindVertexArray(0);
 
     
+	DWORD begin;
     while(1){
+        begin = GetTickCount();
         glBindVertexArray(VAO);
-        glClearColor(0.2f, 0.3f, 0.7f, 1.0f);
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         glvWriteStream(window);
-
-        std::cout << "frame_count: " << (frame_count++) << std::endl;
+        std::cout << "fps:" << 1000.0/(GetTickCount() - begin) << std::endl;
+        // std::cout << "frame_count: " << (frame_count++) << std::endl;
     }
 
     glvTerminate();
@@ -198,7 +205,7 @@ static void testBasic()
 int main()
 {
     // testBasic();
-    testDrawNaiveImage();
+    // testDrawNaiveImage();
     testDrawInWindow();
     return 0;
 }

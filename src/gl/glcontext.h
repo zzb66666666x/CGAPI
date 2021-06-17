@@ -16,8 +16,6 @@ class gl_context{
     int height;
     float znear;
     float zfar;
-    float zmid;
-    float zdepth_half;
     // frame buffer info and depth test
     glStorage<color_t> *framebuf;
     glStorage<float>   *zbuf;
@@ -47,5 +45,6 @@ extern gl_context* _cg_create_context(int width, int height, bool double_buf);
 extern void _cg_make_current(gl_context* ctx);
 extern void _cg_free_context_data(gl_context* ctx);
 extern void _cg_reset_current_context();
+extern void _cg_swap_framebuffer(gl_context* ctx);
 
 #endif

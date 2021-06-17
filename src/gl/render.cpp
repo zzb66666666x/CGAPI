@@ -54,7 +54,7 @@ void set_transform_matrices(){
     view          = glm::mat4(1.0f);
     projection    = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(angle = angle + 1.0f), glm::vec3(0.6f, 1.0f, 0.8f));
+    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -97,6 +97,7 @@ void process_geometry()
     glm::vec3* vec3_ptr;
     int flag = 1;
     Triangle* tri = new Triangle();
+    angle = angle + 10.0f;
     while (cnt<vertex_num){
         if (!flag){
             delete tri;
@@ -140,13 +141,15 @@ void process_geometry()
         // 4. vertex shading
         set_transform_matrices();
         default_vertex_shader();
+
         gl_Position.x /= gl_Position.w;
         gl_Position.y /= gl_Position.w;
         gl_Position.z /= gl_Position.w;
         // 5. view port transformation
-        gl_Position.x = 0.5*C->width*(gl_Position.x+1.0);
-        gl_Position.y = 0.5*C->height*(gl_Position.y+1.0);
-        gl_Position.z = gl_Position.z * C->zdepth_half + C->zmid;
+        gl_Position.x = 0.5 * C->width * (gl_Position.x + 1.0);
+        gl_Position.y = 0.5 * C->height * (gl_Position.y + 1.0);  
+        // [-1,1] to [0,1]
+        gl_Position.z = gl_Position.z * 0.5 + 0.5;
         // 6. assemble triangle
         tri->screen_pos[cnt%3] = gl_Position;
         tri->color[cnt%3] = gl_VertexColor;
@@ -172,7 +175,7 @@ void rasterize()
     std::queue<Triangle *> &triangle_stream = C->pipeline.triangle_stream;
     int width = C->width, height = C->height;
     std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
-    pixel_tasks.resize(width * height);
+    
     while (!triangle_stream.empty())
     {
         Triangle *t = triangle_stream.front();
@@ -236,6 +239,7 @@ void process_pixel()
             frame_buf[i].R = frag_Color.x * 255.0f;
             frame_buf[i].G = frag_Color.y * 255.0f;
             frame_buf[i].B = frag_Color.z * 255.0f;
+            pixel_tasks[i].write = false;
         }
     }
 }

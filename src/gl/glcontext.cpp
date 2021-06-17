@@ -19,6 +19,7 @@ gl_context::gl_context(int npixels, bool double_buf){
     shader = glProgram();
     payload = glRenderPayload();
     pipeline = glPipeline();
+    pipeline.pixel_tasks = std::vector<Pixel>(npixels);
     windowbuf = nullptr;
     clear_color.R = 0;
     clear_color.G = 0;
@@ -32,8 +33,6 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     ctx->height = height;
     ctx->znear = 0.1;
     ctx->zfar = 50;
-    ctx->zmid = (ctx->znear + ctx->zfar)/2;
-    ctx->zdepth_half = (ctx->zfar - ctx->znear)/2;
     // _cg_context_sanity_check(ctx);
     std::cout<<"context ptr: "<<ctx<<std::endl;
     return ctx;
@@ -70,4 +69,17 @@ void _cg_context_sanity_check(gl_context* ctx){
         // printf("%d\n",i);
     }
     std::cout<<"pass test of z buffer"<<std::endl;
+}
+
+void _cg_swap_framebuffer(gl_context* ctx){
+    if(ctx == nullptr){
+        return;
+    }
+    if(ctx->framebuf == &ctx->framebuf_1){
+        ctx->framebuf = &ctx->framebuf_2;
+        ctx->zbuf = &ctx->zbuf_2;
+    }else{
+        ctx->framebuf = &ctx->framebuf_1;
+        ctx->zbuf = &ctx->zbuf_1;
+    }
 }
