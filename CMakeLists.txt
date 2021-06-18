@@ -43,18 +43,18 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_RUNTIME ON)
-set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-include_directories(${Boost_INCLUDE_DIR})
-find_package(Boost REQUIRED)
+# set(Boost_USE_STATIC_LIBS ON)
+# set(Boost_USE_STATIC_RUNTIME ON)
+# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+# include_directories(${Boost_INCLUDE_DIR})
+# find_package(Boost REQUIRED)
 
-set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
-find_package(glm REQUIRED)
+# set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+# find_package(glm REQUIRED)
 
-# set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
-# find_package(OpenCV REQUIRED)
-# include_directories(${OpenCV_INCLUDE_DIRS})
+set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 ################################################
 ################# library make #################
@@ -69,8 +69,8 @@ add_library(glite SHARED
 	${UTILS_HEADERS}
 )
 target_link_libraries(glite ${OpenCV_LIBRARIES})
-target_link_libraries(glite ${Boost_LIBRARIES})
-target_link_libraries(glite glm::glm)
+# target_link_libraries(glite ${Boost_LIBRARIES})
+# target_link_libraries(glite glm::glm)
 
 ################################################
 ################# utest make ###################

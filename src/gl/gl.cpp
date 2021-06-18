@@ -4,6 +4,22 @@
 #include "../../include/gl/gl.h"
 #include "../../include/gl/common.h"
 #include "glcontext.h"
+#include "formats.h"
+
+#define FILL_ZERO   -1
+#define FILL_ONE    -2
+#define SKIP_INPUT  -3
+
+typedef struct{
+    char in_channels;
+    char out_channels;
+    char order[4];
+    bool direct_pass;
+}format_desc_t;
+
+//static helpers
+static void _pass_tex_data(int ID, glObject* ptr, GLenum internalFormat, int width, int height, GLenum format, GLenum type, void* data);
+static void _tex_data_formatter(GLenum internalFormat, GLenum format, format_desc_t* desc);
 
 // helloworld
 void glHelloWorld(){
@@ -111,7 +127,6 @@ void glBindTexture(GLenum target,  unsigned int ID){
     auto& texs = C->share.textures;
     int ret;
     glObject* ptr;  
-    auto& mgr = C->share.textures;
     switch(target){
         case GL_TEXTURE_2D:
             if (ID<0){
@@ -121,7 +136,7 @@ void glBindTexture(GLenum target,  unsigned int ID){
                 C->payload.renderMap[GL_TEXTURE_2D] = -1;
             }
             else{
-                ret = mgr.searchStorage(&ptr, ID);
+                ret = texs.searchStorage(&ptr, ID);
                 if (ret == GL_FAILURE)
                     return;
                 C->payload.renderMap[GL_TEXTURE_2D] = ID;
@@ -187,9 +202,100 @@ void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, i
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    if (border != 0 || level !=0)
-        return;
-    
+    if (border != 0 || 
+        level !=0 || 
+        (internalFormat!= GL_RGB)  )
+        throw std::runtime_error("using invalid params when passing tex data \n");
+    int ID, ret;
+    glObject* tex_ptr;
+    auto& texs = C->share.textures;
+    switch(target){
+        case GL_TEXTURE_2D:
+            ID = C->payload.renderMap[GL_TEXTURE_2D];
+            if (ID<0)
+                return;
+            ret = texs.searchStorage(&tex_ptr, ID);
+            if (ret == GL_FAILURE)
+                return;
+            _pass_tex_data(ID, tex_ptr, internalFormat, width, height, format, type, data);
+            break;
+        default:
+            break;
+    }
+}
+
+static void _pass_tex_data(int ID, glObject* ptr, GLenum internalFormat, int width, int height, GLenum format, GLenum type, void* data){
+    GET_CURRENT_CONTEXT(C);
+    format_desc_t f_desc;
+    switch(type){
+        case GL_BYTE:
+            // forced unsigned, otherwise the 255 will be treated as -1
+        case GL_UNSIGNED_BYTE:{
+            unsigned char* tex_data = (unsigned char*) data;
+            int nbytes;
+            _tex_data_formatter(internalFormat, format, &f_desc);
+            if (f_desc.out_channels == 3){
+                C->share.tex_formats.emplace(ID, (int)FORMAT_COLOR_8UC3);
+            }
+            else{
+                C->share.tex_formats.emplace(ID, (int)FORMAT_COLOR_8UC4);
+            }
+            if (f_desc.direct_pass){
+                nbytes = width * height * f_desc.out_channels;
+                ptr->allocByteSpace(nbytes);
+                memcpy(ptr->getDataPtr(), tex_data, nbytes);
+            }
+            else{
+                throw std::runtime_error("not supporting format auto conversion yet\n");
+            }
+            }break;
+        default:
+            break;
+    }
+}
+
+static void _tex_data_formatter(GLenum internalFormat, GLenum format, format_desc_t* desc){
+    switch(format){
+        case GL_RGB:
+            desc->in_channels = 3;
+            switch(internalFormat){
+                case GL_RGB:
+                    desc->out_channels = 3;
+                    desc->direct_pass = true;
+                    break;
+                case GL_RGBA:
+                    desc->out_channels = 4;
+                    desc->order[0] = 0;
+                    desc->order[1] = 1;
+                    desc->order[2] = 2;
+                    desc->order[3] = FILL_ONE;
+                    break;
+                default: 
+                    break;
+            }
+            break;
+        case GL_RGBA:
+            desc->in_channels = 4;
+            switch(internalFormat){
+                case GL_RGB:
+                    desc->out_channels = 3;
+                    desc->direct_pass = false;
+                    desc->order[0] = 0;
+                    desc->order[1] = 1;
+                    desc->order[2] = 2;
+                    desc->order[3] = SKIP_INPUT;
+                    break;
+                case GL_RGBA:
+                    desc->out_channels = 4;
+                    desc->direct_pass = true;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        default:
+            break;
+    }
 }
 
 // Attrib 
@@ -268,9 +374,10 @@ void glDrawArrays(GLenum mode, int first, int count){
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glManager& bufs = C->share.buffers;
     glManager& vaos = C->share.vertex_attribs;
-    // glManager& texs = C->share.textures;
+    glManager& texs = C->share.textures;
     glObject* vao_ptr;
     glObject* vbo_ptr;
+    glObject* tex_ptr;
     int ret, vao_id, vbo_id;
     // sanity checks for VAO
     vao_id = C->payload.renderMap[GL_BIND_VAO];
@@ -297,7 +404,20 @@ void glDrawArrays(GLenum mode, int first, int count){
         return;
     // sanity check for texture resources
     // check active textures, tell pipeline what are the useful textures
-
+    int cnt = 0;
+    for (auto& it:C->payload.tex_units){
+        if(it.second > 0){
+            // check if the texture ID is valid
+            ret = texs.searchStorage(&tex_ptr, it.second);
+            if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr()==nullptr)
+                return;
+            C->pipeline.textures[cnt] = tex_ptr;
+        }
+        else{
+            C->pipeline.textures[cnt] = nullptr;
+        }
+        cnt++;
+    }
     // prepare pipeline environment
     C->pipeline.vao_ptr = vao_ptr;
     C->pipeline.vbo_ptr = vbo_ptr;

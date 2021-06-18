@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "geometry.h"
 #include "render.h"
+#include "formats.h"
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 
@@ -34,11 +35,7 @@ typedef struct{
 //     uint8_t B;
 // }color_t;
 
-typedef struct{
-    float R;
-    float G;
-    float B;
-}color_t;
+typedef COLOR_32FC3 color_t;
 
 class glObject{
     public: 
@@ -177,6 +174,7 @@ class glShareData{
     glManager buffers;
     glManager vertex_attribs;
     glManager textures;
+    std::map<int, int> tex_formats;
     glManager framebufs;
 };
 

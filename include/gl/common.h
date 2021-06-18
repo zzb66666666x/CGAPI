@@ -24,6 +24,7 @@ GL_TEXTURE_2D,
 
 //fotmat
 GL_RGB,
+GL_RGBA,
 
 // usage
 GL_STATIC_DRAW,
