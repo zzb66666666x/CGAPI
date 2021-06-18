@@ -15,6 +15,9 @@
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 
+#define TEXTURE_UNIT_CLOSE     -1
+#define TEXTURE_UNIT_TBD        0
+
 typedef struct{
     int     index;      // No. of vertex attrib
     int     size;       // size of attrib (in the unit of float/int/etc.)
@@ -193,6 +196,8 @@ class glRenderPayload{
     glRenderPayload();
     // GL_XXX : ID
     std::map<GLenum, int> renderMap;
+    // texture paths
+    std::map<GLenum, int> tex_units;
 };
 
 template<class T>

@@ -97,7 +97,7 @@ void process_geometry()
     glm::vec3* vec3_ptr;
     int flag = 1;
     Triangle* tri = new Triangle();
-    angle = angle + 10.0f;
+    angle = angle + 2.0f;
     while (cnt<vertex_num){
         if (!flag){
             delete tri;

@@ -9,16 +9,22 @@ extern void glHelloWorld();
 // Gen
 extern void glGenBuffers(int num, unsigned int * ID);
 extern void glGenVertexArrays(int num, unsigned int* ID);
-extern void glGenTexture(int num, int* ID);
-// Bind
+extern void glGenTextures(int num, unsigned int* ID);
+// Bind & Activate
 extern void glBindBuffer(GLenum buf_type, unsigned int ID);
 extern void glBindVertexArray(unsigned int ID);
-extern void glBindTexture(GLenum target,  int ID);
+extern void glBindTexture(GLenum target, unsigned int ID);
+extern void glActivateTexture(GLenum unit);
 // Pass data
 extern void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage);
 extern void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, int height, int border, GLenum format, GLenum type, void * data);
 // Attrib
 extern void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, int stride, void * pointer);
+// Tex Params
+extern void glTexParameterf(GLenum target,GLenum pname,float param);
+extern void glTexParameteri(GLenum target,GLenum pname,int param);
+extern void glTexParameterfv(GLenum target,GLenum pname,const float * params);
+extern void glTexParameteriv(GLenum target,GLenum pname,const int * params);
 // Enable
 extern void glEnableVertexAttribArray(unsigned int idx);
 extern void glEnable(GLenum cap);

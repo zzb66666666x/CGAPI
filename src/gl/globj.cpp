@@ -74,6 +74,23 @@ glRenderPayload::glRenderPayload(){
     renderMap.emplace(GL_BIND_VAO, -1);
     renderMap.emplace(GL_ELEMENT_ARRAY_BUFFER, -1);
     renderMap.emplace(GL_FRAMEBUFFER, -1);
+    renderMap.emplace(GL_TEXTURE_2D, -1);
+    tex_units.emplace(GL_TEXTURE0, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE1, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE2, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE3, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE4, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE5, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE6, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE7, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE8, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE9, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE10, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE11, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE12, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE13, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE14, TEXTURE_UNIT_CLOSE);
+    tex_units.emplace(GL_TEXTURE15, TEXTURE_UNIT_CLOSE);
 }
 
 glThreads::glThreads(){

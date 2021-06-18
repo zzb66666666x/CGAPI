@@ -47,7 +47,7 @@ static int write_window_stream(_GLVStream *_window)
     frame.convertTo(frame, CV_8UC3, 1.0f);
     cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
     cv::imshow(_window->name, frame);
-    cv::waitKey(10);
+    cv::waitKey(1);
     if(ctx->use_double_buf){
         _cg_swap_framebuffer(ctx);
     }

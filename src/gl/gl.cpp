@@ -40,11 +40,19 @@ void glGenVertexArrays(int num, unsigned int* ID){
     }
 }
 
-void glGenTexture(int num, int* ID){
-
+void glGenTextures(int num, unsigned int* ID){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto& texs = C->share.textures;
+    int ret;
+    for (int i=0; i<num; i++){
+        ret = texs.insertStorage(GL_BYTE, 0, GL_UNDEF);
+        ID[i] = ret;
+    }
 }
 
-// Bind
+// Bind & Activate
 void glBindBuffer(GLenum buf_type, unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
@@ -65,6 +73,7 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
                 ptr->bind = GL_ARRAY_BUFFER;
                 C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
             }
+            break;
         case GL_ELEMENT_ARRAY_BUFFER:
             break;
         default:
@@ -95,8 +104,49 @@ void glBindVertexArray(unsigned int ID){
     }
 }
 
-void glBindTexture(GLenum target,  int ID){
+void glBindTexture(GLenum target,  unsigned int ID){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto& texs = C->share.textures;
+    int ret;
+    glObject* ptr;  
+    auto& mgr = C->share.textures;
+    switch(target){
+        case GL_TEXTURE_2D:
+            if (ID<0){
+                return;
+            }  
+            else if (ID == 0){
+                C->payload.renderMap[GL_TEXTURE_2D] = -1;
+            }
+            else{
+                ret = mgr.searchStorage(&ptr, ID);
+                if (ret == GL_FAILURE)
+                    return;
+                C->payload.renderMap[GL_TEXTURE_2D] = ID;
+            }
+            break;
+        default:
+            break;
+    }
+    // after filling the render map, check out the render path
+    for (auto& iter:C->payload.tex_units){
+        if (iter.second == TEXTURE_UNIT_TBD){
+            assert(ID>=1);
+            iter.second = ID;
+        }
+    }
+}
 
+void glActivateTexture(GLenum unit){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto iter = C->payload.tex_units.find(unit);
+    if(iter->second == TEXTURE_UNIT_CLOSE){
+        iter->second = TEXTURE_UNIT_TBD;
+    }
 }
 
 // Pass data
@@ -134,10 +184,15 @@ void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
 }
 
 void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, int height, int border, GLenum format, GLenum type, void * data){
-
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    if (border != 0 || level !=0)
+        return;
+    
 }
 
-// Attrib
+// Attrib 
 void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, int stride, void * pointer){
     // first reach out to render payload, fetch out the id
     // based on the id, modify the glStorage<vertex_attrib_t>
@@ -166,6 +221,10 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
     vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
     vertex_attrib_t new_entry = {index, size, dtype, normalized, false, stride, pointer};
     data[index] = new_entry;
+}
+
+void glTexParameteri(GLenum target,GLenum pname,int param){
+
 }
 
 // Enable
@@ -237,7 +296,8 @@ void glDrawArrays(GLenum mode, int first, int count){
     if (vb_data == nullptr || vbo_ptr->getSize()<=0)
         return;
     // sanity check for texture resources
-    // TODO: check active textures, tell pipeline what are the useful textures
+    // check active textures, tell pipeline what are the useful textures
+
     // prepare pipeline environment
     C->pipeline.vao_ptr = vao_ptr;
     C->pipeline.vbo_ptr = vbo_ptr;
