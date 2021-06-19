@@ -199,12 +199,11 @@ int should_process_vertex = 0; // read only for client threads, written by threa
 int quit_vertex_processing;
 
 // set quit flags, terminate all threads
-void terminal_all_threads(){
+void terminate_all_threads(){
 
 }
 
 // create 3 threads to parallel vertex processing
-
 void process_geometry_threadmain(){
     static int first_entry = 1;
     static int thread_ids[] = {0,1,2};
