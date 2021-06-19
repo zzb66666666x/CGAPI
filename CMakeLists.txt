@@ -17,6 +17,7 @@ set(GL_HEADERS
 	src/gl/globj.h
 	src/gl/render.h
 	src/gl/geometry.h
+	src/gl/glsl/texture.h
 )
 
 set(GLV_HEADERS 
@@ -25,6 +26,7 @@ set(GLV_HEADERS
 )
 
 set(GL_SOURCES
+	src/gl/glsl/texture.cpp
 	src/gl/gl.cpp 
 	src/gl/globj.cpp
 	src/gl/glcontext.cpp
@@ -43,16 +45,16 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
-# set(Boost_USE_STATIC_LIBS ON)
-# set(Boost_USE_STATIC_RUNTIME ON)
-# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-# include_directories(${Boost_INCLUDE_DIR})
-# find_package(Boost REQUIRED)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
+set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+include_directories(${Boost_INCLUDE_DIR})
+find_package(Boost REQUIRED)
 
-# set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
-# find_package(glm REQUIRED)
+set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+find_package(glm REQUIRED)
 
-set(OpenCV_DIR "D:/CodingLibs/opencv/mingw_build")
+set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
@@ -69,8 +71,8 @@ add_library(glite SHARED
 	${UTILS_HEADERS}
 )
 target_link_libraries(glite ${OpenCV_LIBRARIES})
-# target_link_libraries(glite ${Boost_LIBRARIES})
-# target_link_libraries(glite glm::glm)
+target_link_libraries(glite ${Boost_LIBRARIES})
+target_link_libraries(glite glm::glm)
 
 ################################################
 ################# utest make ###################
