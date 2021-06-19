@@ -13,62 +13,9 @@
 
 // static helpers
 static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight);
-static void default_vertex_shader();
-static void default_vertex_shader();
-static void set_transform_matrices();
-// gl inner variables
-glm::vec4 gl_Position;
-glm::vec3 gl_VertexColor;
-// vertex shader input
-int layouts[] = {0, 1};
-int layout_cnt = 2;
-glm::vec3 input_Pos;
-glm::vec3 vert_Color;
-// fragment shader input
-glm::vec3 diffuse_Color;
-glm::vec3 frag_Pos;
-// fragment shader output, pixel value
-glm::vec3 frag_Color;
-// MVP matrices
-glm::mat4 model; 
-glm::mat4 view;
-glm::mat4 projection;
 
 // for test
 float angle = 0.0f;
-
-static void default_vertex_shader(){
-    frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
-    // glm::vec4 test = view*glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
-    gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
-    gl_VertexColor = vert_Color;
-}
-
-static void default_fragment_shader(){
-    frag_Color = diffuse_Color;
-}
-
-void set_transform_matrices(){
-    GET_CURRENT_CONTEXT(C);
-    model         = glm::mat4(1.0f); 
-    view          = glm::mat4(1.0f);
-    projection    = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
-    model = glm::scale(model,glm::vec3(2.0f,2.0f,2.0f));
-    glm::vec3 eyepos(0.0f,0.0f,5.0f);
-    glm::vec3 front(0.0f, 0.0f, -1.0f);
-    glm::vec3 up(0.0f, 1.0f, 0.0f);
-    view  = glm::lookAt(eyepos, eyepos+front, up);
-    projection = glm::perspective(glm::radians(45.0f), (float)(C->width) / (float)(C->height), C->znear, C->zfar);
-    // print
-    // for (int i=0; i<4; i++){
-    //     for (int j=0; j<4; j++){
-    //         std::cout<<view[j][i]<<"     ";
-    //     }
-    //     std::cout<<"\n";
-    // }
-}
 
 // geometry processing
 void process_geometry()
@@ -81,8 +28,8 @@ void process_geometry()
     int vbuf_size = P->vbo_ptr->getSize();
     int vertex_num = P->vertex_num;
     // 2. check if the config is activated
-    for (int i=0; i<layout_cnt; i++){
-        if (!vattrib_data[layouts[i]].activated)
+    for (int i=0; i<C->shader.layout_cnt; i++){
+        if (!vattrib_data[C->shader.layouts[i]].activated)
             throw std::runtime_error("using inactive layout\n");
     }
     // 3. parse vertex data
@@ -104,19 +51,19 @@ void process_geometry()
             delete tri;
             break;
         }
-        for (int i=0; i<layout_cnt; i++){
+        for (int i=0; i<C->shader.layout_cnt; i++){
             vec3_ptr = nullptr;
-            switch(layouts[i]){
+            switch(C->shader.layouts[i]){
                 case 0:
-                    vec3_ptr = &input_Pos;
+                    vec3_ptr = &(C->shader.input_Pos);
                     break;
                 case 1:
-                    vec3_ptr = &vert_Color;
+                    vec3_ptr = &(C->shader.vert_Color);
                     break;
                 default:
                     throw std::runtime_error("invalid layout\n");
             }
-            vertex_attrib_t& config = vattrib_data[layouts[i]];
+            vertex_attrib_t& config = vattrib_data[C->shader.layouts[i]];
             buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
             switch(config.type){
                 case GL_FLOAT:
@@ -140,21 +87,21 @@ void process_geometry()
             }
         }
         // 4. vertex shading
-        set_transform_matrices();
-        default_vertex_shader();
+        C->shader.set_transform_matrices(C->width, C->height, C->znear, C->zfar, angle);
+        C->shader.default_vertex_shader();
 
-        gl_Position.x /= gl_Position.w;
-        gl_Position.y /= gl_Position.w;
-        gl_Position.z /= gl_Position.w;
+        C->shader.gl_Position.x /= C->shader.gl_Position.w;
+        C->shader.gl_Position.y /= C->shader.gl_Position.w;
+        C->shader.gl_Position.z /= C->shader.gl_Position.w;
         // 5. view port transformation
-        gl_Position.x = 0.5 * C->width * (gl_Position.x + 1.0);
-        gl_Position.y = 0.5 * C->height * (gl_Position.y + 1.0);  
+        C->shader.gl_Position.x = 0.5 * C->width * (C->shader.gl_Position.x + 1.0);
+        C->shader.gl_Position.y = 0.5 * C->height * (C->shader.gl_Position.y + 1.0);  
         // [-1,1] to [0,1]
-        gl_Position.z = gl_Position.z * 0.5 + 0.5;
+        C->shader.gl_Position.z = C->shader.gl_Position.z * 0.5 + 0.5;
         // 6. assemble triangle
-        tri->screen_pos[cnt%3] = gl_Position;
-        tri->color[cnt%3] = gl_VertexColor;
-        tri->frag_shading_pos[cnt%3] = frag_Pos;
+        tri->screen_pos[cnt%3] = C->shader.gl_Position;
+        tri->color[cnt%3] = C->shader.gl_VertexColor;
+        tri->frag_shading_pos[cnt%3] = C->shader.frag_Pos;
         cnt += 1;
         if (cnt>0 && cnt % 3 == 0){
             P->triangle_stream.push(tri);
@@ -235,30 +182,69 @@ void process_pixel()
     for(int i = 0,len = pixel_tasks.size();i < len;++i)
     {
         if(pixel_tasks[i].write){
-            diffuse_Color = pixel_tasks[i].vertexColor;
-            default_fragment_shader();
-            frame_buf[i].R = frag_Color.x * 255.0f;
-            frame_buf[i].G = frag_Color.y * 255.0f;
-            frame_buf[i].B = frag_Color.z * 255.0f;
+            C->shader.diffuse_Color = pixel_tasks[i].vertexColor;
+            C->shader.default_fragment_shader();
+            frame_buf[i].R = C->shader.frag_Color.x * 255.0f;
+            frame_buf[i].G = C->shader.frag_Color.y * 255.0f;
+            frame_buf[i].B = C->shader.frag_Color.z * 255.0f;
             pixel_tasks[i].write = false;
         }
     }
 }
 
+////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
+static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
+int should_process_vertex = 0; // read only for client threads, written by threadmain
+int quit_vertex_processing;
+
+// set quit flags, terminate all threads
+void terminate_all_threads(){
+
+}
+
+// create 3 threads to parallel vertex processing
+void process_geometry_threadmain(){
+    static int first_entry = 1;
+    static int thread_ids[] = {0,1,2};
+    GET_CURRENT_CONTEXT(C);
+    pthread_t * ths = C->threads.thr_arr;
+    if (first_entry){
+        first_entry = 0;
+        // create threads
+        for (int i=0; i<3; i++){
+            pthread_create(&ths[i], NULL, _thr_process_vertex, (void*)&i);
+        }
+    }
+    pthread_mutex_lock(&vertex_threads_mtx);
+    should_process_vertex = 1;
+    pthread_cond_broadcast(&vertex_threads_cv);
+    pthread_mutex_unlock(&vertex_threads_mtx);
+}
+
 void *_thr_process_vertex(void *thread_id)
 {
+    int id = *((int*)thread_id);
     GET_CURRENT_CONTEXT(C);
-    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
-    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
-    for(int i = 0,len = pixel_tasks.size();i < len;++i)
-    {
-        if(pixel_tasks[i].write){
-            diffuse_Color = pixel_tasks[i].vertexColor;
-            default_fragment_shader();
+    while(!quit_vertex_processing){
+        pthread_mutex_lock(&vertex_threads_mtx);
+        while(!should_process_vertex){
+            pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
+        }
+        pthread_mutex_unlock(&vertex_threads_mtx);
+        // do the job
+        switch(id){
+            case 0:
+                // manager
+                
+                break;
+            case 1:
+            case 2:
+                // salves
 
-            frame_buf[i].R = frag_Color.x * 255.0f;
-            frame_buf[i].G = frag_Color.y * 255.0f;
-            frame_buf[i].B = frag_Color.z * 255.0f;
+                break;
+            default:
+                break;
         }
     }
 }
