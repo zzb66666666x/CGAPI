@@ -244,20 +244,60 @@ void process_pixel()
     }
 }
 
+////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
+static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
+int should_process_vertex = 0; // read only for client threads, written by threadmain
+int quit_vertex_processing;
+
+// set quit flags, terminate all threads
+void terminal_all_threads(){
+
+}
+
+// create 3 threads to parallel vertex processing
+
+void process_geometry_threadmain(){
+    static int first_entry = 1;
+    static int thread_ids[] = {0,1,2};
+    GET_CURRENT_CONTEXT(C);
+    pthread_t * ths = C->threads.thr_arr;
+    if (first_entry){
+        first_entry = 0;
+        // create threads
+        for (int i=0; i<3; i++){
+            pthread_create(&ths[i], NULL, _thr_process_vertex, (void*)&i);
+        }
+    }
+    pthread_mutex_lock(&vertex_threads_mtx);
+    should_process_vertex = 1;
+    pthread_mutex_unlock(&vertex_threads_mtx);
+    pthread_cond_broadcast(&vertex_threads_cv);
+}
+
 void *_thr_process_vertex(void *thread_id)
 {
+    int id = *((int*)thread_id);
     GET_CURRENT_CONTEXT(C);
-    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
-    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
-    for(int i = 0,len = pixel_tasks.size();i < len;++i)
-    {
-        if(pixel_tasks[i].write){
-            diffuse_Color = pixel_tasks[i].vertexColor;
-            default_fragment_shader();
+    while(!quit_vertex_processing){
+        pthread_mutex_lock(&vertex_threads_mtx);
+        while(!should_process_vertex){
+            pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
+        }
+        pthread_mutex_unlock(&vertex_threads_mtx);
+        // do the job
+        switch(id){
+            case 0:
+                // manager
 
-            frame_buf[i].R = frag_Color.x * 255.0f;
-            frame_buf[i].G = frag_Color.y * 255.0f;
-            frame_buf[i].B = frag_Color.z * 255.0f;
+                break;
+            case 1:
+            case 2:
+                // salves
+                
+                break;
+            default:
+                break;
         }
     }
 }

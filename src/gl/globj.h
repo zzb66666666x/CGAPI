@@ -198,16 +198,6 @@ class glRenderPayload{
     std::map<GLenum, int> tex_units;
 };
 
-template<class T>
-class output_stream{
-    public:
-    output_stream(){
-        mtx = PTHREAD_MUTEX_INITIALIZER;
-    }
-    std::queue<T> stream;
-    pthread_mutex_t mtx;
-};
-
 struct Pixel{
     Pixel():write(false){}
     bool write;
@@ -220,9 +210,7 @@ class glPipeline{
     public:
         glPipeline();
         // data needed for render functions
-        // multi-threading
-        // output_stream<Triangle> triangle_Stream;
-        // signal threading
+        pthread_mutex_t triangle_stream_mtx;
         std::queue<Triangle*> triangle_stream;
         std::list<render_fp> exec;
         // pixel processing task list
