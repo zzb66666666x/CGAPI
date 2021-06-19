@@ -14,7 +14,7 @@ extern void glGenTextures(int num, unsigned int* ID);
 extern void glBindBuffer(GLenum buf_type, unsigned int ID);
 extern void glBindVertexArray(unsigned int ID);
 extern void glBindTexture(GLenum target, unsigned int ID);
-extern void glActivateTexture(GLenum unit);
+extern void glActiveTexture(GLenum unit);
 // Pass data
 extern void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage);
 extern void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, int height, int border, GLenum format, GLenum type, void * data);

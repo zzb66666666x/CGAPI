@@ -154,7 +154,7 @@ void glBindTexture(GLenum target,  unsigned int ID){
     }
 }
 
-void glActivateTexture(GLenum unit){
+void glActiveTexture(GLenum unit){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
