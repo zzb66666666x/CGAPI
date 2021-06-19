@@ -10,6 +10,7 @@
 #include <list>
 #include <vector>
 #include <pthread.h>
+#include <glm/glm.hpp>
 #include "geometry.h"
 #include "render.h"
 #include "formats.h"
@@ -187,6 +188,26 @@ class glThreads{
 class glProgram{
     public: 
     glProgram();
+    // layouts
+    int layouts[2];
+    int layout_cnt;
+    // gl inner variable
+    glm::vec4 gl_Position;
+    glm::vec3 gl_VertexColor;
+    // input to vertex shader
+    glm::vec3 input_Pos;
+    glm::vec3 vert_Color;
+    // fragment shader
+    glm::vec3 diffuse_Color;
+    glm::vec3 frag_Pos;
+    glm::vec3 frag_Color;    
+    static glm::mat4 model; 
+    static glm::mat4 view;
+    static glm::mat4 projection;
+    // methods
+    void default_vertex_shader();
+    void default_fragment_shader();
+    void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
 };
 
 class glRenderPayload{
