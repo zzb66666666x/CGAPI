@@ -202,6 +202,7 @@ int quit_vertex_processing;
 int globl_vert_cnt = 0;
 int globl_finish_flag = 1;
 int globl_vert_indices[2] = {0,0};
+Triangle* globl_new_triangle = nullptr;
 
 // set quit flags, terminate all threads
 void terminate_all_threads(){
