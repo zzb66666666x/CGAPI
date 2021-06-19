@@ -55,6 +55,7 @@ void set_transform_matrices(){
     projection    = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
+    model = glm::scale(model,glm::vec3(2.0f,2.0f,2.0f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);

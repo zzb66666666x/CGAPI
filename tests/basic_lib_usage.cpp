@@ -2,9 +2,8 @@
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
 #include <windows.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+
+#include "stb_image.h"
 
 using namespace std;
 
@@ -51,8 +50,123 @@ float cubeVertices[] = {
     0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
     0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
     -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f
-};
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f};
+
+static void testTexture()
+{
+
+    if (!glvInit())
+    {
+        std::cout << "glv Init failed\n";
+        return;
+    }
+    GLVStream *window = glvCreateStream(WIDTH, HEIGHT, "texture_test", GLV_STREAM_WINDOW);
+    glEnable(GL_DEPTH_TEST);
+
+    // Gen
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    
+    float vertices[] = {
+        // positions          // colors           // texture coords
+        //  0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
+         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
+        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
+    };
+
+
+    // Bind
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), cubeVertices, GL_STATIC_DRAW);
+
+    // VAO config
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+
+    // texture coord attribute
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+
+    // activate VAO attribs
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+
+    // load and create a texture 
+    // -------------------------
+    unsigned int texture1, texture2;
+    // texture 1
+    // ---------
+    glGenTextures(1, &texture1);
+    glBindTexture(GL_TEXTURE_2D, texture1); 
+    // set the texture wrapping parameters
+    // GL_REPEAT, GL_MIRRORED_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // set texture filtering parameters
+    // GL_LINEAR, GL_NEAREST
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // load image, create texture and generate mipmaps
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
+    // The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
+    unsigned char *data = stbi_load("../resources/textures/container.jpg", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    }
+    else
+    {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+    stbi_image_free(data);
+    // texture 2
+    // ---------
+    glGenTextures(1, &texture2);
+    glBindTexture(GL_TEXTURE_2D, texture2);
+    // set the texture wrapping parameters
+    // GL_REPEAT, GL_MIRRORED_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // set texture filtering parameters
+    // GL_LINEAR, GL_NEAREST
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // load image, create texture and generate mipmaps
+    data = stbi_load("../resources/textures/awesomeface.png", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        // note that the awesomeface.png has transparency and thus an alpha channel, so make sure to tell OpenGL the data type is of GL_RGBA
+        // target type, 多级逐远纹理级别，纹理存储格式，宽，长，always 0，原图格式，原图数据类型，图像数据
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    }
+    else
+    {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+    stbi_image_free(data);
+
+    glBindVertexArray(0);
+
+    DWORD begin;
+    while (1)
+    {
+        begin = GetTickCount();
+        glBindVertexArray(VAO);
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glvWriteStream(window);
+        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
+    }
+
+    glvTerminate();
+}
 
 static void testDrawInWindow()
 {
@@ -86,23 +200,22 @@ static void testDrawInWindow()
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    
-	DWORD begin;
-    while(1){
+    DWORD begin;
+    while (1)
+    {
         begin = GetTickCount();
         glBindVertexArray(VAO);
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         glvWriteStream(window);
-        std::cout << "fps:" << 1000.0/(GetTickCount() - begin) << std::endl;
+        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
         // std::cout << "frame_count: " << (frame_count++) << std::endl;
     }
 
     glvTerminate();
-
 }
 static void testDrawNaiveImage()
 {
@@ -207,5 +320,6 @@ int main()
     // testBasic();
     // testDrawNaiveImage();
     testDrawInWindow();
+    // testTexture();
     return 0;
 }
