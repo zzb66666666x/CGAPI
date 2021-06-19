@@ -193,10 +193,15 @@ void process_pixel()
 }
 
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
+// thread sync
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
-int should_process_vertex = 0; // read only for client threads, written by threadmain
+int should_process_vertex = 0; 
+// global variables
 int quit_vertex_processing;
+int globl_vert_cnt = 0;
+int globl_finish_flag = 1;
+int globl_vert_indices[2] = {0,0};
 
 // set quit flags, terminate all threads
 void terminate_all_threads(){
@@ -208,6 +213,11 @@ void process_geometry_threadmain(){
     static int first_entry = 1;
     static int thread_ids[] = {0,1,2};
     GET_CURRENT_CONTEXT(C);
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*) C->pipeline.vao_ptr->getDataPtr();
+    for (int i=0; i<C->shader.layout_cnt; i++){
+        if (!vattrib_data[C->shader.layouts[i]].activated)
+            throw std::runtime_error("using inactive layout\n");
+    }
     pthread_t * ths = C->threads.thr_arr;
     if (first_entry){
         first_entry = 0;
@@ -224,8 +234,19 @@ void process_geometry_threadmain(){
 
 void *_thr_process_vertex(void *thread_id)
 {
+    // thread local variables
     int id = *((int*)thread_id);
     GET_CURRENT_CONTEXT(C);
+    GET_PIPELINE(P);
+    glProgram local_shader = C->shader;
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*) P->vao_ptr->getDataPtr();
+    char* vbuf_data = (char *) P->vbo_ptr->getDataPtr();
+    int vbuf_size = P->vbo_ptr->getSize();
+    int vertex_num = P->vertex_num;
+    vbuf_data += (P->first_vertex)*(vattrib_data[0].stride);
+    char* buf;
+    glm::vec3* vec3_ptr;
+
     while(!quit_vertex_processing){
         pthread_mutex_lock(&vertex_threads_mtx);
         while(!should_process_vertex){
