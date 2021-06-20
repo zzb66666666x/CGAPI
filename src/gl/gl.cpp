@@ -154,7 +154,7 @@ void glBindTexture(GLenum target,  unsigned int ID){
     }
 }
 
-void glActivateTexture(GLenum unit){
+void glActiveTexture(GLenum unit){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -329,8 +329,8 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
     data[index] = new_entry;
 }
 
-void glTexParameteri(GLenum target,GLenum pname,int param){
-
+void glTexParameteri(GLenum target,unsigned int pname,int param){
+    
 }
 
 // Enable

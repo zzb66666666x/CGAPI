@@ -7,8 +7,24 @@
 #define GL_SUCCESS               0
 #define GL_FALSE                 0
 #define GL_TRUE                  1
+
 #define GL_DEPTH_BUFFER_BIT 0x00000100
 #define GL_COLOR_BUFFER_BIT 0x00004000
+
+
+// texture wrapping parameters
+#define GL_TEXTURE_WRAP_S 0x2802
+#define GL_TEXTURE_WRAP_T 0x2803
+#define GL_REPEAT 0x2901
+#define GL_MIRRORED_REPEAT 0x8370
+#define GL_CLAMP_TO_EDGE 0x812F
+#define GL_CLAMP_TO_BORDER 0x812D
+
+// texture filtering parameters
+#define GL_NEAREST 0x2600
+#define GL_LINEAR 0x2601
+#define GL_TEXTURE_MAG_FILTER 0x2800
+#define GL_TEXTURE_MIN_FILTER 0x2801
 
 typedef enum{
 GL_UNDEF = -1,
