@@ -19,6 +19,6 @@ struct sampler2D{
     filter_type filter;
 };
 
-glm::vec4 texture2D(sampler2D texture, glm::vec2 texCoord);
+glm::vec4 texture2D(sampler2D &texture, glm::vec2 &texcoord);
 
 #endif

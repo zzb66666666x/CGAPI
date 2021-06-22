@@ -3,6 +3,7 @@
 #include "../include/glv/glv.h"
 #include <windows.h>
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 using namespace std;
@@ -137,7 +138,7 @@ static void testTexture()
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
         
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
 
         glvWriteStream(window);
         std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
@@ -297,7 +298,7 @@ int main()
 {
     // testBasic();
     // testDrawNaiveImage();
-    testDrawInWindow();
-    // testTexture();
+    // testDrawInWindow();
+    testTexture();
     return 0;
 }
