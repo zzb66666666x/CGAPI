@@ -16,6 +16,7 @@ public:
     glm::vec4 screen_pos[3];
     glm::vec3 color[3];
     glm::vec3 frag_shading_pos[3];
+    glm::vec2 texcoord[3];
 
     bool inside(float x, float y)
     {
