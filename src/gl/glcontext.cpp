@@ -4,7 +4,7 @@
 gl_context* glapi_ctx = nullptr;
 
 gl_context::gl_context(int npixels, bool double_buf){
-    std::cout<<"npixels: "<<npixels<<std::endl;
+    // std::cout<<"npixels: "<<npixels<<std::endl;
     share = glShareData();
     framebuf_1 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
     zbuf_1 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
@@ -34,7 +34,7 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     ctx->znear = 0.1;
     ctx->zfar = 50;
     // _cg_context_sanity_check(ctx);
-    std::cout<<"context ptr: "<<ctx<<std::endl;
+    // std::cout<<"context ptr: "<<ctx<<std::endl;
     return ctx;
 }   
 

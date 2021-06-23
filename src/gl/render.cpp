@@ -207,7 +207,6 @@ int quit_vertex_processing = 0;         // for terminate the threads, make threa
 int globl_vert_cnt = 0;                 // count the vertices already processed
 int globl_proceed_flag = 1;              // flag for whether the vertex processing is finished
 int globl_vert_indices[2] = {0,0};      // progress in processing the vertices
-int finish_one_triangle = 0;
 Triangle* globl_new_triangle = nullptr; // assembly the triangle
 // pipeline status
 static pthread_mutex_t pipeline_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -264,7 +263,7 @@ void process_geometry_threadmain(){
     for(int i=0; i<PROCESS_VERTEX_THREAD_COUNT; i++){
         new_frame[i] = 1;
     }
-    angle += 20.0;
+    angle += 2.0;
     // sanity check before drawing
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*) C->pipeline.vao_ptr->getDataPtr();
     for (int i=0; i<C->shader.layout_cnt; i++){
@@ -409,7 +408,6 @@ void *_thr_process_vertex(void *thread_id)
                 assert(globl_vert_cnt % 3 == 0);
                 C->pipeline.triangle_stream.push(globl_new_triangle);
                 globl_new_triangle = nullptr;
-                finish_one_triangle = PROCESS_VERTEX_THREAD_COUNT-1;
                 pthread_cond_broadcast(&vertex_threads_cv);
             }
             else{
@@ -417,19 +415,19 @@ void *_thr_process_vertex(void *thread_id)
                 finish_vertex_processing = 1;
                 pthread_mutex_unlock(&pipeline_mtx);
                 // sleep, wait for next draw call from user space, so that it can be awaken
-                finish_one_triangle = 0;
                 globl_proceed_flag = 0;
                 while (globl_proceed_flag != 1){ // wait for the threadmain to wait it up again
+                    // std::cout<<"receive broadcast signal at: "<<id<<std::endl;
                     pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
                 }
+                // std::cout<<"waking up at: "<<id<<std::endl;
             }
         }
         else{
             // wait for the next round of processing triangles
-            while (finish_one_triangle == 0){
+            do{
                 pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
-            }
-            finish_one_triangle --;
+            }while (globl_proceed_flag != 1);
         }
         // unlock here
         pthread_mutex_unlock(&vertex_threads_mtx);

@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.0.0)
 #   CACHE STRING "Vcpkg toolchain file")
 set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
-set(CMAKE_CXX_FLAGS "-g -Wall")
-# set(CMAKE_CXX_FLAGS "-O3")
+# set(CMAKE_CXX_FLAGS "-g -Wall")
+set(CMAKE_CXX_FLAGS "-O3")
 include_directories(
 	include/gl
 	include/glv

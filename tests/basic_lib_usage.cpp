@@ -1,9 +1,11 @@
 #include <iostream>
+#include <vector>
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
 #include <windows.h>
 
 #include "stb_image.h"
+#include "OBJ_Loader.h"
 
 using namespace std;
 
@@ -51,6 +53,38 @@ float cubeVertices[] = {
     0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
     -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
     -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f};
+
+int load_vertices(std::vector<float> & vertices){
+    objl::Loader Loader;
+    int ret =0;
+    int num_triangles = 0;
+    bool loadout = Loader.LoadFile("../resources/spot/spot_triangulated_good.obj");
+    for(auto mesh:Loader.LoadedMeshes)
+    {
+        for(int i=0;i<mesh.Vertices.size();i+=3)
+        {
+            for(int j=0;j<3;j++)
+            {
+                vertices.push_back(mesh.Vertices[i+j].Position.X);
+                vertices.push_back(mesh.Vertices[i+j].Position.Y);
+                vertices.push_back(mesh.Vertices[i+j].Position.Z);
+                // vertices.push_back(0.8f);
+                // vertices.push_back(0.1f);
+                // vertices.push_back(0.6f);
+                vertices.push_back(mesh.Vertices[i+j].Normal.X);
+                vertices.push_back(mesh.Vertices[i+j].Normal.Y);
+                vertices.push_back(mesh.Vertices[i+j].Normal.Z);
+                // vertices.push_back(mesh.Vertices[i+j].TextureCoordinate.X);
+                // vertices.push_back(mesh.Vertices[i+j].TextureCoordinate.Y);
+                ret+=3;
+            }
+            num_triangles ++;
+        }
+    }
+    std::cout<<"num triangles: "<<num_triangles<<std::endl;
+    return ret;
+}
+
 
 static void testTexture()
 {
@@ -293,11 +327,114 @@ static void testBasic()
     glvTerminate();
 }
 
+static void testDrawCowFile(){
+    int frame_count = 0;
+
+    if (!glvInit())
+    {
+        std::cout << "glv Init failed\n";
+        return;
+    }
+    GLVStream *file = glvCreateStream(WIDTH, HEIGHT, "cow", GLV_STREAM_FILE);
+    glEnable(GL_DEPTH_TEST);
+
+    // load model
+    std::vector<float> vertices_data;
+    int vertex_num;
+    vertex_num = load_vertices(vertices_data);
+
+    // Gen
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    // Bind
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices_data.size()*sizeof(float), &vertices_data[0], GL_STATIC_DRAW);
+
+    // VAO config
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+
+    // activate VAO attribs
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    if (glvWriteStream(file))
+    {
+        glBindVertexArray(VAO);
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertex_num);
+
+        glvWriteStream(file);
+    }
+
+    glvTerminate();    
+}
+
+static void testDrawCowWindow(){
+    int frame_count = 0;
+
+    if (!glvInit())
+    {
+        std::cout << "glv Init failed\n";
+        return;
+    }
+    GLVStream *window = glvCreateStream(WIDTH, HEIGHT, "cow", GLV_STREAM_WINDOW);
+    glEnable(GL_DEPTH_TEST);
+
+    // load model
+    std::vector<float> vertices_data;
+    int vertex_num;
+    vertex_num = load_vertices(vertices_data);
+
+    // Gen
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    // Bind
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices_data.size()*sizeof(float), &vertices_data[0], GL_STATIC_DRAW);
+
+    // VAO config
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+
+    // activate VAO attribs
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    DWORD begin;
+    while (1)
+    {
+        glBindVertexArray(VAO);
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertex_num);
+        glvWriteStream(window);
+        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
+    }
+
+    glvTerminate(); 
+}
+
 int main()
 {
     // testBasic();
-    testDrawNaiveImage();
+    // testDrawNaiveImage();
     // testDrawInWindow();
     // testTexture();
+    // testDrawCowFile();
+    testDrawCowWindow();
     return 0;
 }
