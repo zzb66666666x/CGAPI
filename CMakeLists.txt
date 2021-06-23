@@ -88,5 +88,5 @@ add_executable(
 ################################################
 ################## test make ###################
 ################################################
-add_executable(basic_lib_usage tests/basic_lib_usage.cpp tests/stb_image.cpp)
+add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
 target_link_libraries(basic_lib_usage glite)
