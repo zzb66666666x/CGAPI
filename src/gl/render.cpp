@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <assert.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -51,6 +52,7 @@ void process_geometry()
             delete tri;
             break;
         }
+        // vertex data bytes parser main body
         for (int i=0; i<C->shader.layout_cnt; i++){
             vec3_ptr = nullptr;
             switch(C->shader.layouts[i]){
@@ -193,82 +195,258 @@ void process_pixel()
 }
 
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
-// thread sync
+// macros
+#define PROCESS_VERTEX_THREAD_COUNT 3
+// thread sync, the barrier to sync threads after processing 3 vertices
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
-int should_process_vertex = 0; 
+static pthread_cond_t inc_vertex_indices_cv = PTHREAD_COND_INITIALIZER;
+int process_vertex_sync = 0; 
 // global variables
-int quit_vertex_processing;
-int globl_vert_cnt = 0;
-int globl_finish_flag = 1;
-int globl_vert_indices[2] = {0,0};
-Triangle* globl_new_triangle = nullptr;
+int quit_vertex_processing = 0;         // for terminate the threads, make thread functions quit while loop
+int globl_vert_cnt = 0;                 // count the vertices already processed
+int globl_proceed_flag = 1;              // flag for whether the vertex processing is finished
+int globl_vert_indices[2] = {0,0};      // progress in processing the vertices
+int finish_one_triangle = 0;
+Triangle* globl_new_triangle = nullptr; // assembly the triangle
+// pipeline status
+static pthread_mutex_t pipeline_mtx = PTHREAD_MUTEX_INITIALIZER;
+int finish_vertex_processing = 0;
+int finish_rasterizing = 1;
+int finish_pixel_processing = 1;
+// to update thread local variables 
+typedef struct{
+    vertex_attrib_t* vattrib_data;
+    char* vbuf_data;
+    int vbuf_size;
+    int vertex_num;
+} vertex_threads_locals_t;
+vertex_threads_locals_t vertex_threads_locals;
+int new_frame[PROCESS_VERTEX_THREAD_COUNT] = {0,0,0};
+
+static void clear_vertex_indices(){
+    for (int i=0; i<glapi_ctx->shader.layout_cnt; i++){
+        globl_vert_indices[i] = 0;
+    }
+}
 
 // set quit flags, terminate all threads
 void terminate_all_threads(){
-
+    GET_CURRENT_CONTEXT(C);
+    quit_vertex_processing = 1;
+    for (int i=0; i<PROCESS_VERTEX_THREAD_COUNT; i++){
+        pthread_cancel(C->threads.thr_arr[i]);
+        pthread_join(C->threads.thr_arr[i], NULL);
+    }
 }
 
 // create 3 threads to parallel vertex processing
 void process_geometry_threadmain(){
     static int first_entry = 1;
-    static int thread_ids[] = {0,1,2};
+    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = {0,1,2};
     GET_CURRENT_CONTEXT(C);
+    GET_PIPELINE(P);
+    while (!first_entry){
+        pthread_mutex_lock(&pipeline_mtx);
+        if (finish_vertex_processing &&
+            finish_rasterizing &&
+            finish_pixel_processing){
+            // ready to draw next frame
+            finish_vertex_processing = 0;
+            // finish_rasterizing = 0;
+            // finish_pixel_processing = 0;
+            pthread_mutex_unlock(&pipeline_mtx);
+            break;
+        }
+        pthread_mutex_unlock(&pipeline_mtx);
+    }
+    // begin to draw new frame
+    for(int i=0; i<PROCESS_VERTEX_THREAD_COUNT; i++){
+        new_frame[i] = 1;
+    }
+    angle += 20.0;
+    // sanity check before drawing
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*) C->pipeline.vao_ptr->getDataPtr();
     for (int i=0; i<C->shader.layout_cnt; i++){
         if (!vattrib_data[C->shader.layouts[i]].activated)
             throw std::runtime_error("using inactive layout\n");
     }
     pthread_t * ths = C->threads.thr_arr;
+    // update local variables in thread function
+    vertex_threads_locals.vattrib_data = (vertex_attrib_t*) P->vao_ptr->getDataPtr();
+    vertex_threads_locals.vbuf_data = (char *) P->vbo_ptr->getDataPtr() + (P->first_vertex)*(vattrib_data[0].stride);
+    vertex_threads_locals.vbuf_size = P->vbo_ptr->getSize();
+    vertex_threads_locals.vertex_num = P->vertex_num;
+    // critical section
+    pthread_mutex_lock(&vertex_threads_mtx);
+    C->shader.set_transform_matrices(C->width, C->height, C->znear, C->zfar, angle);
     if (first_entry){
         first_entry = 0;
         // create threads
-        for (int i=0; i<3; i++){
-            pthread_create(&ths[i], NULL, _thr_process_vertex, (void*)&i);
+        for (int i=0; i<PROCESS_VERTEX_THREAD_COUNT; i++){
+            pthread_create(&ths[thread_ids[i]], NULL, _thr_process_vertex, (void *)(long long)i);
         }
     }
-    pthread_mutex_lock(&vertex_threads_mtx);
-    should_process_vertex = 1;
+    quit_vertex_processing = 0;
+    globl_vert_cnt = 0;
+    clear_vertex_indices();
+    globl_proceed_flag = 1;
+    process_vertex_sync = 0;
     pthread_cond_broadcast(&vertex_threads_cv);
     pthread_mutex_unlock(&vertex_threads_mtx);
 }
 
 void *_thr_process_vertex(void *thread_id)
 {
-    // thread local variables
-    int id = *((int*)thread_id);
+    // thread local variables, variables that do not change often
+    int id = (int)(long long)(thread_id);
+    // pthread_mutex_lock(&vertex_threads_mtx);
+    // std::cout<<id<<std::endl;
+    // pthread_mutex_unlock(&vertex_threads_mtx);
     GET_CURRENT_CONTEXT(C);
-    GET_PIPELINE(P);
     glProgram local_shader = C->shader;
-    vertex_attrib_t* vattrib_data = (vertex_attrib_t*) P->vao_ptr->getDataPtr();
-    char* vbuf_data = (char *) P->vbo_ptr->getDataPtr();
-    int vbuf_size = P->vbo_ptr->getSize();
-    int vertex_num = P->vertex_num;
-    vbuf_data += (P->first_vertex)*(vattrib_data[0].stride);
-    char* buf;
-    glm::vec3* vec3_ptr;
-
+    vertex_attrib_t* vattrib_data = nullptr;
+    char* vbuf_data = nullptr;
+    int vbuf_size = 0;
+    int vertex_num = 0;
+    // constantly changing variables
+    int local_vert_idx;
+    char* buf = nullptr;
+    glm::vec3* vec3_ptr = nullptr;
+    // while the whole program is not terminated (eg. press the close button of window)
     while(!quit_vertex_processing){
+        if (new_frame[id]){
+            vattrib_data = vertex_threads_locals.vattrib_data;
+            vbuf_data = vertex_threads_locals.vbuf_data;
+            vbuf_size = vertex_threads_locals.vbuf_size;
+            vertex_num = vertex_threads_locals.vertex_num;
+            new_frame[id] = 0;
+        }
+        // first loop over the layouts
+        for (int i=0; i<local_shader.layout_cnt; i++){
+            vec3_ptr = nullptr;
+            switch(C->shader.layouts[i]){
+                case 0:
+                    vec3_ptr = &(local_shader.input_Pos);
+                    break;
+                case 1:
+                    vec3_ptr = &(local_shader.vert_Color);
+                    break;
+                default:
+                    throw std::runtime_error("invalid layout\n");
+            }
+            vertex_attrib_t& config = vattrib_data[local_shader.layouts[i]];
+            // one sync point here since we want to move the globl_vert_indices
+            pthread_mutex_lock(&vertex_threads_mtx);
+            process_vertex_sync++;
+            local_vert_idx = globl_vert_indices[i];
+            if (process_vertex_sync == PROCESS_VERTEX_THREAD_COUNT){
+                process_vertex_sync = 0;
+                globl_vert_indices[i] += 3*config.stride;
+                pthread_cond_broadcast(&inc_vertex_indices_cv);
+            }
+            else{
+                while (pthread_cond_wait(&inc_vertex_indices_cv, &vertex_threads_mtx)!=0);
+            }
+            if (globl_vert_indices[i] > vbuf_size){
+                pthread_mutex_unlock(&vertex_threads_mtx);
+                break;
+            }
+            pthread_mutex_unlock(&vertex_threads_mtx);
+            // then there are more than 3 vertices to process
+            buf = vbuf_data + (local_vert_idx + (int)((long long)config.pointer)) + id*config.stride;
+            switch(config.type){
+                case GL_FLOAT:
+                    switch(config.size){
+                        case 3:
+                            (*vec3_ptr).x = *(float*)(buf+0);
+                            (*vec3_ptr).y = *(float*)(buf+sizeof(float)*1);
+                            (*vec3_ptr).z = *(float*)(buf+sizeof(float)*2);
+                            // pthread_mutex_lock(&vertex_threads_mtx);
+                            // std::cout<<"extracted float at #"<<id<<": "<<(*vec3_ptr).x<<" "<< (*vec3_ptr).y<<" "<< (*vec3_ptr).z<<std::endl;
+                            // pthread_mutex_unlock(&vertex_threads_mtx);
+                            break;
+                        default: 
+                            throw std::runtime_error("not supported size\n");
+                    }
+                    break;
+                default: 
+                    throw std::runtime_error("not supported type\n");
+            }
+        }
         pthread_mutex_lock(&vertex_threads_mtx);
-        while(!should_process_vertex){
-            pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
+        if (globl_proceed_flag){
+            pthread_mutex_unlock(&vertex_threads_mtx);
+            // second do vertex shading, and put data inside one triangle
+            local_shader.default_vertex_shader();
+            local_shader.gl_Position.x /= local_shader.gl_Position.w;
+            local_shader.gl_Position.y /= local_shader.gl_Position.w;
+            local_shader.gl_Position.z /= local_shader.gl_Position.w;
+            // third view port transformation
+            local_shader.gl_Position.x = 0.5 * C->width * (local_shader.gl_Position.x + 1.0);
+            local_shader.gl_Position.y = 0.5 * C->height * (local_shader.gl_Position.y + 1.0);  
+            local_shader.gl_Position.z = local_shader.gl_Position.z * 0.5 + 0.5;
         }
+        else{
+            pthread_mutex_unlock(&vertex_threads_mtx);
+        }
+        // finally sync here and assemble triangle
+        pthread_mutex_lock(&vertex_threads_mtx);
+        // locked
+        if (process_vertex_sync == 0 && globl_proceed_flag){
+            globl_new_triangle = new Triangle;
+        }
+        process_vertex_sync ++;
+        if (globl_new_triangle != nullptr){
+            globl_vert_cnt ++;
+            globl_new_triangle->screen_pos[id] = local_shader.gl_Position;
+            globl_new_triangle->color[id] = local_shader.gl_VertexColor;
+            globl_new_triangle->frag_shading_pos[id] = local_shader.frag_Pos; 
+        }
+        if (process_vertex_sync == PROCESS_VERTEX_THREAD_COUNT){
+            process_vertex_sync = 0;
+            if (globl_vert_cnt <= vertex_num && globl_new_triangle != nullptr){
+                assert(globl_vert_cnt % 3 == 0);
+                C->pipeline.triangle_stream.push(globl_new_triangle);
+                globl_new_triangle = nullptr;
+                finish_one_triangle = PROCESS_VERTEX_THREAD_COUNT-1;
+                pthread_cond_broadcast(&vertex_threads_cv);
+            }
+            else{
+                pthread_mutex_lock(&pipeline_mtx);
+                finish_vertex_processing = 1;
+                pthread_mutex_unlock(&pipeline_mtx);
+                // sleep, wait for next draw call from user space, so that it can be awaken
+                finish_one_triangle = 0;
+                globl_proceed_flag = 0;
+                while (globl_proceed_flag != 1){ // wait for the threadmain to wait it up again
+                    pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
+                }
+            }
+        }
+        else{
+            // wait for the next round of processing triangles
+            while (finish_one_triangle == 0){
+                pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx);
+            }
+            finish_one_triangle --;
+        }
+        // unlock here
         pthread_mutex_unlock(&vertex_threads_mtx);
-        // do the job
-        switch(id){
-            case 0:
-                // manager
-                
-                break;
-            case 1:
-            case 2:
-                // salves
-
-                break;
-            default:
-                break;
-        }
     }
+    return nullptr;
+}
+
+void rasterize_threadmain(){
+    while (1){
+        pthread_mutex_lock(&pipeline_mtx);
+        if (finish_vertex_processing){
+            pthread_mutex_unlock(&pipeline_mtx);
+            break;
+        }
+        pthread_mutex_unlock(&pipeline_mtx);
+    }
+    rasterize();
 }
 
 void *_thr_rasterize(void *thread_id)

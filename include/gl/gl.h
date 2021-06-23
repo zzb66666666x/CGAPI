@@ -1,6 +1,10 @@
 #ifndef _GL_H
 #define _GL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "common.h"
 
 // helloworld
@@ -42,5 +46,9 @@ extern unsigned int glCreateProgram();
 extern void glAttachShader(unsigned int shaderProgram, unsigned int shader);
 extern void glLinkProgram(unsigned int shaderProgram);
 extern void glUseProgram(unsigned int shaderProgram);
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif

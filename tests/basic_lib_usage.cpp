@@ -296,8 +296,8 @@ static void testBasic()
 int main()
 {
     // testBasic();
-    // testDrawNaiveImage();
-    testDrawInWindow();
+    testDrawNaiveImage();
+    // testDrawInWindow();
     // testTexture();
     return 0;
 }

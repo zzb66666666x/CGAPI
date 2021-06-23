@@ -1,6 +1,10 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #define GL_FAILURE              -1
@@ -85,5 +89,9 @@ GL_TEXTURE15
 #define THREAD_NUM  7
 #define GL_MAX_VERTEX_ATTRIB_NUM    16
 #define GL_MAX_TEXTURE_UNITS        16
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif 

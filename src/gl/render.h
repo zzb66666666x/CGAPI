@@ -11,6 +11,7 @@ void process_pixel();
 // interface multi-thread version
 void terminate_all_threads();
 void process_geometry_threadmain();
+void rasterize_threadmain();
 
 // thread task functions
 void* _thr_process_vertex(void* thread_id);
