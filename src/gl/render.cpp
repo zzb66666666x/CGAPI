@@ -1,3 +1,4 @@
+#include "configs.h"
 #include <pthread.h>
 #include <assert.h>
 #include <glm/glm.hpp>
@@ -81,6 +82,7 @@ void process_geometry()
                             vec3->x = *(float*)(buf + 0);
                             vec3->y = *(float*)(buf + sizeof(float) * 1);
                             vec3->z = *(float*)(buf + sizeof(float) * 2);
+                            // std::cout<<"extracted float: "<<(*vec3).x<<" "<< (*vec3).y<<" "<< (*vec3).z<<std::endl;
                             break;
                         }
                         default: 
@@ -213,22 +215,32 @@ void process_pixel()
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
 // macros
 #define PROCESS_VERTEX_THREAD_COUNT 3
+#define DOING_VERTEX_PROCESSING     1
+#define DOING_RASTERIZATION         2
+
+// thread functions
+void* _thr_process_vertex(void* thread_id);
+void* _thr_rasterize(void* thread_id);
+void *_thr_process_vertex_ver1(void *thread_id);
+
 // thread sync, the barrier to sync threads after processing 3 vertices
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t inc_vertex_indices_cv = PTHREAD_COND_INITIALIZER;
 int process_vertex_sync = 0; 
+
 // global variables
-int quit_vertex_processing = 0;         // for terminate the threads, make thread functions quit while loop
-int globl_vert_cnt = 0;                 // count the vertices already processed
-int globl_proceed_flag = 1;              // flag for whether the vertex processing is finished
-int globl_vert_indices[2] = {0,0};      // progress in processing the vertices
-Triangle* globl_new_triangle = nullptr; // assembly the triangle
+volatile int quit_vertex_processing = 0;            // for terminate the threads, make thread functions quit while loop
+int globl_vert_cnt = 0;                             // count the vertices already processed
+volatile int globl_proceed_flag = 1;                // flag for whether the vertex processing is finished
+int globl_vert_indices[2] = {0,0};                  // progress in processing the vertices
+Triangle* globl_new_triangle = nullptr;             // assembly the triangle
+
 // pipeline status
 static pthread_mutex_t pipeline_mtx = PTHREAD_MUTEX_INITIALIZER;
-int finish_vertex_processing = 0;
-int finish_rasterizing = 1;
-int finish_pixel_processing = 1;
+static pthread_cond_t pipeline_cv = PTHREAD_COND_INITIALIZER;
+volatile int pipeline_stage = DOING_VERTEX_PROCESSING;
+
 // to update thread local variables 
 typedef struct{
     vertex_attrib_t* vattrib_data;
@@ -255,26 +267,12 @@ void terminate_all_threads(){
     }
 }
 
-// create 3 threads to parallel vertex processing
+// very first version of vertex processing
 void process_geometry_threadmain(){
     static int first_entry = 1;
     static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = {0,1,2};
     GET_CURRENT_CONTEXT(C);
     GET_PIPELINE(P);
-    while (!first_entry){
-        pthread_mutex_lock(&pipeline_mtx);
-        if (finish_vertex_processing &&
-            finish_rasterizing &&
-            finish_pixel_processing){
-            // ready to draw next frame
-            finish_vertex_processing = 0;
-            // finish_rasterizing = 0;
-            // finish_pixel_processing = 0;
-            pthread_mutex_unlock(&pipeline_mtx);
-            break;
-        }
-        pthread_mutex_unlock(&pipeline_mtx);
-    }
     // begin to draw new frame
     for(int i=0; i<PROCESS_VERTEX_THREAD_COUNT; i++){
         new_frame[i] = 1;
@@ -309,8 +307,15 @@ void process_geometry_threadmain(){
     process_vertex_sync = 0;
     pthread_cond_broadcast(&vertex_threads_cv);
     pthread_mutex_unlock(&vertex_threads_mtx);
+    pthread_mutex_lock(&pipeline_mtx);
+    pipeline_stage = DOING_VERTEX_PROCESSING;
+    while (pipeline_stage == DOING_VERTEX_PROCESSING){
+        pthread_cond_wait(&pipeline_cv, &pipeline_mtx);
+    }
+    pthread_mutex_unlock(&pipeline_mtx);
 }
 
+// the very first version of vertex processing thread function
 void *_thr_process_vertex(void *thread_id)
 {
     // thread local variables, variables that do not change often
@@ -428,7 +433,8 @@ void *_thr_process_vertex(void *thread_id)
             }
             else{
                 pthread_mutex_lock(&pipeline_mtx);
-                finish_vertex_processing = 1;
+                pipeline_stage = DOING_RASTERIZATION;
+                pthread_cond_signal(&pipeline_cv);
                 pthread_mutex_unlock(&pipeline_mtx);
                 // sleep, wait for next draw call from user space, so that it can be awaken
                 globl_proceed_flag = 0;
@@ -451,15 +457,17 @@ void *_thr_process_vertex(void *thread_id)
     return nullptr;
 }
 
+// imporved version of vertex processing: version 1
+void process_geometry_threadmain_ver1(){
+    
+}
+
+void *_thr_process_vertex_ver1(void *thread_id){
+
+
+}
+
 void rasterize_threadmain(){
-    while (1){
-        pthread_mutex_lock(&pipeline_mtx);
-        if (finish_vertex_processing){
-            pthread_mutex_unlock(&pipeline_mtx);
-            break;
-        }
-        pthread_mutex_unlock(&pipeline_mtx);
-    }
     rasterize();
 }
 

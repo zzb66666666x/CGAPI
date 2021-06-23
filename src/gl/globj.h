@@ -1,6 +1,7 @@
 #ifndef _GLOBJ_H
 #define _GLOBJ_H
 
+#include "configs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,3 +1,4 @@
+#include "configs.h"
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
@@ -443,7 +444,7 @@ void glClearColor(float R, float G, float B, float A){
     // first ignore the alpha channel
     // and don't wait for glClear() to clear the buffer
     // for simplicity, just clear the framebuffer by the RGB here
-    color_t color = {R*255,G*255,B*255};
+    color_t color = {R*255.0f, G*255.0f, B*255.0f};
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");

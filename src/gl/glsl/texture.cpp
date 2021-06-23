@@ -15,7 +15,7 @@ glm::vec4 texture2D(sampler2D &texture, glm::vec2 &texcoord)
         int index = ((int)y % texture.height) * texture.width + ((int)x % texture.width);
         for (int i = 0; i < texture.channel; ++i)
         {
-            res[i] = texture.data[index * texture.channel + i];
+            res[i] = (float) texture.data[index * texture.channel + i];
         }
     }
     else if (texture.filter == filter_type::BILINEAR)

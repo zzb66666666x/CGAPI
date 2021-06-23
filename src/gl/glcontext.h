@@ -1,6 +1,7 @@
 #ifndef _GLCONTEXT_H
 #define _GLCONTEXT_H
 
+#include "configs.h"
 #include "globj.h"
 
 class gl_context{
