@@ -16,7 +16,7 @@ static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &ve
 static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2 &vert1, glm::vec2 &vert2, glm::vec2 &vert3, float weight);
 
 // for test
-// float angle = 0.0f;
+float angle = 0.0f;
 
 // geometry processing
 void process_geometry()
@@ -46,7 +46,7 @@ void process_geometry()
     void* input_ptr;
     int flag = 1;
     Triangle* tri = new Triangle();
-    // angle = angle + 2.0f;
+    angle = angle + 2.0f;
     while (cnt < vertex_num){
         if (!flag){
             delete tri;
@@ -95,7 +95,7 @@ void process_geometry()
             }
         }
         // 4. vertex shading
-        C->shader.set_transform_matrices(C->width, C->height, C->znear, C->zfar, 0);
+        C->shader.set_transform_matrices(C->width, C->height, C->znear, C->zfar, angle);
         C->shader.default_vertex_shader();
 
         C->shader.gl_Position.x /= C->shader.gl_Position.w;
