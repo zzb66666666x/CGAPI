@@ -437,7 +437,7 @@ int main()
     // testDrawInWindow();
     // testTexture();
     // testDrawCowFile();
-    testDrawCowWindow();
+    // testDrawCowWindow();
     testTexture();
     return 0;
 }
