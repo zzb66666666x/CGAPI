@@ -16,6 +16,7 @@
 #include "formats.h"
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
+#include "glsl/texture.h"
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -189,7 +190,7 @@ class glProgram{
     public: 
     glProgram();
     // layouts
-    int layouts[2];
+    int layouts[3];
     int layout_cnt;
     // gl inner variable
     glm::vec4 gl_Position;
@@ -197,13 +198,16 @@ class glProgram{
     // input to vertex shader
     glm::vec3 input_Pos;
     glm::vec3 vert_Color;
+    glm::vec2 iTexcoord;
     // fragment shader
     glm::vec3 diffuse_Color;
     glm::vec3 frag_Pos;
-    glm::vec3 frag_Color;    
+    glm::vec3 frag_Color;
+    glm::vec2 texcoord;
     static glm::mat4 model; 
     static glm::mat4 view;
     static glm::mat4 projection;
+    sampler2D diffuse_texture;
     // methods
     void default_vertex_shader();
     void default_fragment_shader();
@@ -225,6 +229,7 @@ struct Pixel{
     
     // programmable input
     glm::vec3 vertexColor;
+    glm::vec2 texcoord;
 };
 
 class glPipeline{

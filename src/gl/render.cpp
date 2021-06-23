@@ -14,6 +14,7 @@
 
 // static helpers
 static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight);
+static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2 &vert1, glm::vec2 &vert2, glm::vec2 &vert3, float weight);
 
 // for test
 float angle = 0.0f;
@@ -42,40 +43,46 @@ void process_geometry()
     
     int cnt = 0;
     char* buf;
-    int indices[] = {0,0};
-    glm::vec3* vec3_ptr;
+    int indices[] = {0,0,0};
+    void* input_ptr;
     int flag = 1;
     Triangle* tri = new Triangle();
     angle = angle + 2.0f;
-    while (cnt<vertex_num){
+    while (cnt < vertex_num){
         if (!flag){
             delete tri;
             break;
         }
-        // vertex data bytes parser main body
-        for (int i=0; i<C->shader.layout_cnt; i++){
-            vec3_ptr = nullptr;
+        for (int i = 0; i < C->shader.layout_cnt; i++){
+            if(C->shader.layouts[i] > 2){
+                throw std::runtime_error("invalid layout\n");
+            }
             switch(C->shader.layouts[i]){
                 case 0:
-                    vec3_ptr = &(C->shader.input_Pos);
-                    break;
+                    input_ptr = &(C->shader.input_Pos);break;
                 case 1:
-                    vec3_ptr = &(C->shader.vert_Color);
-                    break;
-                default:
-                    throw std::runtime_error("invalid layout\n");
+                    input_ptr = &(C->shader.vert_Color);break;
+                case 2:
+                    input_ptr = &(C->shader.iTexcoord);break;
             }
             vertex_attrib_t& config = vattrib_data[C->shader.layouts[i]];
             buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
             switch(config.type){
                 case GL_FLOAT:
                     switch(config.size){
-                        case 3:
-                            (*vec3_ptr).x = *(float*)(buf+0);
-                            (*vec3_ptr).y = *(float*)(buf+sizeof(float)*1);
-                            (*vec3_ptr).z = *(float*)(buf+sizeof(float)*2);
-                            // std::cout<<"extracted float: "<<(*vec3_ptr).x<<" "<< (*vec3_ptr).y<<" "<< (*vec3_ptr).z<<std::endl;
+                        case 2:{
+                            glm::vec2 *vec2 = (glm::vec2*)input_ptr;
+                            vec2->x = *(float*)(buf + 0);
+                            vec2->y = *(float*)(buf + sizeof(float) * 1);
                             break;
+                        }
+                        case 3:{
+                            glm::vec3 *vec3 = (glm::vec3*)input_ptr;
+                            vec3->x = *(float*)(buf + 0);
+                            vec3->y = *(float*)(buf + sizeof(float) * 1);
+                            vec3->z = *(float*)(buf + sizeof(float) * 2);
+                            break;
+                        }
                         default: 
                             throw std::runtime_error("not supported size\n");
                     }
@@ -104,17 +111,24 @@ void process_geometry()
         tri->screen_pos[cnt%3] = C->shader.gl_Position;
         tri->color[cnt%3] = C->shader.gl_VertexColor;
         tri->frag_shading_pos[cnt%3] = C->shader.frag_Pos;
-        cnt += 1;
-        if (cnt>0 && cnt % 3 == 0){
+        tri->texcoord[cnt%3] = C->shader.iTexcoord;
+        ++cnt;
+        if (cnt % 3 == 0){
             P->triangle_stream.push(tri);
-            tri = nullptr;
-            if (cnt+3<=vertex_num)
-                tri = new Triangle();
+            if (cnt + 3 > vertex_num){
+                break;
+            }
+            tri = new Triangle();
         }
     }
 }
 
 inline static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3 &vert1, glm::vec3 &vert2, glm::vec3 &vert3, float weight)
+{
+    return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
+}
+
+inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2 &vert1, glm::vec2 &vert2, glm::vec2 &vert3, float weight)
 {
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
@@ -167,6 +181,7 @@ void rasterize()
                         zbuf[index] = zp;
                         pixel_tasks[index].write = true;
                         pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                        pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
                     }
                 }
             }
@@ -185,10 +200,11 @@ void process_pixel()
     {
         if(pixel_tasks[i].write){
             C->shader.diffuse_Color = pixel_tasks[i].vertexColor;
+            C->shader.texcoord = pixel_tasks[i].texcoord;
             C->shader.default_fragment_shader();
-            frame_buf[i].R = C->shader.frag_Color.x * 255.0f;
-            frame_buf[i].G = C->shader.frag_Color.y * 255.0f;
-            frame_buf[i].B = C->shader.frag_Color.z * 255.0f;
+            frame_buf[i].R = C->shader.frag_Color.x;
+            frame_buf[i].G = C->shader.frag_Color.y;
+            frame_buf[i].B = C->shader.frag_Color.z;
             pixel_tasks[i].write = false;
         }
     }
