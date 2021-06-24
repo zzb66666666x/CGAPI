@@ -6,6 +6,7 @@
 #include "../../include/gl/common.h"
 #include "glcontext.h"
 #include "formats.h"
+#include "glsl/texture.h"
 
 #define FILL_ZERO   -1
 #define FILL_ONE    -2
@@ -236,10 +237,10 @@ static void _pass_tex_data(int ID, glObject* ptr, GLenum internalFormat, int wid
             int nbytes;
             _tex_data_formatter(internalFormat, format, &f_desc);
             if (f_desc.out_channels == 3){
-                C->share.tex_formats.emplace(ID, (int)FORMAT_COLOR_8UC3);
+                C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_8UC3));
             }
             else{
-                C->share.tex_formats.emplace(ID, (int)FORMAT_COLOR_8UC4);
+                C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_8UC4));
             }
             if (f_desc.direct_pass){
                 nbytes = width * height * f_desc.out_channels;
@@ -413,6 +414,7 @@ void glDrawArrays(GLenum mode, int first, int count){
             if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr()==nullptr)
                 return;
             C->pipeline.textures[cnt] = tex_ptr;
+            C->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0+cnt));
         }
         else{
             C->pipeline.textures[cnt] = nullptr;

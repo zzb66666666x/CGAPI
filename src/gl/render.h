@@ -13,7 +13,6 @@ void process_pixel();
 // interface multi-thread version
 void terminate_all_threads();
 void process_geometry_threadmain();
-void process_geometry_threadmain_ver1();
 void rasterize_threadmain();
 
 #endif

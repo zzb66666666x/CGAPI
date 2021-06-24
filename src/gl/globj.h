@@ -21,6 +21,12 @@
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
+#define LAYOUT_INVALID         -1
+#define LAYOUT_POSITION         0
+#define LAYOUT_COLOR            1
+#define LAYOUT_TEXCOORD         2
+#define LAYOUT_NORMAL           3
+
 
 typedef struct{
     int     index;      // No. of vertex attrib
@@ -177,7 +183,7 @@ class glShareData{
     glManager buffers;
     glManager vertex_attribs;
     glManager textures;
-    std::map<int, int> tex_formats;
+    std::map<int, sampler_config> tex_config_map;
     glManager framebufs;
 };
 
@@ -191,8 +197,8 @@ class glProgram{
     public: 
     glProgram();
     // layouts
-    int layouts[3];
-    int layout_cnt;
+    static int layouts[GL_MAX_TEXTURE_UNITS];
+    static int layout_cnt;
     // gl inner variable
     glm::vec4 gl_Position;
     glm::vec3 gl_VertexColor;
@@ -200,6 +206,7 @@ class glProgram{
     glm::vec3 input_Pos;
     glm::vec3 vert_Color;
     glm::vec2 iTexcoord;
+    glm::vec3 vert_Normal;
     // fragment shader
     glm::vec3 diffuse_Color;
     glm::vec3 frag_Pos;
@@ -213,6 +220,7 @@ class glProgram{
     void default_vertex_shader();
     void default_fragment_shader();
     void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
+    void set_diffuse_texture(GLenum unit);
 };
 
 class glRenderPayload{

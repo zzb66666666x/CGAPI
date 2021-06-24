@@ -216,7 +216,7 @@ static void testTexture()
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         glvWriteStream(window);
-        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
+        // std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
     }
 
     glvTerminate();
@@ -474,9 +474,9 @@ int main()
     // testBasic();
     // testDrawNaiveImage();
     // testDrawInWindow();
-    // testTexture();
+    testTexture();
     // testDrawCowFile();
-    testDrawCowWindow();
+    // testDrawCowWindow();
     // testTexture();
     return 0;
 }
