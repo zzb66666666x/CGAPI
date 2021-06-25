@@ -7,6 +7,9 @@
 #include "glcontext.h"
 #include "../../include/gl/common.h"
 
+#include <thread>
+#include <mutex>
+
 #define GET_PIPELINE(P) glPipeline *P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -191,20 +194,57 @@ void rasterize()
     }
 }
 
+// for processing pixel in parallel
+static void process_pixel_task(int begin, int end, std::vector<Pixel> &pixel_tasks, color_t* frame_buf){
+    GET_CURRENT_CONTEXT(ctx);
+    for(int i = begin ;i < end;++i){
+        if(pixel_tasks[i].write){
+            // ctx->shader.diffuse_Color = pixel_tasks[i].vertexColor;
+            // ctx->shader.texcoord = pixel_tasks[i].texcoord;
+            // frame_buf[i].R = ctx->shader.frag_Color.x;
+            // frame_buf[i].G = ctx->shader.frag_Color.y;
+            // frame_buf[i].B = ctx->shader.frag_Color.z;
+            PixelShaderParam params;
+            params.texcoord = pixel_tasks[i].texcoord;
+            PixelShaderResult res = ctx->shader.default_fragment_shader(params);
+            frame_buf[i].R = res.fragColor.x;
+            frame_buf[i].G = res.fragColor.y;
+            frame_buf[i].B = res.fragColor.z;
+            pixel_tasks[i].write = false;
+        }
+    }
+}
+
 void process_pixel()
 {
-    GET_CURRENT_CONTEXT(C);
-    std::vector<Pixel> &pixel_tasks = C->pipeline.pixel_tasks;
-    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
+    GET_CURRENT_CONTEXT(ctx);
+    std::vector<Pixel> &pixel_tasks = ctx->pipeline.pixel_tasks;
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+    // int size = ctx->framebuf->getSize();
+    // int begin = 0,end = 0;
+    // std::thread *threads[4];
+    // for(int i = 0;i < 4;++i){
+    //     begin = end;
+    //     // size / 4 * (i + 1)
+    //     end = (size >> 2) * (i + 1);
+    //     threads[i] = new std::thread(process_pixel_task, begin, end, std::ref(pixel_tasks), frame_buf);
+    // }
+    // for (int i = 0; i < 4; ++i)
+    // {
+    //     if(threads[i]->joinable()){
+    //         threads[i]->join();
+    //     }
+    //     delete threads[i];
+    // }
     for(int i = 0,len = pixel_tasks.size();i < len;++i)
     {
         if(pixel_tasks[i].write){
-            C->shader.diffuse_Color = pixel_tasks[i].vertexColor;
-            C->shader.texcoord = pixel_tasks[i].texcoord;
-            C->shader.default_fragment_shader();
-            frame_buf[i].R = C->shader.frag_Color.x;
-            frame_buf[i].G = C->shader.frag_Color.y;
-            frame_buf[i].B = C->shader.frag_Color.z;
+            PixelShaderParam params;
+            params.texcoord = pixel_tasks[i].texcoord;
+            PixelShaderResult res = ctx->shader.default_fragment_shader(params);
+            frame_buf[i].R = res.fragColor.x;
+            frame_buf[i].G = res.fragColor.y;
+            frame_buf[i].B = res.fragColor.z;
             pixel_tasks[i].write = false;
         }
     }

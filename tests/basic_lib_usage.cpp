@@ -2,7 +2,7 @@
 #include <vector>
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
-#include <windows.h>
+#include <chrono>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -90,7 +90,6 @@ int load_vertices(std::vector<float> & vertices){
 
 static void testTexture()
 {
-
     if (!glvInit())
     {
         std::cout << "glv Init failed\n";
@@ -161,10 +160,15 @@ static void testTexture()
 
     glBindVertexArray(0);
 
-    DWORD begin;
+    double fps = 0.0;
+    int frameCount = 0;
+    auto lastTime = std::chrono::system_clock::now();
+    auto curTime = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
+    double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
     while (1)
     {
-        begin = GetTickCount();
+        
         glBindVertexArray(VAO);
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -174,9 +178,21 @@ static void testTexture()
         glBindTexture(GL_TEXTURE_2D, texture1);
         
         glDrawArrays(GL_TRIANGLES, 0, 36);
-
+        
         glvWriteStream(window);
-        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
+
+        curTime = std::chrono::system_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
+        duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
+        if (duration_s > 2)//2秒之后开始统计FPS
+	    {
+            fps = frameCount / duration_s;
+            frameCount = 0;
+            lastTime = curTime;
+            std::cout<<"fps: "<<fps<<"\n";
+        }
+
+        ++frameCount;
     }
 
     glvTerminate();
@@ -214,10 +230,8 @@ static void testDrawInWindow()
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    DWORD begin;
     while (1)
     {
-        begin = GetTickCount();
         glBindVertexArray(VAO);
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -225,8 +239,6 @@ static void testDrawInWindow()
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         glvWriteStream(window);
-        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
-        // std::cout << "frame_count: " << (frame_count++) << std::endl;
     }
 
     glvTerminate();
@@ -415,7 +427,7 @@ static void testDrawCowWindow(){
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    DWORD begin;
+    // DWORD begin;
     while (1)
     {
         glBindVertexArray(VAO);
@@ -424,7 +436,7 @@ static void testDrawCowWindow(){
 
         glDrawArrays(GL_TRIANGLES, 0, vertex_num);
         glvWriteStream(window);
-        std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
+        // std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
     }
 
     glvTerminate(); 

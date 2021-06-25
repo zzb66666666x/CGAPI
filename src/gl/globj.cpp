@@ -123,12 +123,16 @@ void glProgram::default_vertex_shader(){
     gl_VertexColor = vert_Color;
 }
 
-void glProgram::default_fragment_shader(){
+PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color = diffuse_Color;
-    glm::vec4 color = texture2D(diffuse_texture, texcoord);
-    frag_Color.x = color.x;
-    frag_Color.y = color.y;
-    frag_Color.z = color.z;
+    // glm::vec4 color = texture2D(diffuse_texture, texcoord);
+    // frag_Color.x = color.x;
+    // frag_Color.y = color.y;
+    // frag_Color.z = color.z;
+    PixelShaderResult result;
+    glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
+    result.fragColor = color;
+    return result;
 }
 
 void glProgram::set_transform_matrices(int width, int height, float znear, float zfar, float angle){
@@ -149,6 +153,7 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
+    model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);

@@ -186,6 +186,14 @@ class glThreads{
     pthread_t thr_arr[THREAD_NUM];
 };
 
+struct PixelShaderParam{
+    glm::vec2 texcoord;
+};
+
+struct PixelShaderResult{
+    glm::vec4 fragColor;
+};
+
 class glProgram{
     public: 
     glProgram();
@@ -210,7 +218,7 @@ class glProgram{
     sampler2D diffuse_texture;
     // methods
     void default_vertex_shader();
-    void default_fragment_shader();
+    PixelShaderResult default_fragment_shader(PixelShaderParam &params);
     void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
 };
 
