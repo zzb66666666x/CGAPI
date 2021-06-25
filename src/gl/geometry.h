@@ -1,6 +1,7 @@
 #ifndef _GEOMETRY_H
 #define _GEOMETRY_H
 
+#include "configs.h"
 #include <stdio.h>
 #include <glm/glm.hpp>
 #include <array>

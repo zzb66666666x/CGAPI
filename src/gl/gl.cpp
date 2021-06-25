@@ -1,3 +1,4 @@
+#include "configs.h"
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
@@ -5,6 +6,7 @@
 #include "../../include/gl/common.h"
 #include "glcontext.h"
 #include "formats.h"
+#include "glsl/texture.h"
 
 #define FILL_ZERO   -1
 #define FILL_ONE    -2
@@ -235,10 +237,10 @@ static void _pass_tex_data(int ID, glObject* ptr, GLenum internalFormat, int wid
             int nbytes;
             _tex_data_formatter(internalFormat, format, &f_desc);
             if (f_desc.out_channels == 3){
-                C->share.tex_formats.emplace(ID, (int)FORMAT_COLOR_8UC3);
+                C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_8UC3));
             }
             else{
-                C->share.tex_formats.emplace(ID, (int)FORMAT_COLOR_8UC4);
+                C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_8UC4));
             }
             if (f_desc.direct_pass){
                 nbytes = width * height * f_desc.out_channels;
@@ -412,6 +414,7 @@ void glDrawArrays(GLenum mode, int first, int count){
             if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr()==nullptr)
                 return;
             C->pipeline.textures[cnt] = tex_ptr;
+            C->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0+cnt));
         }
         else{
             C->pipeline.textures[cnt] = nullptr;
@@ -443,7 +446,7 @@ void glClearColor(float R, float G, float B, float A){
     // first ignore the alpha channel
     // and don't wait for glClear() to clear the buffer
     // for simplicity, just clear the framebuffer by the RGB here
-    color_t color = {R*255,G*255,B*255};
+    color_t color = {R*255.0f, G*255.0f, B*255.0f};
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");

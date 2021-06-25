@@ -56,6 +56,46 @@ float cubeVertices[] = {
         -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f};
 
+float cubeVerticesNoTex[] = {
+     // positions          // colors         
+    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+    0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f,
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f,
+    0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f,
+    -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 1.0f,
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    -0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    -0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    -0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+    0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+    0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f,
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f,
+    -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f
+};
+
 int load_vertices(std::vector<float> & vertices){
     objl::Loader Loader;
     int ret =0;
@@ -70,12 +110,12 @@ int load_vertices(std::vector<float> & vertices){
                 vertices.push_back(mesh.Vertices[i+j].Position.X);
                 vertices.push_back(mesh.Vertices[i+j].Position.Y);
                 vertices.push_back(mesh.Vertices[i+j].Position.Z);
-                // vertices.push_back(0.8f);
-                // vertices.push_back(0.1f);
-                // vertices.push_back(0.6f);
-                vertices.push_back(mesh.Vertices[i+j].Normal.X);
-                vertices.push_back(mesh.Vertices[i+j].Normal.Y);
-                vertices.push_back(mesh.Vertices[i+j].Normal.Z);
+                vertices.push_back(0.5f);
+                vertices.push_back(0.5f);
+                vertices.push_back(0.5f);
+                // vertices.push_back(mesh.Vertices[i+j].Normal.X);
+                // vertices.push_back(mesh.Vertices[i+j].Normal.Y);
+                // vertices.push_back(mesh.Vertices[i+j].Normal.Z);
                 // vertices.push_back(mesh.Vertices[i+j].TextureCoordinate.X);
                 // vertices.push_back(mesh.Vertices[i+j].TextureCoordinate.Y);
                 ret+=3;
@@ -218,7 +258,7 @@ static void testDrawInWindow()
     // Bind
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerticesNoTex), cubeVerticesNoTex, GL_STATIC_DRAW);
 
     // VAO config
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
@@ -298,7 +338,7 @@ static void testDrawNaiveImage()
     // Bind
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerticesNoTex), cubeVerticesNoTex, GL_STATIC_DRAW);
 
     // VAO config
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
@@ -342,8 +382,6 @@ static void testBasic()
 }
 
 static void testDrawCowFile(){
-    int frame_count = 0;
-
     if (!glvInit())
     {
         std::cout << "glv Init failed\n";
@@ -430,6 +468,7 @@ static void testDrawCowWindow(){
     // DWORD begin;
     while (1)
     {
+        begin = GetTickCount();
         glBindVertexArray(VAO);
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -447,9 +486,9 @@ int main()
     // testBasic();
     // testDrawNaiveImage();
     // testDrawInWindow();
-    // testTexture();
+    testTexture();
     // testDrawCowFile();
     // testDrawCowWindow();
-    testTexture();
+    // testTexture();
     return 0;
 }

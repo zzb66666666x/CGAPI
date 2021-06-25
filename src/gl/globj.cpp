@@ -1,3 +1,4 @@
+#include "configs.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "globj.h"
@@ -9,6 +10,8 @@
 glm::mat4 glProgram::model = glm::mat4(1.0f); 
 glm::mat4 glProgram::view = glm::mat4(1.0f);
 glm::mat4 glProgram::projection = glm::mat4(1.0f);
+int glProgram::layouts[GL_MAX_TEXTURE_UNITS];
+int glProgram::layout_cnt;
 
 int glManager::insertStorage(GLenum dtype, glObject& obj){
     // if (obj.type==GLOBJ_PLACE_HOLDER){
@@ -87,7 +90,8 @@ glRenderPayload::glRenderPayload(){
     // for(int i = 0;i < 16;++i){
     //     tex_units.emplace(GL_TEXTURE0 + i, TEXTURE_UNIT_CLOSE);
     // }
-    tex_units.emplace(GL_TEXTURE0, TEXTURE_UNIT_CLOSE);
+    // GL_TEXTURE0 is default open to be set (activated)
+    tex_units.emplace(GL_TEXTURE0, TEXTURE_UNIT_TBD);
     tex_units.emplace(GL_TEXTURE1, TEXTURE_UNIT_CLOSE);
     tex_units.emplace(GL_TEXTURE2, TEXTURE_UNIT_CLOSE);
     tex_units.emplace(GL_TEXTURE3, TEXTURE_UNIT_CLOSE);
@@ -110,15 +114,18 @@ glThreads::glThreads(){
 }
 
 glProgram::glProgram(){
-    layouts[0] = 0;
-    layouts[1] = 1;
-    layouts[2] = 2;
-    layout_cnt = 3;
+    layout_cnt = GL_MAX_TEXTURE_UNITS;
+    for (int i=0; i<GL_MAX_TEXTURE_UNITS; i++){
+        layouts[i] = LAYOUT_INVALID;
+    }
+    layouts[0] = LAYOUT_POSITION;
+    layouts[1] = LAYOUT_COLOR;
+    layouts[2] = LAYOUT_TEXCOORD;
+    // layouts[3] = LAYOUT_NORMAL;
 }
 
 void glProgram::default_vertex_shader(){
     frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
-    // glm::vec4 test = view*glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
     gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
     gl_VertexColor = vert_Color;
 }
@@ -136,21 +143,9 @@ PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
 }
 
 void glProgram::set_transform_matrices(int width, int height, float znear, float zfar, float angle){
-    GET_CURRENT_CONTEXT(ctx);
-    
     model = glm::mat4(1.0f); 
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
-
-    int textureId = ctx->payload.renderMap[GL_TEXTURE_2D];
-    glObject *tex_ptr;
-    ctx->share.textures.searchStorage(&tex_ptr, textureId);
-    diffuse_texture.width = 512;
-    diffuse_texture.height = 512;
-    diffuse_texture.channel = 3;
-    diffuse_texture.data = (unsigned char*)tex_ptr->getDataPtr();
-    diffuse_texture.filter = filter_type::NEAREST;
-    
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
     model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
@@ -159,6 +154,16 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     glm::vec3 up(0.0f, 1.0f, 0.0f);
     view  = glm::lookAt(eyepos, eyepos+front, up);
     projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, znear, zfar);
+}
+
+void glProgram::set_diffuse_texture(GLenum unit){
+    GET_CURRENT_CONTEXT(C);
+    int textureId = C->payload.tex_units[unit];
+    glObject *tex_ptr;
+    C->share.textures.searchStorage(&tex_ptr, textureId);
+    diffuse_texture.config = C->share.tex_config_map[textureId];
+    diffuse_texture.data = (unsigned char*)tex_ptr->getDataPtr();
+    diffuse_texture.filter = filter_type::NEAREST;
 }
 
 
