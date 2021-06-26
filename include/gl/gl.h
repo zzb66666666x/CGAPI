@@ -34,6 +34,7 @@ extern void glEnableVertexAttribArray(unsigned int idx);
 extern void glEnable(GLenum cap);
 // draw
 extern void glDrawArrays(GLenum mode, int first, int count);
+extern void glDrawElements(GLenum mode, int count, unsigned int type, const void* indices);
 extern void glClearColor(float R, float G, float B, float A);
 extern void glClear(unsigned int bitfields);
 // IO

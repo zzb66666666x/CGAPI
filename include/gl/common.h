@@ -15,6 +15,8 @@ extern "C" {
 #define GL_DEPTH_BUFFER_BIT 0x00000100
 #define GL_COLOR_BUFFER_BIT 0x00004000
 
+// data type
+#define GL_UNSIGNED_INT 0x1405
 
 // texture wrapping parameters
 #define GL_TEXTURE_WRAP_S 0x2802

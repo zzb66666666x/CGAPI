@@ -114,8 +114,9 @@ glThreads::glThreads(){
 }
 
 glProgram::glProgram(){
-    layout_cnt = GL_MAX_TEXTURE_UNITS;
-    for (int i=0; i<GL_MAX_TEXTURE_UNITS; i++){
+    layout_cnt = GL_MAX_VERTEX_ATTRIB_NUM;
+    for (int i = 0; i < GL_MAX_VERTEX_ATTRIB_NUM; i++)
+    {
         layouts[i] = LAYOUT_INVALID;
     }
     layouts[0] = LAYOUT_POSITION;
@@ -168,6 +169,8 @@ void glProgram::set_diffuse_texture(GLenum unit){
 
 
 glPipeline::glPipeline(){
+    cpu_num = std::thread::hardware_concurrency();
+    
     vertex_num = 0;
     first_vertex = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -176,7 +179,7 @@ glPipeline::glPipeline(){
     exec.emplace_back(process_pixel);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
-    ebo_ptr = nullptr;
+    ebo_config.ebo_ptr = nullptr;
     for (int i=0; i<GL_MAX_TEXTURE_UNITS; i++){
         textures[i] = nullptr;
     }

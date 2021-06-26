@@ -75,24 +75,29 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    if (ID <= 0) {
+        return;
+    }
     auto& bufs = C->share.buffers;
     int ret;
     glObject* ptr;
     switch(buf_type){
         case GL_ARRAY_BUFFER:
-            if (ID<=0){
+            // try search out the ID
+            ret = bufs.searchStorage(&ptr, ID);
+            if (ret == GL_FAILURE){
                 return;
             }
-            else{
-                // try search out the ID
-                ret = bufs.searchStorage(&ptr, ID);
-                if (ret==GL_FAILURE)
-                    return;
-                ptr->bind = GL_ARRAY_BUFFER;
-                C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
-            }
+            ptr->bind = GL_ARRAY_BUFFER;
+            C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
             break;
         case GL_ELEMENT_ARRAY_BUFFER:
+            ret = bufs.searchStorage(&ptr, ID);
+            if (ret == GL_FAILURE) {
+                return;
+            }
+            ptr->bind = GL_ELEMENT_ARRAY_BUFFER;
+            C->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER] = ID;
             break;
         default:
             break;
@@ -189,7 +194,17 @@ void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
                     ptr->loadBytes(data, nbytes);
                     break;
                 case GL_ELEMENT_ARRAY_BUFFER:
-                    throw std::runtime_error("not written for EBO\n");
+                    ID = C->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER];
+                    if (ID < 0) {
+                        return;
+                    }
+                    ret = bufs.searchStorage(&ptr, ID);
+                    if (ret == GL_FAILURE) {
+                        return;
+                    }
+                    ptr->allocByteSpace(nbytes);
+                    ptr->loadBytes(data, nbytes);
+                    // throw std::runtime_error("not written for EBO\n");
                     break;
                 default:
                     break;
@@ -426,12 +441,98 @@ void glDrawArrays(GLenum mode, int first, int count){
     C->pipeline.vbo_ptr = vbo_ptr;
     C->pipeline.first_vertex = first;
     C->pipeline.vertex_num = count;
+    C->pipeline.use_indices = false;
+
     // draw
     auto& exec_list = C->pipeline.exec; 
     auto iter = exec_list.begin();
     switch(mode){
         case GL_TRIANGLES:
             while (iter != exec_list.end()){
+                (*iter)();
+                ++iter;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void glDrawElements(GLenum mode, int count, unsigned int type, const void* indices)
+{
+    GET_CURRENT_CONTEXT(ctx);
+    if (ctx == nullptr){
+        return;
+    }
+    glManager& bufs = ctx->share.buffers;
+    glManager& vaos = ctx->share.vertex_attribs;
+    glManager& texs = ctx->share.textures;
+    glObject* vao_ptr;
+    glObject* vbo_ptr;
+    glObject* ebo_ptr;
+    glObject* tex_ptr;
+    int ret, vao_id, vbo_id, ebo_id;
+    // sanity checks for VAO
+    vao_id = ctx->payload.renderMap[GL_BIND_VAO];
+    vbo_id = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+    ebo_id = ctx->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER];
+    if (vao_id < 0 || vbo_id < 0 || ebo_id < 0) {
+        return;
+    }
+
+    ret = vaos.searchStorage(&vao_ptr, vao_id);
+    if (ret == GL_FAILURE
+        || vao_ptr->bind != GL_BIND_VAO
+        || vao_ptr->getDataPtr()
+        || vao_ptr->getSize() <= 0) {
+        return;
+    }
+    ret = bufs.searchStorage(&vbo_ptr, vbo_id);
+    if (ret == GL_FAILURE
+        || vbo_ptr->bind != GL_ARRAY_BUFFER
+        || vbo_ptr->getDataPtr()
+        || vbo_ptr->getSize() <= 0) {
+        return;
+    }
+    ret = bufs.searchStorage(&ebo_ptr, ebo_id);
+    if (ret == GL_FAILURE 
+        || ebo_ptr->bind != GL_ELEMENT_ARRAY_BUFFER
+        || ebo_ptr->getDataPtr() != nullptr
+        || ebo_ptr->getSize() <= 0) {
+        return;
+    }
+    
+    // sanity check for texture resources
+    // check active textures, tell pipeline what are the useful textures
+    int cnt = 0;
+    for (auto& it : ctx->payload.tex_units) {
+        if (it.second > 0) {
+            // check if the texture ID is valid
+            ret = texs.searchStorage(&tex_ptr, it.second);
+            if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr() == nullptr)
+                return;
+            ctx->pipeline.textures[cnt] = tex_ptr;
+            ctx->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0 + cnt));
+        } else {
+            ctx->pipeline.textures[cnt] = nullptr;
+        }
+        cnt++;
+    }
+    // prepare pipeline environment
+    ctx->pipeline.vao_ptr = vao_ptr;
+    ctx->pipeline.vbo_ptr = vbo_ptr;
+    ctx->pipeline.vertex_num = count;
+    ctx->pipeline.ebo_config.ebo_ptr = ebo_ptr;
+    ctx->pipeline.ebo_config.first_indices = indices;
+    ctx->pipeline.ebo_config.indices_type = type;
+    ctx->pipeline.use_indices = true;
+
+    // draw
+    std::list<render_fp>& exec_list = ctx->pipeline.exec;
+    auto iter = exec_list.begin();
+    switch (mode) {
+        case GL_TRIANGLES:
+            while (iter != exec_list.end()) {
                 (*iter)();
                 ++iter;
             }

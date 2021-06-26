@@ -18,6 +18,7 @@
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 #include "glsl/texture.h"
+#include <thread>
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -205,7 +206,7 @@ class glProgram{
     public: 
     glProgram();
     // layouts
-    static int layouts[GL_MAX_TEXTURE_UNITS];
+    static int layouts[GL_MAX_VERTEX_ATTRIB_NUM];
     static int layout_cnt;
     // gl inner variable
     glm::vec4 gl_Position;
@@ -252,6 +253,11 @@ struct Pixel{
 class glPipeline{
     public:
         glPipeline();
+        bool use_indices;
+        // drawElement
+        // the number of cpu core
+        int cpu_num;
+
         // data needed for render functions
         pthread_mutex_t triangle_stream_mtx;
         std::queue<Triangle*> triangle_stream;
@@ -264,7 +270,11 @@ class glPipeline{
         int vertex_num;
         glObject* vao_ptr;
         glObject* vbo_ptr;
-        glObject* ebo_ptr;
+        struct {
+            const void* first_indices;
+            unsigned int indices_type;
+            glObject* ebo_ptr;
+        } ebo_config;
         glObject* textures[GL_MAX_TEXTURE_UNITS];
 };
 

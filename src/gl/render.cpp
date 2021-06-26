@@ -10,7 +10,7 @@
 #include "../../include/gl/common.h"
 
 #include <thread>
-#include <mutex>
+#include <atomic>
 
 #define GET_PIPELINE(P) glPipeline *P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -54,7 +54,7 @@ void process_geometry()
     //     std::cout<<temp[i]<<std::endl;
     // }
     
-    int cnt = 0;
+    int cnt = P->first_vertex;
     char* buf;
     int indices[] = {0,0,0};
     void* input_ptr;
@@ -214,10 +214,11 @@ void rasterize()
 }
 
 // for processing pixel in parallel
-static void process_pixel_task(int begin, int end, std::vector<Pixel> &pixel_tasks, color_t* frame_buf){
+static void process_pixel_task(int begin, int end, std::vector<Pixel>& pixel_tasks, color_t* frame_buf)
+{
     GET_CURRENT_CONTEXT(ctx);
-    for(int i = begin ;i < end;++i){
-        if(pixel_tasks[i].write){
+    for (int i = begin; i < end; ++i){
+        if (pixel_tasks[i].write) {
             // ctx->shader.diffuse_Color = pixel_tasks[i].vertexColor;
             // ctx->shader.texcoord = pixel_tasks[i].texcoord;
             // frame_buf[i].R = ctx->shader.frag_Color.x;
@@ -237,24 +238,24 @@ static void process_pixel_task(int begin, int end, std::vector<Pixel> &pixel_tas
 void process_pixel()
 {
     GET_CURRENT_CONTEXT(ctx);
-    std::vector<Pixel> &pixel_tasks = ctx->pipeline.pixel_tasks;
+    GET_PIPELINE(ppl);
+    std::vector<Pixel> &pixel_tasks = ppl->pixel_tasks;
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
-    // int size = ctx->framebuf->getSize();
-    // int begin = 0,end = 0;
-    // std::thread *threads[4];
-    // for(int i = 0;i < 4;++i){
-    //     begin = end;
-    //     // size / 4 * (i + 1)
-    //     end = (size >> 2) * (i + 1);
-    //     threads[i] = new std::thread(process_pixel_task, begin, end, std::ref(pixel_tasks), frame_buf);
-    // }
-    // for (int i = 0; i < 4; ++i)
+    // int tasks_size = pixel_tasks.size();
+    // const int cpu_num = ppl->cpu_num;
+    // std::vector<std::thread> threads;
+    // int begin = 0, end = 0;
+    // for (int i = 0; i < cpu_num; ++i)
     // {
-    //     if(threads[i]->joinable()){
-    //         threads[i]->join();
-    //     }
-    //     delete threads[i];
+    //     begin = end;
+    //     end = (tasks_size / cpu_num) * (i + 1);
+    //     threads.push_back(std::thread(process_pixel_task, begin, end, std::ref(pixel_tasks), frame_buf));
     // }
+    // for (int i = 0; i < cpu_num; ++i)
+    // {
+    //     threads[i].join();
+    // }
+
     for(int i = 0,len = pixel_tasks.size();i < len;++i)
     {
         if(pixel_tasks[i].write){
@@ -267,6 +268,106 @@ void process_pixel()
             pixel_tasks[i].write = false;
         }
     }
+}
+
+////////////////// new interface for parallel //////////////////////////
+
+static void process_primitive(int first_vertex_ind, int end_vertex_ind){
+
+}
+
+void geometry_processing()
+{
+    /**
+     * input processing
+     */
+    GET_PIPELINE(ppl);
+    GET_CURRENT_CONTEXT(ctx);
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
+    unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
+    
+    
+
+    int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
+    // check if the config is activated
+
+    for (int i = 0; i < ctx->shader.layout_cnt; ++i) {
+        if (ctx->shader.layouts[i] != LAYOUT_INVALID
+            && (ctx->shader.layouts[i] >= ppl->vao_ptr->getSize()
+                || !vattrib_data[ctx->shader.layouts[i]].activated)) {
+            ctx->shader.layouts[i] = LAYOUT_INVALID;
+        }
+    }
+
+    int first_vertex_ind = ppl->first_vertex;
+    void* input_ptr;
+    unsigned char* buf;
+    // save vertex offset
+    int vertex_offsets[3] = { 0, 0, 0 };
+    // parse vertex data
+    // use the first stride to determine start of vertex buffer
+    // TODO check stride
+    vbuf_data += first_vertex_ind * vattrib_data[0].stride;
+
+    // case: ((37 - 33) % 3) * 3 + 33 = 36
+    vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+    std::vector<Triangle> tri_list((vertex_num - first_vertex_ind) % 3);
+    int tri_ind = 0;
+
+    // for (int i = first_vertex_ind; i < vertex_num; ++i) {
+    //     for (int j = 0; j < ctx->shader.layout_cnt; ++j) {
+    //         if (ctx->shader.layouts[j] > 3) {
+    //             throw std::runtime_error("invalid layout\n");
+    //         }
+    //         switch (ctx->shader.layouts[j]) {
+    //             case LAYOUT_POSITION:
+    //                 input_ptr = &(ctx->shader.input_Pos);
+    //                 break;
+    //             case LAYOUT_COLOR:
+    //                 input_ptr = &(ctx->shader.vert_Color);
+    //                 break;
+    //             case LAYOUT_TEXCOORD:
+    //                 input_ptr = &(ctx->shader.iTexcoord);
+    //                 break;
+    //             case LAYOUT_NORMAL:
+    //                 input_ptr = &(ctx->shader.vert_Normal);
+    //                 break;
+    //             case LAYOUT_INVALID:
+    //             default:
+    //                 input_ptr = nullptr;
+    //                 break;
+    //         }
+    //         if (input_ptr == nullptr){
+    //             continue;
+    //         }
+    //         vertex_attrib_t& config = vattrib_data[ctx->shader.layouts[j]];
+    //         buf = vbuf_data + (vertex_offsets[j] + (size_t)config.pointer);
+    //         switch (config.type) {
+    //             case GL_FLOAT:
+    //                 switch (config.size) {
+    //                 case 2: {
+    //                     glm::vec2* vec2 = (glm::vec2*)input_ptr;
+    //                     vec2->x = *(float*)(buf + 0);
+    //                     vec2->y = *(float*)(buf + sizeof(float) * 1);
+    //                     break;
+    //                 }
+    //                 case 3: {
+    //                     glm::vec3* vec3 = (glm::vec3*)input_ptr;
+    //                     vec3->x = *(float*)(buf + 0);
+    //                     vec3->y = *(float*)(buf + sizeof(float) * 1);
+    //                     vec3->z = *(float*)(buf + sizeof(float) * 2);
+    //                     break;
+    //                 }
+    //                 default:
+    //                     throw std::runtime_error("not supported size\n");
+    //                 }
+    //                 break;
+    //             default:
+    //                 throw std::runtime_error("not supported type\n");
+    //         }
+    //         vertex_offsets[j] += config.stride;
+    //     }
+    // }
 }
 
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////

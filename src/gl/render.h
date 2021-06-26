@@ -10,6 +10,11 @@ void process_geometry();
 void rasterize();
 void process_pixel();
 
+// new interface for parallel
+void geometry_processing();
+void binning();
+void rasterization();
+
 // interface multi-thread version
 void terminate_all_threads();
 void process_geometry_threadmain();
