@@ -554,9 +554,9 @@ int main()
     // testBasic();
     // testDrawNaiveImage();
     // testDrawInWindow();
-    testTexture();
+    // testTexture();
     // testDrawCowFile();
     // testDrawCowWindow();
-    // testTexture();
+    testEBO();
     return 0;
 }

@@ -138,8 +138,12 @@ PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color.y = color.y;
     // frag_Color.z = color.z;
     PixelShaderResult result;
-    glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-    result.fragColor = color;
+    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
+    // result.fragColor = color;
+    result.fragColor.x = params.color.x * 255;
+    result.fragColor.y = params.color.y * 255;
+    result.fragColor.z = params.color.z * 255;
+    
     return result;
 }
 
@@ -174,8 +178,10 @@ glPipeline::glPipeline(){
     vertex_num = 0;
     first_vertex = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
-    exec.emplace_back(process_geometry);
-    exec.emplace_back(rasterize);
+    // exec.emplace_back(process_geometry);
+    // exec.emplace_back(rasterize);
+    exec.emplace_back(geometry_processing);
+    exec.emplace_back(rasterization);
     exec.emplace_back(process_pixel);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
@@ -184,3 +190,4 @@ glPipeline::glPipeline(){
         textures[i] = nullptr;
     }
 }
+

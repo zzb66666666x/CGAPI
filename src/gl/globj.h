@@ -196,6 +196,7 @@ class glThreads{
 
 struct PixelShaderParam{
     glm::vec2 texcoord;
+    glm::vec3 color;
 };
 
 struct PixelShaderResult{
@@ -261,6 +262,8 @@ class glPipeline{
         // data needed for render functions
         pthread_mutex_t triangle_stream_mtx;
         std::queue<Triangle*> triangle_stream;
+        // triangle list for new interfaces
+        std::vector<Triangle> triangle_list;
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;

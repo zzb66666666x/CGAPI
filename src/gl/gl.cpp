@@ -483,25 +483,25 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
     ret = vaos.searchStorage(&vao_ptr, vao_id);
     if (ret == GL_FAILURE
         || vao_ptr->bind != GL_BIND_VAO
-        || vao_ptr->getDataPtr()
+        || vao_ptr->getDataPtr() == nullptr
         || vao_ptr->getSize() <= 0) {
         return;
     }
     ret = bufs.searchStorage(&vbo_ptr, vbo_id);
     if (ret == GL_FAILURE
         || vbo_ptr->bind != GL_ARRAY_BUFFER
-        || vbo_ptr->getDataPtr()
+        || vbo_ptr->getDataPtr() == nullptr
         || vbo_ptr->getSize() <= 0) {
         return;
     }
     ret = bufs.searchStorage(&ebo_ptr, ebo_id);
-    if (ret == GL_FAILURE 
+    if (ret == GL_FAILURE
         || ebo_ptr->bind != GL_ELEMENT_ARRAY_BUFFER
-        || ebo_ptr->getDataPtr() != nullptr
+        || ebo_ptr->getDataPtr() == nullptr
         || ebo_ptr->getSize() <= 0) {
         return;
     }
-    
+
     // sanity check for texture resources
     // check active textures, tell pipeline what are the useful textures
     int cnt = 0;
