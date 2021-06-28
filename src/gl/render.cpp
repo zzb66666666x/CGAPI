@@ -269,8 +269,9 @@ void process_pixel()
 
 ////////////////// new interface for parallel //////////////////////////
 
-static void process_primitive(int first_vertex_ind, int end_vertex_ind)
+static void process_primitive()
 {
+
 }
 
 void geometry_processing()
@@ -291,7 +292,7 @@ void geometry_processing()
         }
     }
 
-    std::vector<int> indices;
+    std::vector<int>& indices = ppl->indices;
     int triangle_size = 0;
     if (ppl->use_indices) {
         // first ebo data index
@@ -334,6 +335,9 @@ void geometry_processing()
         triangle_size = (vertex_num - first_vertex_ind) / 3;
     }
 
+    /**
+     * 
+     */
     unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
 
     std::vector<Triangle>& triangle_list = ppl->triangle_list;
@@ -349,22 +353,22 @@ void geometry_processing()
                     throw std::runtime_error("invalid layout\n");
                 }
                 switch (ctx->shader.layouts[j]) {
-                case LAYOUT_POSITION:
-                    input_ptr = &(ctx->shader.input_Pos);
-                    break;
-                case LAYOUT_COLOR:
-                    input_ptr = &(ctx->shader.vert_Color);
-                    break;
-                case LAYOUT_TEXCOORD:
-                    input_ptr = &(ctx->shader.iTexcoord);
-                    break;
-                case LAYOUT_NORMAL:
-                    input_ptr = &(ctx->shader.vert_Normal);
-                    break;
-                case LAYOUT_INVALID:
-                default:
-                    input_ptr = nullptr;
-                    break;
+                    case LAYOUT_POSITION:
+                        input_ptr = &(ctx->shader.input_Pos);
+                        break;
+                    case LAYOUT_COLOR:
+                        input_ptr = &(ctx->shader.vert_Color);
+                        break;
+                    case LAYOUT_TEXCOORD:
+                        input_ptr = &(ctx->shader.iTexcoord);
+                        break;
+                    case LAYOUT_NORMAL:
+                        input_ptr = &(ctx->shader.vert_Normal);
+                        break;
+                    case LAYOUT_INVALID:
+                    default:
+                        input_ptr = nullptr;
+                        break;
                 }
                 if (input_ptr == nullptr) {
                     continue;
@@ -373,27 +377,27 @@ void geometry_processing()
                 // buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
                 buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
                 switch (config.type) {
-                case GL_FLOAT:
-                    switch (config.size) {
-                    case 2: {
-                        glm::vec2* vec2 = (glm::vec2*)input_ptr;
-                        vec2->x = *(float*)(buf + 0);
-                        vec2->y = *(float*)(buf + sizeof(float) * 1);
-                        break;
-                    }
-                    case 3: {
-                        glm::vec3* vec3 = (glm::vec3*)input_ptr;
-                        vec3->x = *(float*)(buf + 0);
-                        vec3->y = *(float*)(buf + sizeof(float) * 1);
-                        vec3->z = *(float*)(buf + sizeof(float) * 2);
-                        break;
-                    }
+                    case GL_FLOAT:
+                        switch (config.size) {
+                            case 2: {
+                                glm::vec2* vec2 = (glm::vec2*)input_ptr;
+                                vec2->x = *(float*)(buf + 0);
+                                vec2->y = *(float*)(buf + sizeof(float) * 1);
+                                break;
+                            }
+                            case 3: {
+                                glm::vec3* vec3 = (glm::vec3*)input_ptr;
+                                vec3->x = *(float*)(buf + 0);
+                                vec3->y = *(float*)(buf + sizeof(float) * 1);
+                                vec3->z = *(float*)(buf + sizeof(float) * 2);
+                                break;
+                            }
+                            default:
+                                throw std::runtime_error("not supported size\n");
+                            }
+                            break;
                     default:
-                        throw std::runtime_error("not supported size\n");
-                    }
-                    break;
-                default:
-                    throw std::runtime_error("not supported type\n");
+                        throw std::runtime_error("not supported type\n");
                 }
             }
             // 4. vertex shading

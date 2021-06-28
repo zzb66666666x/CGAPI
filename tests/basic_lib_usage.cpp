@@ -127,13 +127,23 @@ int load_vertices(std::vector<float> & vertices){
     return ret;
 }
 
+static void testBunny(){
+    if (!glvInit()) {
+        std::cout << "glv Init failed\n";
+        return;
+    }
+    GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "bunny_test", GLV_STREAM_WINDOW);
+    glEnable(GL_DEPTH_TEST);
+    
+}
+
 static void testEBO()
 {
     if (!glvInit()) {
         std::cout << "glv Init failed\n";
         return;
     }
-    GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "texture_test", GLV_STREAM_WINDOW);
+    GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "ebo_test", GLV_STREAM_WINDOW);
     glEnable(GL_DEPTH_TEST);
     
     // glDrawElements
