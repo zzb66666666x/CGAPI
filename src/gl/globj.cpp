@@ -178,10 +178,10 @@ glPipeline::glPipeline(){
     vertex_num = 0;
     first_vertex = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
-    // exec.emplace_back(process_geometry);
-    // exec.emplace_back(rasterize);
-    exec.emplace_back(geometry_processing);
-    exec.emplace_back(rasterization);
+    exec.emplace_back(process_geometry);
+    exec.emplace_back(rasterize);
+    // exec.emplace_back(geometry_processing);
+    // exec.emplace_back(rasterization);
     exec.emplace_back(process_pixel);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;

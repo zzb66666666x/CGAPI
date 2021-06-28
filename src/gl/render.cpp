@@ -35,6 +35,7 @@ void process_geometry()
     int vbuf_size = P->vbo_ptr->getSize();
     int vertex_num = P->vertex_num;
     // 2. check if the config is activated
+    int indices[GL_MAX_VERTEX_ATTRIB_NUM];
     for (int i = 0; i < C->shader.layout_cnt; i++) {
         if (C->shader.layouts[i] == LAYOUT_INVALID) {
             continue;
@@ -44,31 +45,31 @@ void process_geometry()
         } else if (!vattrib_data[C->shader.layouts[i]].activated) {
             C->shader.layouts[i] = LAYOUT_INVALID;
         }
+        else{
+            // valid layout
+            int temp = C->shader.layouts[i];
+            indices[temp] = (P->first_vertex) * (vattrib_data[temp].stride);
+        }
     }
     // 3. parse vertex data
-    vbuf_data += (P->first_vertex) * (vattrib_data[0].stride); // use the first stride to determine start of vertex buffer
-    // float * temp = (float*) vbuf_data;
-    // for (int i=0; i<18; i++){
-    //     std::cout<<temp[i]<<std::endl;
-    // }
-
     int cnt = P->first_vertex;
     char* buf;
-    int indices[] = { 0, 0, 0 };
     void* input_ptr;
     int flag = 1;
     Triangle* tri = new Triangle();
     angle = angle + 2.0f;
+    C->shader.set_transform_matrices(C->width, C->height, C->znear, C->zfar, angle);
     while (cnt < vertex_num) {
         if (!flag) {
             delete tri;
             break;
         }
         for (int i = 0; i < C->shader.layout_cnt; i++) {
-            if (C->shader.layouts[i] > 3) {
+            int layout = C->shader.layouts[i];
+            if (layout > 3) {
                 throw std::runtime_error("invalid layout\n");
             }
-            switch (C->shader.layouts[i]) {
+            switch (layout) {
             case LAYOUT_POSITION:
                 input_ptr = &(C->shader.input_Pos);
                 break;
@@ -88,8 +89,9 @@ void process_geometry()
             }
             if (input_ptr == nullptr)
                 continue;
-            vertex_attrib_t& config = vattrib_data[C->shader.layouts[i]];
-            buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
+            vertex_attrib_t& config = vattrib_data[layout];
+            buf = vbuf_data + (P->first_vertex) * (config.stride) +
+                  (indices[layout] + (int)((long long)config.pointer));
             switch (config.type) {
             case GL_FLOAT:
                 switch (config.size) {
@@ -114,13 +116,12 @@ void process_geometry()
             default:
                 throw std::runtime_error("not supported type\n");
             }
-            indices[i] += config.stride;
-            if (indices[i] >= vbuf_size) {
+            indices[layout] += config.stride;
+            if (indices[layout] >= vbuf_size) {
                 flag = 0;
             }
-        }
+        } 
         // 4. vertex shading
-        C->shader.set_transform_matrices(C->width, C->height, C->znear, C->zfar, angle);
         C->shader.default_vertex_shader();
 
         C->shader.gl_Position.x /= C->shader.gl_Position.w;
@@ -470,11 +471,6 @@ void rasterization()
 }
 
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
-// macros
-#define PROCESS_VERTEX_THREAD_COUNT 3
-#define DOING_VERTEX_PROCESSING 1
-#define DOING_RASTERIZATION 2
-
 // thread functions
 void* _thr_process_vertex(void* thread_id);
 void* _thr_rasterize(void* thread_id);
@@ -564,7 +560,12 @@ void* _thr_process_vertex(void* thread_id)
     void* input_ptr = nullptr;
     // while the whole program is not terminated (eg. press the close button of window)
     while (!quit_vertex_processing) {
-        // TODO: do one frame's job, and sleep
+        // do one frame's job, and sleep
+        // 1. fetch data from context
+        // 2. register config information of all layouts to crawler
+        // 3. crawl the data until return failure
+        // 4. sync and merge crawlers
+        // 5. reset the crawler and ready for next frame
     }
     return nullptr;
 }

@@ -553,10 +553,10 @@ int main()
 {
     // testBasic();
     // testDrawNaiveImage();
-    // testDrawInWindow();
+    testDrawInWindow();
     // testTexture();
     // testDrawCowFile();
     // testDrawCowWindow();
-    testEBO();
+    // testEBO();
     return 0;
 }

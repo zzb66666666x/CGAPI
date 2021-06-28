@@ -2,9 +2,12 @@
 #define _GEOMETRY_H
 
 #include "configs.h"
+#include "../../include/gl/common.h"
 #include <stdio.h>
 #include <glm/glm.hpp>
 #include <array>
+#include <map>
+#include <queue>
 #include <assert.h>
 #include <math.h>
 
@@ -19,34 +22,8 @@ public:
     glm::vec3 frag_shading_pos[3];
     glm::vec2 texcoord[3];
 
-    bool inside(float x, float y)
-    {
-        glm::vec3 f0, f1, f2;
-        glm::vec3 v[3];
-        for (int i = 0; i < 3; ++i)
-        {
-            v[i] = {screen_pos[i].x, screen_pos[i].y, 1.0};
-        }
-        f0 = glm::cross(v[1], v[0]);
-        f1 = glm::cross(v[2], v[1]);
-        f2 = glm::cross(v[0], v[2]);
-        glm::vec3 p(x, y, 1.0f);
-        if ((glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0))
-        {
-            return true;
-        }
-        return false;
-    }
-
-    glm::vec3 computeBarycentric2D(float x, float y)
-    {
-        glm::vec4 *v = screen_pos;
-        float c1 = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y - v[2].x * v[1].y) / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
-        float c2 = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y - v[0].x * v[2].y) / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
-        float c3 = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y - v[1].x * v[0].y) / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);
-        // assert(_sanity_check(c1, c2, c3) == 1 );
-        return {c1, c2, c3};
-    }
+    bool inside(float x, float y);
+    glm::vec3 computeBarycentric2D(float x, float y);
 
 private:
     inline int _sanity_check(float c1, float c2, float c3){
@@ -56,5 +33,46 @@ private:
         return 0;
     }
 };
+
+typedef struct{
+    int sizes[GL_MAX_VERTEX_ATTRIB_NUM];
+    int strides[GL_MAX_VERTEX_ATTRIB_NUM];
+    int indices[GL_MAX_VERTEX_ATTRIB_NUM];
+    int offsets[GL_MAX_VERTEX_ATTRIB_NUM];
+    GLenum dtypes[GL_MAX_VERTEX_ATTRIB_NUM];
+} crawler_config_t;
+
+// forward definition
+class glProgram;
+class TriangleCrawler{
+    public:
+        TriangleCrawler(){}
+        inline void set_config(int layout, int size, int stride, int offset, GLenum dtype){
+            if (dtype != GL_FLOAT){
+                throw std::runtime_error("not supporting non float dtype when parsing vertex data");
+            }
+            config.sizes[layout] = size;
+            config.strides[layout] = stride;
+            config.offsets[layout] = offset;
+            config.dtypes[layout] = dtype;
+        }
+        inline void reset_config(){
+            for (int i=0; i<GL_MAX_VERTEX_ATTRIB_NUM; i++){
+                config.sizes[i] = 0;
+                config.strides[i] = 0;
+                config.indices[i] = 0;
+                config.offsets[i] = 0;
+                config.dtypes[i] = GL_FLOAT;
+            }
+        }
+        int crawl(char* source, int buf_size, int first_vertex, glProgram& shader);
+
+        std::map<int, std::queue<glm::vec1>> data_float_vec1;
+        std::map<int, std::queue<glm::vec2>> data_float_vec2;
+        std::map<int, std::queue<glm::vec3>> data_float_vec3;
+        std::map<int, std::queue<glm::vec4>> data_float_vec4;
+        crawler_config_t config;
+};
+
 
 #endif
