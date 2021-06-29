@@ -216,18 +216,21 @@ static void process_pixel_task(int begin, int end, std::vector<Pixel>& pixel_tas
     GET_CURRENT_CONTEXT(ctx);
     for (int i = begin; i < end; ++i) {
         if (pixel_tasks[i].write) {
-            // ctx->shader.diffuse_Color = pixel_tasks[i].vertexColor;
-            // ctx->shader.texcoord = pixel_tasks[i].texcoord;
-            // frame_buf[i].R = ctx->shader.frag_Color.x;
-            // frame_buf[i].G = ctx->shader.frag_Color.y;
-            // frame_buf[i].B = ctx->shader.frag_Color.z;
             PixelShaderParam params;
             params.texcoord = pixel_tasks[i].texcoord;
+            params.color = pixel_tasks[i].vertexColor;
             PixelShaderResult res = ctx->shader.default_fragment_shader(params);
             frame_buf[i].R = res.fragColor.x;
             frame_buf[i].G = res.fragColor.y;
             frame_buf[i].B = res.fragColor.z;
             pixel_tasks[i].write = false;
+            // PixelShaderParam params;
+            // params.texcoord = pixel_tasks[i].texcoord;
+            // PixelShaderResult res = ctx->shader.default_fragment_shader(params);
+            // frame_buf[i].R = res.fragColor.x;
+            // frame_buf[i].G = res.fragColor.y;
+            // frame_buf[i].B = res.fragColor.z;
+            // pixel_tasks[i].write = false;
         }
     }
 }
@@ -302,8 +305,7 @@ void geometry_processing()
                 // ebo data array
                 unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
                 int first_index = (size_t)first_indices / sizeof(unsigned int);
-                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize() / sizeof(unsigned int));
-
+                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
                 // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
                 ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
                 // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;

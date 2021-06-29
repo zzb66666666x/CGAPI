@@ -137,9 +137,11 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     model = glm::mat4(1.0f); 
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
-    model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
+    model = glm::scale(model, glm::vec3(0.7f, 0.7f, 0.7f));
+    // model = glm::scale(model, glm::vec3(15.0f, 15.0f, 15.0f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
