@@ -126,23 +126,23 @@ glProgram::glProgram(){
 }
 
 void glProgram::default_vertex_shader(){
+    // std::cout<<input_Pos.x<<" "<<input_Pos.y<<" "<<input_Pos.z<<std::endl;
     frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
     gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
     gl_VertexColor = vert_Color;
+    gl_Normal = glm::vec3(0,0,0);
 }
 
 PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color = diffuse_Color;
-    // glm::vec4 color = texture2D(diffuse_texture, texcoord);
-    // frag_Color.x = color.x;
-    // frag_Color.y = color.y;
-    // frag_Color.z = color.z;
+
     PixelShaderResult result;
-    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-    // result.fragColor = color;
-    result.fragColor.x = params.color.x * 255;
-    result.fragColor.y = params.color.y * 255;
-    result.fragColor.z = params.color.z * 255;
+    glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
+    // std::cout<<color.x<<" "<<color.y<<" "<<color.z<<std::endl;
+    result.fragColor = color;
+    // result.fragColor.x = params.color.x * 255;
+    // result.fragColor.y = params.color.y * 255;
+    // result.fragColor.z = params.color.z * 255;
     
     return result;
 }
@@ -152,7 +152,7 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
+    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
@@ -178,8 +178,8 @@ glPipeline::glPipeline(){
     vertex_num = 0;
     first_vertex = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
-    exec.emplace_back(process_geometry);
-    exec.emplace_back(rasterize);
+    exec.emplace_back(process_geometry_threadmain);
+    exec.emplace_back(rasterize_threadmain);
     // exec.emplace_back(geometry_processing);
     // exec.emplace_back(rasterization);
     exec.emplace_back(process_pixel);

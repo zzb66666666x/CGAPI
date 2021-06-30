@@ -20,16 +20,16 @@ public:
     glm::vec4 screen_pos[3];
     glm::vec3 color[3];
     glm::vec3 frag_shading_pos[3];
+    glm::vec3 vert_normal[3];
     glm::vec2 texcoord[3];
 
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
 
-private:
-    inline int _sanity_check(float c1, float c2, float c3){
-        // printf("%f, %f, %f\n", c1, c2, c3);
-        if (abs(1-c1-c2-c3) < 0.01)
+    inline int sanity_check(float c1, float c2, float c3){
+        if (abs(1-c1-c2-c3) < 0.1)
             return 1;
+        printf("%f, %f, %f\n", c1, c2, c3);
         return 0;
     }
 };
@@ -46,7 +46,7 @@ typedef struct{
 class glProgram;
 class TriangleCrawler{
     public:
-        TriangleCrawler(){}
+        TriangleCrawler();
         inline void set_config(int layout, int size, int stride, int offset, GLenum dtype){
             if (dtype != GL_FLOAT){
                 throw std::runtime_error("not supporting non float dtype when parsing vertex data");
@@ -63,6 +63,38 @@ class TriangleCrawler{
                 config.indices[i] = 0;
                 config.offsets[i] = 0;
                 config.dtypes[i] = GL_FLOAT;
+            }
+        }
+        inline void reset_data(){
+            {
+                std::map<int, std::queue<glm::vec2>>::iterator it;
+                for (it=data_float_vec2.begin(); it!=data_float_vec2.end(); it++){
+                    while (! it->second.empty())
+                        it->second.pop();
+                }
+            }
+            {
+                std::map<int, std::queue<glm::vec3>>::iterator it;
+                for (it=data_float_vec3.begin(); it!=data_float_vec3.end(); it++){
+                    while (! it->second.empty())
+                        it->second.pop();
+                }
+            }
+            {
+                std::map<int, std::queue<glm::vec4>>::iterator it;
+                for (it=data_float_vec4.begin(); it!=data_float_vec4.end(); it++){
+                    while (! it->second.empty())
+                        it->second.pop();
+                }
+            }
+        }
+        inline void set_start_point(int * layouts, int layout_cnt, int thread_id, int first_vertex){
+            for (int i=0; i<layout_cnt; i++){
+                int layout = layouts[i];
+                if (layout<0)
+                    continue;
+                config.indices[layout] = first_vertex * config.strides[layout];
+                config.indices[layout] += thread_id * config.strides[layout];
             }
         }
         int crawl(char* source, int buf_size, int first_vertex, glProgram& shader);

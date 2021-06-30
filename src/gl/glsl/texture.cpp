@@ -8,7 +8,7 @@ glm::vec4 texture2D(sampler2D &texture, glm::vec2 &texcoord)
     if (texture.config.height == 0 || texture.config.width == 0)
         throw std::runtime_error("invalid texture used in shader\n");
     float x = texcoord.x * texture.config.width;
-    float y = (1.0f - texcoord.y) * texture.config.height;
+    float y = texcoord.y * texture.config.height;
     int channel;
     if (texture.filter == filter_type::NEAREST)
     {

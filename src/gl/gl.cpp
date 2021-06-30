@@ -421,6 +421,7 @@ void glDrawArrays(GLenum mode, int first, int count){
     char* vb_data = (char*) vbo_ptr->getDataPtr();
     if (vb_data == nullptr || vbo_ptr->getSize()<=0)
         return;
+
     // sanity check for texture resources
     // check active textures, tell pipeline what are the useful textures
     int cnt = 0;
@@ -481,7 +482,6 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
     if (vao_id < 0 || vbo_id < 0 || ebo_id < 0) {
         return;
     }
-
     ret = vaos.searchStorage(&vao_ptr, vao_id);
     if (ret == GL_FAILURE
         || vao_ptr->bind != GL_BIND_VAO
@@ -503,7 +503,6 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         || ebo_ptr->getSize() <= 0) {
         return;
     }
-
     // sanity check for texture resources
     // check active textures, tell pipeline what are the useful textures
     int cnt = 0;

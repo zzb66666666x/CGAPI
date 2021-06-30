@@ -475,6 +475,9 @@ void rasterization()
 void* _thr_process_vertex(void* thread_id);
 void* _thr_rasterize(void* thread_id);
 
+// helpers
+static inline void _merge_crawlers();
+
 // thread sync, the barrier to sync threads after processing 3 vertices
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
@@ -483,7 +486,7 @@ int process_vertex_sync = 0;
 // global variables
 volatile int quit_vertex_processing = 0; // for terminate the threads, make thread functions quit while loop
 volatile int globl_proceed_flag = 1; // flag for whether the vertex processing is finished
-Triangle* globl_new_triangle = nullptr; // assembly the triangle
+TriangleCrawler crawlers[PROCESS_VERTEX_THREAD_COUNT];
 
 // pipeline status
 static pthread_mutex_t pipeline_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -501,10 +504,112 @@ void terminate_all_threads()
     }
 }
 
+static inline void _merge_crawlers(){
+    // only one thread is allowed to enter this function in one time
+    Triangle * tri = new Triangle;
+    int cnt = 0;
+    int crawlerID = 0;
+    int flag = 1;
+    while (flag){
+        TriangleCrawler& crawler = crawlers[crawlerID];
+        crawlerID = (crawlerID+1) % PROCESS_VERTEX_THREAD_COUNT;
+        if (cnt%3 == 0 && cnt>0){
+            glapi_ctx->pipeline.triangle_stream.push(tri);
+            tri = new Triangle;
+        }
+        if(flag){
+            // vec2
+            std::map<int, std::queue<glm::vec2>>::iterator it;
+            glm::vec2 * vec_ptr;
+            for (it = crawler.data_float_vec2.begin(); it != crawler.data_float_vec2.end(); it++){
+                vec_ptr = nullptr;
+                switch(it->first){
+                    case VSHADER_OUT_TEXCOORD:
+                        vec_ptr = &(tri->texcoord[cnt%3]);
+                        break;
+                    default:
+                        break;
+                }
+                if (it->second.empty() || vec_ptr == nullptr){
+                    flag = 0;
+                    delete tri;
+                    tri = nullptr;
+                    break;
+                }
+                else{
+                    *vec_ptr = it->second.front();
+                    it->second.pop();
+                }
+            }
+        }
+        if (flag){
+            // vec3 
+            std::map<int,std::queue<glm::vec3>>::iterator it;
+            glm::vec3* vec_ptr;
+            for (it = crawler.data_float_vec3.begin(); it != crawler.data_float_vec3.end(); it++){
+                vec_ptr = nullptr;
+                switch(it->first){
+                    case VSHADER_OUT_COLOR:
+                        vec_ptr = &(tri->color[cnt%3]);
+                        break;
+                    case VSHADER_OUT_NORMAL:
+                        vec_ptr = &(tri->vert_normal[cnt%3]);
+                        break;
+                    case VSHADER_OUT_FRAGPOS:
+                        vec_ptr = &(tri->frag_shading_pos[cnt%3]);
+                        break;
+                    default:
+                        break;
+                }
+                if (it->second.empty() || vec_ptr==nullptr){
+                    flag = 0;
+                    delete tri;
+                    tri = nullptr;
+                    break;
+                }
+                else{
+                    *vec_ptr = it->second.front();
+                    it->second.pop();
+                }
+            }
+        }
+        if (flag){
+            // vec4
+            std::map<int, std::queue<glm::vec4>>::iterator it;
+            glm::vec4* vec_ptr;
+            for (it = crawler.data_float_vec4.begin(); it != crawler.data_float_vec4.end(); it++){
+                vec_ptr = nullptr;
+                switch(it->first){
+                    case VSHADER_OUT_POSITION:
+                        vec_ptr = &(tri->screen_pos[cnt%3]);
+                        break;
+                    default:
+                        break;
+                }
+                if (it->second.empty() || vec_ptr==nullptr){
+                    flag = 0;
+                    delete tri;
+                    tri = nullptr;
+                    break;
+                }
+                else{
+                    *vec_ptr = it->second.front();
+                    it->second.pop();
+                }
+            }
+        }
+        // std::cout<<tri->color[0].x<<" "<<tri->color[0].y<<" "<<tri->color[0].z<<std::endl;
+        // std::cout<<tri->color[1].x<<" "<<tri->color[1].y<<" "<<tri->color[1].z<<std::endl;
+        // std::cout<<tri->color[2].x<<" "<<tri->color[2].y<<" "<<tri->color[2].z<<std::endl;
+        // std::cout<<std::endl;
+        cnt++;
+    }
+}
+
 void process_geometry_threadmain()
 {
     static int first_entry = 1;
-    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = { 0, 1, 2 };
+    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = {0};
     GET_CURRENT_CONTEXT(C);
     GET_PIPELINE(P);
     // update the angle
@@ -529,6 +634,7 @@ void process_geometry_threadmain()
         first_entry = 0;
         // create threads
         for (int i = 0; i < PROCESS_VERTEX_THREAD_COUNT; i++) {
+            crawlers[i].reset_config();
             pthread_create(&ths[thread_ids[i]], NULL, _thr_process_vertex, (void*)(long long)i);
         }
     }
@@ -555,24 +661,57 @@ void* _thr_process_vertex(void* thread_id)
     char* vbuf_data = nullptr;
     int vbuf_size = 0;
     int vertex_num = 0;
-    // constantly changing variables
-    char* buf = nullptr;
-    void* input_ptr = nullptr;
     // while the whole program is not terminated (eg. press the close button of window)
     while (!quit_vertex_processing) {
         // do one frame's job, and sleep
         // 1. fetch data from context
+        vattrib_data = (vertex_attrib_t*) C->pipeline.vao_ptr->getDataPtr();
+        vbuf_data = (char*)C->pipeline.vbo_ptr->getDataPtr();
+        vbuf_size = C->pipeline.vbo_ptr->getSize();
         // 2. register config information of all layouts to crawler
+        for (int i=0; i<GL_MAX_VERTEX_ATTRIB_NUM; i++){
+            int layout = local_shader.layouts[i];
+            if (layout>=0 && layout<GL_MAX_VERTEX_ATTRIB_NUM){
+                crawlers[id].set_config(layout, vattrib_data[layout].size, vattrib_data[layout].stride,
+                (int)(long long)vattrib_data[layout].pointer, vattrib_data[layout].type);
+            }
+        }
+        crawlers[id].set_start_point(local_shader.layouts, local_shader.layout_cnt, id, C->pipeline.first_vertex);
         // 3. crawl the data until return failure
+        while (1){
+            int ret = crawlers[id].crawl(vbuf_data, vbuf_size, C->pipeline.first_vertex, local_shader);
+            if (ret==GL_FAILURE)
+                break; 
+        }
         // 4. sync and merge crawlers
+        pthread_mutex_lock(&vertex_threads_mtx);
+        process_vertex_sync ++;
+        if (process_vertex_sync == PROCESS_VERTEX_THREAD_COUNT){
+            process_vertex_sync = 0;
+            // merge crawlers
+            _merge_crawlers();
+            // move the pipeline forward
+            pthread_mutex_lock(&pipeline_mtx);
+            pipeline_stage = DOING_RASTERIZATION;
+            pthread_cond_signal(&pipeline_cv);
+            pthread_mutex_unlock(&pipeline_mtx);
+            // sleep 
+            while (pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx) != 0);
+        }
+        else{
+            while (pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx) != 0);
+        }
+        pthread_mutex_unlock(&vertex_threads_mtx);
         // 5. reset the crawler and ready for next frame
+        crawlers[id].reset_config();
+        crawlers[id].reset_data();
     }
     return nullptr;
 }
 
 void rasterize_threadmain()
 {
-    std::cout << "begin to rasterize\n";
+    // std::cout << "begin to rasterize\n";
     rasterize();
 }
 

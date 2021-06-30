@@ -5,7 +5,7 @@
 
 typedef void (*render_fp)();
 
-#define PROCESS_VERTEX_THREAD_COUNT 3
+#define PROCESS_VERTEX_THREAD_COUNT 1
 #define DOING_VERTEX_PROCESSING 1
 #define DOING_RASTERIZATION 2
 

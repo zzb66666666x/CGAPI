@@ -1,6 +1,7 @@
 #include "configs.h"
 #include "geometry.h"
-#include "globj.h"
+#include "render.h"
+#include "glcontext.h"
 
 bool Triangle::inside(float x, float y)
 {
@@ -24,21 +25,34 @@ bool Triangle::inside(float x, float y)
 glm::vec3 Triangle::computeBarycentric2D(float x, float y)
 {
     glm::vec4 *v = screen_pos;
-    float c1 = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y - v[2].x * v[1].y) / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
-    float c2 = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y - v[0].x * v[2].y) / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
-    float c3 = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y - v[1].x * v[0].y) / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);
-    // assert(_sanity_check(c1, c2, c3) == 1 );
+    float c1 = (x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*y + v[1].x*v[2].y - v[2].x*v[1].y) / (v[0].x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*v[0].y + v[1].x*v[2].y - v[2].x*v[1].y);
+    float c2 = (x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*y + v[2].x*v[0].y - v[0].x*v[2].y) / (v[1].x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*v[1].y + v[2].x*v[0].y - v[0].x*v[2].y);
+    float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
     return {c1, c2, c3};
+}
+
+TriangleCrawler::TriangleCrawler(){
+    data_float_vec4.emplace(VSHADER_OUT_POSITION, std::queue<glm::vec4>());
+    data_float_vec3.emplace(VSHADER_OUT_COLOR, std::queue<glm::vec3>());
+    data_float_vec3.emplace(VSHADER_OUT_NORMAL, std::queue<glm::vec3>());
+    data_float_vec3.emplace(VSHADER_OUT_FRAGPOS, std::queue<glm::vec3>());
+    data_float_vec2.emplace(VSHADER_OUT_TEXCOORD, std::queue<glm::vec2>());
 }
 
 int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgram& shader){
     void* input_ptr;
     char* buf;
+    GET_CURRENT_CONTEXT(C);
     for (int i = 0; i < shader.layout_cnt; i++) {
-        if (shader.layouts[i] > 3) {
+        // looping over the layout and prepare for one vertex shader call
+        int layout = shader.layouts[i];
+        if (layout > 3) {
             throw std::runtime_error("invalid layout\n");
         }
-        switch (shader.layouts[i]) {
+        if (config.indices[layout] >= buf_size) {
+            return GL_FAILURE;
+        }
+        switch (layout) {
         case LAYOUT_POSITION:
             input_ptr = &(shader.input_Pos);
             break;
@@ -58,7 +72,6 @@ int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgr
         }
         if (input_ptr == nullptr)
             continue;
-        int layout = shader.layouts[i];
         buf = source + first_vertex * (config.strides[layout]) +
                 (config.indices[layout] + config.offsets[layout]);
         switch (config.dtypes[layout]) {
@@ -84,10 +97,21 @@ int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgr
         default:
             throw std::runtime_error("not supported type\n");
         }
-        config.indices[layout] += config.strides[layout];
-        if (config.indices[layout] >= buf_size) {
-            return GL_FAILURE;
-        }
+        config.indices[layout] += config.strides[layout] * PROCESS_VERTEX_THREAD_COUNT;
+        // finish moving the crawler's forward for current layout
     }
+    // finish setting up the thread local shader
+    shader.default_vertex_shader();
+    shader.gl_Position.x /= shader.gl_Position.w;
+    shader.gl_Position.y /= shader.gl_Position.w;
+    shader.gl_Position.z /= shader.gl_Position.w;
+    shader.gl_Position.x = 0.5 * C->width * (shader.gl_Position.x + 1.0);
+    shader.gl_Position.y = 0.5 * C->height * (shader.gl_Position.y + 1.0);
+    shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;   
+    data_float_vec4[VSHADER_OUT_POSITION].push(shader.gl_Position);
+    data_float_vec3[VSHADER_OUT_COLOR].push(shader.gl_VertexColor);
+    data_float_vec3[VSHADER_OUT_FRAGPOS].push(shader.frag_Pos);
+    data_float_vec3[VSHADER_OUT_NORMAL].push(shader.gl_Normal);
+    data_float_vec2[VSHADER_OUT_TEXCOORD].push(shader.iTexcoord);
     return GL_SUCCESS; 
 }
