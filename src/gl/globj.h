@@ -275,6 +275,7 @@ class glPipeline{
         std::queue<Triangle*> triangle_stream;
         // triangle list for new interfaces
         std::vector<Triangle> triangle_list;
+        std::vector<int> indices;
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
