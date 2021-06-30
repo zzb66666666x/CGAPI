@@ -202,15 +202,9 @@ class glThreads{
     public:
     glThreads();
     pthread_t thr_arr[THREAD_NUM];
-};
-
-struct PixelShaderParam{
-    glm::vec2 texcoord;
-    glm::vec3 color;
-};
-
-struct PixelShaderResult{
-    glm::vec4 fragColor;
+    int usage[THREAD_NUM];
+    int get(int* arg, int thread_num);
+    void reset();
 };
 
 class glProgram{
@@ -223,11 +217,11 @@ class glProgram{
     glm::vec3 input_Pos;
     glm::vec3 vert_Color;
     glm::vec2 iTexcoord;
+    glm::vec3 vert_Normal;
     // vertex shader output variable
     glm::vec4 gl_Position;
     glm::vec3 gl_VertexColor;
     glm::vec3 gl_Normal;
-    glm::vec3 vert_Normal;
     // fragment shader
     glm::vec3 diffuse_Color;
     glm::vec3 frag_Pos;
@@ -239,7 +233,7 @@ class glProgram{
     sampler2D diffuse_texture;
     // methods
     void default_vertex_shader();
-    PixelShaderResult default_fragment_shader(PixelShaderParam &params);
+    void default_fragment_shader();
     void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
     void set_diffuse_texture(GLenum unit);
 };
@@ -265,32 +259,28 @@ struct Pixel{
 class glPipeline{
     public:
         glPipeline();
-        bool use_indices;
-        // drawElement
         // the number of cpu core
         int cpu_num;
-
         // data needed for render functions
-        pthread_mutex_t triangle_stream_mtx;
         std::queue<Triangle*> triangle_stream;
-        // triangle list for new interfaces
-        std::vector<Triangle> triangle_list;
-        std::vector<int> indices;
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
-        // glManager search cache  
-        // then in rendering pipeline, we don't have to search in glManager
+        // glManager search cache
         int first_vertex;
         int vertex_num;
         glObject* vao_ptr;
         glObject* vbo_ptr;
+        glObject* textures[GL_MAX_TEXTURE_UNITS];
+        // data structures supporting drawing by indices (EBO)
+        bool use_indices;
         struct {
             const void* first_indices;
             unsigned int indices_type;
             glObject* ebo_ptr;
         } ebo_config;
-        glObject* textures[GL_MAX_TEXTURE_UNITS];
+        std::vector<Triangle> triangle_list;
+        std::vector<int> indices;
 };
 
 #endif

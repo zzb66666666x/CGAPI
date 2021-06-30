@@ -96,7 +96,30 @@ glRenderPayload::glRenderPayload(){
 }
 
 glThreads::glThreads(){
+    memset(usage, 0, THREAD_NUM*sizeof(int));
+}
 
+int glThreads::get(int* arg, int thread_num){
+    if (thread_num <=0 || arg==nullptr)
+        return GL_FAILURE;
+    int cnt = 0;
+    for (int i=0; i<THREAD_NUM; i++){
+        if (!usage[i]){
+            arg[cnt] = i;
+            cnt++;
+        }
+        if (cnt == thread_num){
+            for (int j=0; j<thread_num; j++){
+                usage[arg[j]] = 1;
+            }
+            return GL_SUCCESS;
+        }
+    }
+    return GL_FAILURE;
+}
+
+void glThreads::reset(){
+    memset(usage, 0, THREAD_NUM*sizeof(int));
 }
 
 glProgram::glProgram(){
@@ -119,17 +142,12 @@ void glProgram::default_vertex_shader(){
     gl_Normal = glm::vec3(0,0,0);
 }
 
-PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
-    // frag_Color = diffuse_Color;
+void glProgram::default_fragment_shader(){
+    // without texture
+    frag_Color = diffuse_Color;
 
-    PixelShaderResult result;
-    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-
-    result.fragColor.x = params.color.x * 255;
-    result.fragColor.y = params.color.y * 255;
-    result.fragColor.z = params.color.z * 255;
-    
-    return result;
+    // with texture
+    // frag_Color = glm::vec3(texture2D(diffuse_texture, texcoord));
 }
 
 void glProgram::set_transform_matrices(int width, int height, float znear, float zfar, float angle){
@@ -159,15 +177,15 @@ void glProgram::set_diffuse_texture(GLenum unit){
 
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();
-    
     vertex_num = 0;
     first_vertex = 0;
-    triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
+    // if testing ebo
+    // exec.emplace_back(process_geometry_ebo);
+    // exec.emplace_back(rasterize_ebo);
+    // exec.emplace_back(process_pixel);
+    // if using multi-threading
     exec.emplace_back(process_geometry_threadmain);
     exec.emplace_back(rasterize_threadmain);
-    // exec.emplace_back(geometry_processing);
-    // exec.emplace_back(rasterization);
-    exec.emplace_back(process_pixel);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
     ebo_config.ebo_ptr = nullptr;

@@ -17,14 +17,22 @@
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define GET_INDEX(x, y, width, height) ((height - 1 - y) * width + x)
 
-// static helpers
-static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3& vert1, glm::vec3& vert2, glm::vec3& vert3, float weight);
-static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2& vert1, glm::vec2& vert2, glm::vec2& vert3, float weight);
-
 // for test
 float angle = 0.0f;
 
-// geometry processing
+////////////////// GENERAL STATIC HELPERS //////////////////
+inline static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3& vert1, glm::vec3& vert2, glm::vec3& vert3, float weight)
+{
+    return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
+}
+
+inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2& vert1, glm::vec2& vert2, glm::vec2& vert3, float weight)
+{
+    return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
+}
+
+////////////////// SINGLE-THREAD VERSION OF RENDERING //////////////////
+// single thread version of processing parsing vertex data 
 void process_geometry()
 {
     // 1. parse vbo and do vertex shading
@@ -148,137 +156,8 @@ void process_geometry()
     }
 }
 
-inline static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3& vert1, glm::vec3& vert2, glm::vec3& vert3, float weight)
-{
-    return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
-}
-
-inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2& vert1, glm::vec2& vert2, glm::vec2& vert3, float weight)
-{
-    return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
-}
-
-void rasterize()
-{
-    GET_CURRENT_CONTEXT(C);
-    std::queue<Triangle*>& triangle_stream = C->pipeline.triangle_stream;
-    int width = C->width, height = C->height;
-    std::vector<Pixel>& pixel_tasks = C->pipeline.pixel_tasks;
-
-    while (!triangle_stream.empty()) {
-        Triangle* t = triangle_stream.front();
-        triangle_stream.pop();
-        glm::vec4* screen_pos = t->screen_pos;
-        int minx, maxx, miny, maxy, x, y;
-        minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
-        miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
-        maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
-        maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
-
-        float* zbuf = (float*)C->zbuf->getDataPtr();
-        // AABB algorithm
-        for (y = miny; y <= maxy; ++y) {
-            for (x = minx; x <= maxx; ++x) {
-                int index = GET_INDEX(x, y, width, height);
-                if (!t->inside(x + 0.5f, y + 0.5f))
-                    continue;
-
-                // alpha beta gamma
-                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
-                // perspective correction
-                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
-                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
-                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
-                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
-
-                if (!C->use_z_test) {
-                    pixel_tasks[index].write = true;
-                    pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
-                } else {
-                    // zp: z value after interpolation
-                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
-                    if (zp < zbuf[index]) {
-                        zbuf[index] = zp;
-                        pixel_tasks[index].write = true;
-                        pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
-                        pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
-                    }
-                }
-            }
-        }
-
-        delete t;
-    }
-}
-
-// for processing pixel in parallel
-static void process_pixel_task(int begin, int end, std::vector<Pixel>& pixel_tasks, color_t* frame_buf)
-{
-    GET_CURRENT_CONTEXT(ctx);
-    for (int i = begin; i < end; ++i) {
-        if (pixel_tasks[i].write) {
-            PixelShaderParam params;
-            params.texcoord = pixel_tasks[i].texcoord;
-            params.color = pixel_tasks[i].vertexColor;
-            PixelShaderResult res = ctx->shader.default_fragment_shader(params);
-            frame_buf[i].R = res.fragColor.x;
-            frame_buf[i].G = res.fragColor.y;
-            frame_buf[i].B = res.fragColor.z;
-            pixel_tasks[i].write = false;
-            // PixelShaderParam params;
-            // params.texcoord = pixel_tasks[i].texcoord;
-            // PixelShaderResult res = ctx->shader.default_fragment_shader(params);
-            // frame_buf[i].R = res.fragColor.x;
-            // frame_buf[i].G = res.fragColor.y;
-            // frame_buf[i].B = res.fragColor.z;
-            // pixel_tasks[i].write = false;
-        }
-    }
-}
-
-void process_pixel()
-{
-    GET_CURRENT_CONTEXT(ctx);
-    GET_PIPELINE(ppl);
-    std::vector<Pixel>& pixel_tasks = ppl->pixel_tasks;
-    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
-    // int tasks_size = pixel_tasks.size();
-    // const int cpu_num = ppl->cpu_num;
-    // std::vector<std::thread> threads;
-    // int begin = 0, end = 0;
-    // for (int i = 0; i < cpu_num; ++i)
-    // {
-    //     begin = end;
-    //     end = (tasks_size / cpu_num) * (i + 1);
-    //     threads.push_back(std::thread(process_pixel_task, begin, end, std::ref(pixel_tasks), frame_buf));
-    // }
-    // for (int i = 0; i < cpu_num; ++i)
-    // {
-    //     threads[i].join();
-    // }
-
-    for (int i = 0, len = pixel_tasks.size(); i < len; ++i) {
-        if (pixel_tasks[i].write) {
-            PixelShaderParam params;
-            params.texcoord = pixel_tasks[i].texcoord;
-            params.color = pixel_tasks[i].vertexColor;
-            PixelShaderResult res = ctx->shader.default_fragment_shader(params);
-            frame_buf[i].R = res.fragColor.x;
-            frame_buf[i].G = res.fragColor.y;
-            frame_buf[i].B = res.fragColor.z;
-            pixel_tasks[i].write = false;
-        }
-    }
-}
-
-////////////////// new interface for parallel //////////////////////////
-
-static void process_primitive()
-{
-
-}
-
-void geometry_processing()
+// process vertex with support for EBO
+void process_geometry_ebo()
 {
     /**
      * input processing
@@ -425,7 +304,63 @@ void geometry_processing()
     }
 }
 
-void rasterization()
+// single thread version of rasterization
+// generating pixel tasks for fragment shading
+void rasterize()
+{
+    GET_CURRENT_CONTEXT(C);
+    std::queue<Triangle*>& triangle_stream = C->pipeline.triangle_stream;
+    int width = C->width, height = C->height;
+    std::vector<Pixel>& pixel_tasks = C->pipeline.pixel_tasks;
+
+    while (!triangle_stream.empty()) {
+        Triangle* t = triangle_stream.front();
+        triangle_stream.pop();
+        glm::vec4* screen_pos = t->screen_pos;
+        int minx, maxx, miny, maxy, x, y;
+        minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
+        miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
+        maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
+        maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
+
+        float* zbuf = (float*)C->zbuf->getDataPtr();
+        // AABB algorithm
+        for (y = miny; y <= maxy; ++y) {
+            for (x = minx; x <= maxx; ++x) {
+                int index = GET_INDEX(x, y, width, height);
+                if (!t->inside(x + 0.5f, y + 0.5f))
+                    continue;
+
+                // alpha beta gamma
+                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+                // perspective correction
+                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
+                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
+                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
+                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+
+                if (!C->use_z_test) {
+                    pixel_tasks[index].write = true;
+                    pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                } else {
+                    // zp: z value after interpolation
+                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    if (zp < zbuf[index]) {
+                        zbuf[index] = zp;
+                        pixel_tasks[index].write = true;
+                        pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                        pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                    }
+                }
+            }
+        }
+
+        delete t;
+    }
+}
+
+// raterization with the support for EBO drawing
+void rasterize_ebo()
 {
     GET_CURRENT_CONTEXT(ctx);
     std::vector<Triangle>& triangle_list = ctx->pipeline.triangle_list;
@@ -476,6 +411,86 @@ void rasterization()
     }
 }
 
+// single thread version of fragment shading
+void process_pixel()
+{
+    GET_CURRENT_CONTEXT(ctx);
+    GET_PIPELINE(ppl);
+    std::vector<Pixel>& pixel_tasks = ppl->pixel_tasks;
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+    for (int i = 0, len = pixel_tasks.size(); i < len; ++i) {
+        if (pixel_tasks[i].write) {
+            ctx->shader.diffuse_Color = pixel_tasks[i].vertexColor;
+            ctx->shader.texcoord = pixel_tasks[i].texcoord;
+            ctx->shader.default_fragment_shader();
+            frame_buf[i].R = ctx->shader.frag_Color.x * 255;
+            frame_buf[i].G = ctx->shader.frag_Color.y * 255;
+            frame_buf[i].B = ctx->shader.frag_Color.z * 255;
+            pixel_tasks[i].write = false;
+        }
+    }
+}
+
+// do the rasterization and fragment shading all at once
+// save the cost of r/w of pixel_task buffer
+// with the cost of less flexibility
+void rasterize_with_shading(){
+    GET_CURRENT_CONTEXT(C);
+    std::queue<Triangle*>& triangle_stream = C->pipeline.triangle_stream;
+    int width = C->width, height = C->height;
+    std::vector<Pixel>& pixel_tasks = C->pipeline.pixel_tasks;
+
+    while (!triangle_stream.empty()) {
+        Triangle* t = triangle_stream.front();
+        triangle_stream.pop();
+        glm::vec4* screen_pos = t->screen_pos;
+        int minx, maxx, miny, maxy, x, y;
+        minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
+        miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
+        maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
+        maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
+
+        float* zbuf = (float*)C->zbuf->getDataPtr();
+        color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
+        // AABB algorithm
+        for (y = miny; y <= maxy; ++y) {
+            for (x = minx; x <= maxx; ++x) {
+                int index = GET_INDEX(x, y, width, height);
+                if (!t->inside(x + 0.5f, y + 0.5f))
+                    continue;
+
+                // alpha beta gamma
+                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+                // perspective correction
+                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
+                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
+                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
+                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+                
+                if (!C->use_z_test) {
+                    throw std::runtime_error("please open the z depth test\n");
+                } 
+                else {
+                    // zp: z value after interpolation
+                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    if (zp < zbuf[index]) {
+                        zbuf[index] = zp;
+                        // fragment shader input
+                        C->shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                        C->shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                        // fragment shading
+                        C->shader.default_fragment_shader();
+                        frame_buf[index].R = C->shader.frag_Color.x * 255.0f;
+                        frame_buf[index].G = C->shader.frag_Color.y * 255.0f;
+                        frame_buf[index].B = C->shader.frag_Color.z * 255.0f;
+                    }
+                }
+            }
+        }
+        delete t;
+    }
+}
+
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
 // thread functions
 void* _thr_process_vertex(void* thread_id);
@@ -491,7 +506,6 @@ int process_vertex_sync = 0;
 
 // global variables
 volatile int quit_vertex_processing = 0; // for terminate the threads, make thread functions quit while loop
-volatile int globl_proceed_flag = 1; // flag for whether the vertex processing is finished
 TriangleCrawler crawlers[PROCESS_VERTEX_THREAD_COUNT];
 
 // pipeline status
@@ -508,6 +522,7 @@ void terminate_all_threads()
         pthread_cancel(C->threads.thr_arr[i]);
         pthread_join(C->threads.thr_arr[i], NULL);
     }
+    C->threads.reset();
 }
 
 static inline void _merge_crawlers(){
@@ -615,7 +630,7 @@ static inline void _merge_crawlers(){
 void process_geometry_threadmain()
 {
     static int first_entry = 1;
-    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = {0};
+    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT];
     GET_CURRENT_CONTEXT(C);
     GET_PIPELINE(P);
     // update the angle
@@ -639,13 +654,13 @@ void process_geometry_threadmain()
     if (first_entry) {
         first_entry = 0;
         // create threads
+        assert(C->threads.get(thread_ids, PROCESS_VERTEX_THREAD_COUNT) == GL_SUCCESS);
         for (int i = 0; i < PROCESS_VERTEX_THREAD_COUNT; i++) {
             crawlers[i].reset_config();
             pthread_create(&ths[thread_ids[i]], NULL, _thr_process_vertex, (void*)(long long)i);
         }
     }
     quit_vertex_processing = 0;
-    globl_proceed_flag = 1;
     process_vertex_sync = 0;
     pthread_cond_broadcast(&vertex_threads_cv);
     pthread_mutex_unlock(&vertex_threads_mtx);
@@ -718,7 +733,7 @@ void* _thr_process_vertex(void* thread_id)
 void rasterize_threadmain()
 {
     // std::cout << "begin to rasterize\n";
-    rasterize();
+    rasterize_with_shading();
 }
 
 void* _thr_rasterize(void* thread_id)
@@ -726,3 +741,5 @@ void* _thr_rasterize(void* thread_id)
 
     return nullptr;
 }
+
+

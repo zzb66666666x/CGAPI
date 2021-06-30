@@ -91,5 +91,17 @@ add_executable(
 ################################################
 ################## test make ###################
 ################################################
-add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
-target_link_libraries(basic_lib_usage glite)
+add_executable(basics tests/test_basics.cpp tests/shared_data.cpp tests/shared_data.h)
+target_link_libraries(basics glite)
+
+add_executable(ebo tests/test_ebo.cpp)
+target_link_libraries(ebo glite)
+
+add_executable(cow tests/test_cow.cpp)
+target_link_libraries(cow glite)
+
+add_executable(texture tests/test_texture.cpp tests/shared_data.cpp tests/shared_data.h)
+target_link_libraries(texture glite)
+
+add_executable(bunny tests/test_bunny.cpp)
+target_link_libraries(bunny glite)
