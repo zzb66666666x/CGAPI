@@ -107,7 +107,7 @@ glProgram::glProgram(){
     }
     layouts[0] = LAYOUT_POSITION;
     layouts[1] = LAYOUT_COLOR;
-    layouts[2] = LAYOUT_TEXCOORD;
+    // layouts[2] = LAYOUT_TEXCOORD;
     // layouts[3] = LAYOUT_NORMAL;
 }
 
@@ -123,12 +123,11 @@ PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color = diffuse_Color;
 
     PixelShaderResult result;
-    glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-    // std::cout<<color.x<<" "<<color.y<<" "<<color.z<<std::endl;
-    result.fragColor = color;
-    // result.fragColor.x = params.color.x * 255;
-    // result.fragColor.y = params.color.y * 255;
-    // result.fragColor.z = params.color.z * 255;
+    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
+
+    result.fragColor.x = params.color.x * 255;
+    result.fragColor.y = params.color.y * 255;
+    result.fragColor.z = params.color.z * 255;
     
     return result;
 }
@@ -139,7 +138,7 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     projection = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
+    model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);

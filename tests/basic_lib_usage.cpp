@@ -143,18 +143,6 @@ static void testStandfordBunny(){
     GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "bunny_test", GLV_STREAM_WINDOW);
     glEnable(GL_DEPTH_TEST);
 
-    // glDrawElements
-    // unsigned int indices[] = {
-    //     // 注意索引从0开始!
-    //     0, 1, 3, // 第一个三角形
-    //     1, 2, 3 // 第二个三角形
-    // };
-    // float vertices[] = {
-    //     0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // 右上角
-    //     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // 右下角
-    //     -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // 左下角
-    //     -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f // 左上角
-    // };
     // Initialize Loader
     objl::Loader Loader;
 
@@ -177,9 +165,9 @@ static void testStandfordBunny(){
             vertices.push_back(curMesh.Vertices[j].Position.Y);
             vertices.push_back(curMesh.Vertices[j].Position.Z);
 
-            vertices.push_back(0.5f);
-            vertices.push_back(0.5f);
-            vertices.push_back(0.5f);
+            vertices.push_back(0.3f);
+            vertices.push_back(0.4f);
+            vertices.push_back(0.8f);
             // vertices.push_back(curMesh.Vertices[j].Normal.X);
             // vertices.push_back(curMesh.Vertices[j].Normal.Y);
             // vertices.push_back(curMesh.Vertices[j].Normal.Z);
@@ -230,8 +218,8 @@ static void testStandfordBunny(){
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
         glvWriteStream(window);
 
@@ -671,7 +659,7 @@ int main()
     // testDrawNaiveImage();
     // testDrawInWindow();
     // testTexture();
-    testDrawCowWindow();
+    // testDrawCowWindow();
     // testEBO();
     // testDrawCowFile();
     // testDrawCowWindow();
