@@ -27,7 +27,17 @@
 #define LAYOUT_COLOR            1
 #define LAYOUT_TEXCOORD         2
 #define LAYOUT_NORMAL           3
-
+#define UNIFORM_ID_BASE         0x10000000 
+#define SHADER_INTERNAL_BASE    0x20000000          
+#define UNIFORM(i)              UNIFORM_ID_BASE + i      
+#define SHADER_INTERNAL(i)      SHADER_INTERNAL_BASE + i
+// processed layout
+#define VSHADER_OUT_POSITION    SHADER_INTERNAL(LAYOUT_POSITION)
+#define VSHADER_OUT_COLOR       SHADER_INTERNAL(LAYOUT_COLOR)
+#define VSHADER_OUT_TEXCOORD    SHADER_INTERNAL(LAYOUT_TEXCOORD)
+#define VSHADER_OUT_NORMAL      SHADER_INTERNAL(LAYOUT_NORMAL)
+// newly added shader variable, starting from base+16
+#define VSHADER_OUT_FRAGPOS     SHADER_INTERNAL(GL_MAX_VERTEX_ATTRIB_NUM)
 
 typedef struct{
     int     index;      // No. of vertex attrib
@@ -209,13 +219,14 @@ class glProgram{
     // layouts
     static int layouts[GL_MAX_VERTEX_ATTRIB_NUM];
     static int layout_cnt;
-    // gl inner variable
-    glm::vec4 gl_Position;
-    glm::vec3 gl_VertexColor;
     // input to vertex shader
     glm::vec3 input_Pos;
     glm::vec3 vert_Color;
     glm::vec2 iTexcoord;
+    // vertex shader output variable
+    glm::vec4 gl_Position;
+    glm::vec3 gl_VertexColor;
+    glm::vec3 gl_Normal;
     glm::vec3 vert_Normal;
 
     // fragment shader

@@ -321,8 +321,10 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
     // based on the id, modify the glStorage<vertex_attrib_t>
     // if we haven't bind, the setting here has not effect
     GET_CURRENT_CONTEXT(C);
-    if (C==nullptr)
+    if (C == nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    if (dtype != GL_FLOAT)
+        throw std::runtime_error("not supporting data types beside float\n");
     auto& mgr = C->share.vertex_attribs;
     auto& payload_map = C->payload.renderMap;
     int ID = payload_map[GL_BIND_VAO];
@@ -419,6 +421,7 @@ void glDrawArrays(GLenum mode, int first, int count){
     char* vb_data = (char*) vbo_ptr->getDataPtr();
     if (vb_data == nullptr || vbo_ptr->getSize()<=0)
         return;
+
     // sanity check for texture resources
     // check active textures, tell pipeline what are the useful textures
     int cnt = 0;
@@ -479,7 +482,6 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
     if (vao_id < 0 || vbo_id < 0 || ebo_id < 0) {
         return;
     }
-
     ret = vaos.searchStorage(&vao_ptr, vao_id);
     if (ret == GL_FAILURE
         || vao_ptr->bind != GL_BIND_VAO
@@ -501,7 +503,6 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         || ebo_ptr->getSize() <= 0) {
         return;
     }
-
     // sanity check for texture resources
     // check active textures, tell pipeline what are the useful textures
     int cnt = 0;

@@ -5,6 +5,18 @@
 #include <glm/glm.hpp>
 #include "../formats.h"
 
+// class debug_texture{
+// private:
+//     cv::Mat image_data;
+
+// public:
+//     debug_texture(const std::string& name);
+
+//     int width, height;
+
+//     glm::vec3 getColor(float u, float v);
+// };
+
 enum filter_type{
     NEAREST,
     BILINEAR
@@ -27,6 +39,7 @@ class sampler_config{
 
 class sampler2D{
     public:
+    sampler2D(){}
     sampler_config config;
     unsigned char *data;
     filter_type filter;

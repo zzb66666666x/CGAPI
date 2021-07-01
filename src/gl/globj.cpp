@@ -108,30 +108,24 @@ glProgram::glProgram(){
     }
     layouts[0] = LAYOUT_POSITION;
     layouts[1] = LAYOUT_COLOR;
-    layouts[2] = LAYOUT_TEXCOORD;
+    // layouts[2] = LAYOUT_TEXCOORD;
     // layouts[3] = LAYOUT_NORMAL;
 }
 
 void glProgram::default_vertex_shader(){
+    // std::cout<<input_Pos.x<<" "<<input_Pos.y<<" "<<input_Pos.z<<std::endl;
     frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
     gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
     gl_VertexColor = vert_Color;
+    gl_Normal = glm::vec3(0,0,0);
 }
 
 PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color = diffuse_Color;
-    // glm::vec4 color = texture2D(diffuse_texture, texcoord);
-    // frag_Color.x = color.x;
-    // frag_Color.y = color.y;
-    // frag_Color.z = color.z;
 
-    // for texture
-    // PixelShaderResult result;
-    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-    // result.fragColor = color;
-
-    // // for none texture
     PixelShaderResult result;
+    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
+
     result.fragColor.x = params.color.x * 255;
     result.fragColor.y = params.color.y * 255;
     result.fragColor.z = params.color.z * 255;
@@ -175,11 +169,10 @@ glPipeline::glPipeline(){
     vertex_num = 0;
     first_vertex = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
-    // exec.emplace_back(process_geometry);
-    // exec.emplace_back(rasterize);
-    // exec.emplace_back(assemble_primitive);
-    exec.emplace_back(geometry_processing);
-    exec.emplace_back(rasterization);
+    exec.emplace_back(process_geometry_threadmain);
+    exec.emplace_back(rasterize_threadmain);
+    // exec.emplace_back(geometry_processing);
+    // exec.emplace_back(rasterization);
     exec.emplace_back(process_pixel);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
