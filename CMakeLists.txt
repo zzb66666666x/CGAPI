@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 # set(CMAKE_CXX_FLAGS "-g -O0")
 set(CMAKE_CXX_FLAGS "-O3")
+# use openmp
+set(CMAKE_CXX_FLAGS "-fopenmp")
 include_directories(
 	include/gl
 	include/glv
