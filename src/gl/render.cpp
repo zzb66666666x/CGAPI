@@ -9,8 +9,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#include <atomic>
 #include <thread>
+#include <omp.h>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -255,8 +255,9 @@ void process_pixel()
     // {
     //     threads[i].join();
     // }
-
-    for (int i = 0, len = pixel_tasks.size(); i < len; ++i) {
+    int len = pixel_tasks.size();
+#pragma omp parallel for
+    for (int i = 0; i < len; ++i) {
         if (pixel_tasks[i].write) {
             PixelShaderParam params;
             params.texcoord = pixel_tasks[i].texcoord;
@@ -272,15 +273,18 @@ void process_pixel()
 
 ////////////////// new interface for parallel //////////////////////////
 
-static void process_primitive()
+void assemble_primitive()
 {
+}
 
+void vertex_shading(){
+    
 }
 
 void geometry_processing()
 {
     /**
-     * input processing
+     * input assembly
      */
     GET_PIPELINE(ppl);
     GET_CURRENT_CONTEXT(ctx);
@@ -310,6 +314,7 @@ void geometry_processing()
                 ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
                 // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
                 indices.resize(ebuf_size - first_index);
+#pragma omp parallel for
                 for (int i = first_index; i < ebuf_size; ++i) {
                     indices[i] = ebuf_data[i];
                 }
@@ -322,17 +327,16 @@ void geometry_processing()
     } else {
         int first_vertex_ind = ppl->first_vertex;
         int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
-        // int vertex_offsets[3] = { 0, 0, 0 };
-
-        // parse vertex data
-        // use the first stride to determine start of vertex buffer
-        // vbuf_data += first_vertex_ind * vattrib_data[0].stride;
 
         // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
         vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
         indices.resize(vertex_num - first_vertex_ind);
-        for (int i = 0, len = vertex_num - first_vertex_ind; i < len; ++i) {
+
+        int len = vertex_num - first_vertex_ind;
+#pragma omp parallel for
+        for (int i = 0; i < len; ++i) {
             indices[i] = first_vertex_ind + i;
+            // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
         }
         triangle_size = (vertex_num - first_vertex_ind) / 3;
     }
@@ -344,28 +348,31 @@ void geometry_processing()
 
     std::vector<Triangle>& triangle_list = ppl->triangle_list;
     triangle_list.resize(triangle_size);
-    int tri_ind = 0;
+
     void* input_ptr;
     unsigned char* buf;
-    // angle = angle + 2.0f;
-    while (tri_ind < triangle_size) {
+    angle = angle + 1.0f;
+    glProgram shader = ctx->shader;
+// #pragma omp parallel for private(input_ptr) private(buf) private(shader)
+    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
+        // printf("tri_ind=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < ctx->shader.layout_cnt; ++j) {
-                if (ctx->shader.layouts[j] > 3) {
+            for (int j = 0; j < shader.layout_cnt; ++j) {
+                if (shader.layouts[j] > 3) {
                     throw std::runtime_error("invalid layout\n");
                 }
-                switch (ctx->shader.layouts[j]) {
+                switch (shader.layouts[j]) {
                     case LAYOUT_POSITION:
-                        input_ptr = &(ctx->shader.input_Pos);
+                        input_ptr = &(shader.input_Pos);
                         break;
                     case LAYOUT_COLOR:
-                        input_ptr = &(ctx->shader.vert_Color);
+                        input_ptr = &(shader.vert_Color);
                         break;
                     case LAYOUT_TEXCOORD:
-                        input_ptr = &(ctx->shader.iTexcoord);
+                        input_ptr = &(shader.iTexcoord);
                         break;
                     case LAYOUT_NORMAL:
-                        input_ptr = &(ctx->shader.vert_Normal);
+                        input_ptr = &(shader.vert_Normal);
                         break;
                     case LAYOUT_INVALID:
                     default:
@@ -375,8 +382,7 @@ void geometry_processing()
                 if (input_ptr == nullptr) {
                     continue;
                 }
-                vertex_attrib_t& config = vattrib_data[ctx->shader.layouts[j]];
-                // buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
+                vertex_attrib_t& config = vattrib_data[shader.layouts[j]];
                 buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
                 switch (config.type) {
                     case GL_FLOAT:
@@ -403,24 +409,23 @@ void geometry_processing()
                 }
             }
             // 4. vertex shading
-            ctx->shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
-            ctx->shader.default_vertex_shader();
+            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
+            shader.default_vertex_shader();
 
-            ctx->shader.gl_Position.x /= ctx->shader.gl_Position.w;
-            ctx->shader.gl_Position.y /= ctx->shader.gl_Position.w;
-            ctx->shader.gl_Position.z /= ctx->shader.gl_Position.w;
+            shader.gl_Position.x /= shader.gl_Position.w;
+            shader.gl_Position.y /= shader.gl_Position.w;
+            shader.gl_Position.z /= shader.gl_Position.w;
             // 5. view port transformation
-            ctx->shader.gl_Position.x = 0.5 * ctx->width * (ctx->shader.gl_Position.x + 1.0);
-            ctx->shader.gl_Position.y = 0.5 * ctx->height * (ctx->shader.gl_Position.y + 1.0);
+            shader.gl_Position.x = 0.5 * ctx->width * (shader.gl_Position.x + 1.0);
+            shader.gl_Position.y = 0.5 * ctx->height * (shader.gl_Position.y + 1.0);
             // [-1,1] to [0,1]
-            ctx->shader.gl_Position.z = ctx->shader.gl_Position.z * 0.5 + 0.5;
+            shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;
             // 6. assemble triangle
-            triangle_list[tri_ind].screen_pos[i] = ctx->shader.gl_Position;
-            triangle_list[tri_ind].color[i] = ctx->shader.gl_VertexColor;
-            triangle_list[tri_ind].frag_shading_pos[i] = ctx->shader.frag_Pos;
-            triangle_list[tri_ind].texcoord[i] = ctx->shader.iTexcoord;
+            triangle_list[tri_ind].screen_pos[i] = shader.gl_Position;
+            triangle_list[tri_ind].color[i] = shader.gl_VertexColor;
+            triangle_list[tri_ind].frag_shading_pos[i] = shader.frag_Pos;
+            triangle_list[tri_ind].texcoord[i] = shader.iTexcoord;
         }
-        ++tri_ind;
     }
 }
 
@@ -432,7 +437,9 @@ void rasterization()
     std::vector<Pixel>& pixel_tasks = ctx->pipeline.pixel_tasks;
 
     Triangle* t = nullptr;
-    for (int i = 0, len = triangle_list.size(); i < len; ++i) {
+    int len = triangle_list.size();
+#pragma omp parallel for private(t)
+    for (int i = 0; i < len; ++i) {
         t = &triangle_list[i];
         glm::vec4* screen_pos = t->screen_pos;
         int minx, maxx, miny, maxy, x, y;

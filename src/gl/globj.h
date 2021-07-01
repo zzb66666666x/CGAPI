@@ -217,14 +217,16 @@ class glProgram{
     glm::vec3 vert_Color;
     glm::vec2 iTexcoord;
     glm::vec3 vert_Normal;
+
     // fragment shader
     glm::vec3 diffuse_Color;
     glm::vec3 frag_Pos;
     glm::vec3 frag_Color;
     glm::vec2 texcoord;
-    static glm::mat4 model; 
-    static glm::mat4 view;
-    static glm::mat4 projection;
+
+    glm::mat4 model; 
+    glm::mat4 view;
+    glm::mat4 projection;
     sampler2D diffuse_texture;
     // methods
     void default_vertex_shader();
@@ -265,6 +267,7 @@ class glPipeline{
         // triangle list for new interfaces
         std::vector<Triangle> triangle_list;
         std::vector<int> indices;
+
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;

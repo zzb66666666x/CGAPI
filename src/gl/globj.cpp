@@ -5,11 +5,12 @@
 #include "render.h"
 #include "glcontext.h"
 #include "glsl/texture.h"
+#include <omp.h>
 
 // alloc space for static variables in shader
-glm::mat4 glProgram::model = glm::mat4(1.0f); 
-glm::mat4 glProgram::view = glm::mat4(1.0f);
-glm::mat4 glProgram::projection = glm::mat4(1.0f);
+// glm::mat4 glProgram::model = glm::mat4(1.0f); 
+// glm::mat4 glProgram::view = glm::mat4(1.0f);
+// glm::mat4 glProgram::projection = glm::mat4(1.0f);
 int glProgram::layouts[GL_MAX_TEXTURE_UNITS];
 int glProgram::layout_cnt;
 
@@ -123,9 +124,14 @@ PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color.x = color.x;
     // frag_Color.y = color.y;
     // frag_Color.z = color.z;
-    PixelShaderResult result;
+
+    // for texture
+    // PixelShaderResult result;
     // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
     // result.fragColor = color;
+
+    // // for none texture
+    PixelShaderResult result;
     result.fragColor.x = params.color.x * 255;
     result.fragColor.y = params.color.y * 255;
     result.fragColor.z = params.color.z * 255;
@@ -138,10 +144,13 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
     // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    // model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
+
+    // for bunny
     model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
-    model = glm::scale(model, glm::vec3(0.7f, 0.7f, 0.7f));
-    // model = glm::scale(model, glm::vec3(15.0f, 15.0f, 15.0f));
+    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
+    model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -162,12 +171,13 @@ void glProgram::set_diffuse_texture(GLenum unit){
 
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();
-    
+
     vertex_num = 0;
     first_vertex = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
     // exec.emplace_back(process_geometry);
     // exec.emplace_back(rasterize);
+    // exec.emplace_back(assemble_primitive);
     exec.emplace_back(geometry_processing);
     exec.emplace_back(rasterization);
     exec.emplace_back(process_pixel);
