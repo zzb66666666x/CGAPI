@@ -187,11 +187,17 @@ void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
                     if (ID<0)
                         return; // not binded yet 
                     ret = bufs.searchStorage(&ptr, ID);
-                    if (ret == GL_FAILURE)
+                    if (ret == GL_FAILURE){
                         return;
+                    }
                     // copy data inside glStorage<char>
                     ptr->allocByteSpace(nbytes);
                     ptr->loadBytes(data, nbytes);
+                    ptr->usage = usage;
+                    // if GL_STATIC_DRAW notice cache to delete indices data
+                    if(usage == GLenum::GL_STATIC_DRAW){
+                        C->pipeline.indexCache.removeCacheData(C->payload.renderMap[GL_BIND_VAO]);
+                    }
                     break;
                 case GL_ELEMENT_ARRAY_BUFFER:
                     ID = C->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER];
@@ -204,6 +210,11 @@ void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage){
                     }
                     ptr->allocByteSpace(nbytes);
                     ptr->loadBytes(data, nbytes);
+                    ptr->usage = usage;
+                    // if GL_STATIC_DRAW notice cache to delete indices data
+                    if (usage == GLenum::GL_STATIC_DRAW) {
+                        C->pipeline.indexCache.removeCacheData(C->payload.renderMap[GL_BIND_VAO]);
+                    }
                     // throw std::runtime_error("not written for EBO\n");
                     break;
                 default:

@@ -9,8 +9,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#include <thread>
 #include <omp.h>
+#include <atomic>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -242,24 +242,12 @@ void process_pixel()
     GET_PIPELINE(ppl);
     std::vector<Pixel>& pixel_tasks = ppl->pixel_tasks;
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
-    // int tasks_size = pixel_tasks.size();
-    // const int cpu_num = ppl->cpu_num;
-    // std::vector<std::thread> threads;
-    // int begin = 0, end = 0;
-    // for (int i = 0; i < cpu_num; ++i)
-    // {
-    //     begin = end;
-    //     end = (tasks_size / cpu_num) * (i + 1);
-    //     threads.push_back(std::thread(process_pixel_task, begin, end, std::ref(pixel_tasks), frame_buf));
-    // }
-    // for (int i = 0; i < cpu_num; ++i)
-    // {
-    //     threads[i].join();
-    // }
     int len = pixel_tasks.size();
+    // std::atomic_int cnt(0);
 #pragma omp parallel for
     for (int i = 0; i < len; ++i) {
         if (pixel_tasks[i].write) {
+            // ++cnt;
             PixelShaderParam params;
             params.texcoord = pixel_tasks[i].texcoord;
             params.color = pixel_tasks[i].vertexColor;
@@ -270,17 +258,10 @@ void process_pixel()
             pixel_tasks[i].write = false;
         }
     }
+    // printf("screen ratio: %f%%\n", cnt / (double)len * 100);
 }
 
 ////////////////// new interface for parallel //////////////////////////
-
-void assemble_primitive()
-{
-}
-
-void vertex_shading(){
-    
-}
 
 void geometry_processing()
 {
@@ -289,6 +270,7 @@ void geometry_processing()
      */
     GET_PIPELINE(ppl);
     GET_CURRENT_CONTEXT(ctx);
+
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
 
     // check if the config is activated
@@ -300,12 +282,15 @@ void geometry_processing()
         }
     }
 
-    std::vector<int>& indices = ppl->indices;
+    std::vector<int> indices;
     int triangle_size = 0;
     if (ppl->use_indices) {
-        // first ebo data index
-        const void* first_indices = (const void*)ppl->ebo_config.first_indices;
-        switch (ppl->ebo_config.indices_type) {
+        int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+        ppl->indexCache.getCacheData(vaoId, indices);
+        if (!(ppl->ebo_config.ebo_ptr->usage == GL_STATIC_DRAW && ppl->vbo_ptr->usage == GL_STATIC_DRAW && indices.size() != 0)) {
+            // first ebo data index
+            const void* first_indices = (const void*)ppl->ebo_config.first_indices;
+            switch (ppl->ebo_config.indices_type) {
             case GL_UNSIGNED_INT: {
                 // ebo data array
                 unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
@@ -323,45 +308,47 @@ void geometry_processing()
             } break;
             default:
                 break;
+            }
         }
 
     } else {
-        int first_vertex_ind = ppl->first_vertex;
-        int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
+        int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+        ppl->indexCache.getCacheData(vaoId, indices);
+        if (!(ppl->vbo_ptr->usage == GL_STATIC_DRAW && indices.size() != 0)) {
 
-        // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
-        vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
-        indices.resize(vertex_num - first_vertex_ind);
+            int first_vertex_ind = ppl->first_vertex;
+            int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
 
-        int len = vertex_num - first_vertex_ind;
+            // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
+            vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
+            indices.resize(vertex_num - first_vertex_ind);
+
+            int len = vertex_num - first_vertex_ind;
 #pragma omp parallel for
-        for (int i = 0; i < len; ++i) {
-            indices[i] = first_vertex_ind + i;
-            // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
+            for (int i = 0; i < len; ++i) {
+                indices[i] = first_vertex_ind + i;
+                // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
+            }
+            triangle_size = (vertex_num - first_vertex_ind) / 3;
         }
-        triangle_size = (vertex_num - first_vertex_ind) / 3;
     }
 
-    /**
-     * 
-     */
     unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
 
     std::vector<Triangle>& triangle_list = ppl->triangle_list;
     triangle_list.resize(triangle_size);
 
+    angle = angle + 1.0f;
+    
     void* input_ptr;
     unsigned char* buf;
-    angle = angle + 1.0f;
     glProgram shader = ctx->shader;
-// #pragma omp parallel for private(input_ptr) private(buf) private(shader)
+    int i, j;
+#pragma omp parallel for private(input_ptr) private(buf) private(shader) private(i) private(j)
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_ind=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < shader.layout_cnt; ++j) {
-                if (shader.layouts[j] > 3) {
-                    throw std::runtime_error("invalid layout\n");
-                }
+        for (i = 0; i < 3; ++i) {
+            for (j = 0; j < shader.layout_cnt; ++j) {
                 switch (shader.layouts[j]) {
                     case LAYOUT_POSITION:
                         input_ptr = &(shader.input_Pos);
@@ -388,13 +375,13 @@ void geometry_processing()
                 switch (config.type) {
                     case GL_FLOAT:
                         switch (config.size) {
-                            case 2: {
+                            case 2:{
                                 glm::vec2* vec2 = (glm::vec2*)input_ptr;
                                 vec2->x = *(float*)(buf + 0);
                                 vec2->y = *(float*)(buf + sizeof(float) * 1);
                                 break;
                             }
-                            case 3: {
+                            case 3:{
                                 glm::vec3* vec3 = (glm::vec3*)input_ptr;
                                 vec3->x = *(float*)(buf + 0);
                                 vec3->y = *(float*)(buf + sizeof(float) * 1);
@@ -403,12 +390,13 @@ void geometry_processing()
                             }
                             default:
                                 throw std::runtime_error("not supported size\n");
-                            }
-                            break;
+                        }
+                        break;
                     default:
                         throw std::runtime_error("not supported type\n");
                 }
             }
+
             // 4. vertex shading
             shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
             shader.default_vertex_shader();

@@ -111,7 +111,7 @@ int load_vertices(std::vector<float> & vertices){
     bool loadout = Loader.LoadFile("../resources/spot/spot_triangulated_good.obj");
     for(auto mesh:Loader.LoadedMeshes)
     {
-        for (int i = 0; i < mesh.Indices.size(); i += 3) {
+        for (int i = 0; i < mesh.Vertices.size(); i += 3) {
             for(int j = 0;j < 3;j++)
             {
                 // vertices.push_back(mesh.Vertices[i+j].Position.X);
@@ -128,6 +128,8 @@ int load_vertices(std::vector<float> & vertices){
                 // vertices.push_back(mesh.Vertices[i+j].Normal.Z);
                 vertices.push_back(mesh.Vertices[mesh.Indices[i + j]].TextureCoordinate.X);
                 vertices.push_back(mesh.Vertices[mesh.Indices[i + j]].TextureCoordinate.Y);
+                // vertices.push_back(mesh.Vertices[i + j].TextureCoordinate.X);
+                // vertices.push_back(mesh.Vertices[i + j].TextureCoordinate.Y);
                 ret+=3;
             }
             num_triangles ++;
@@ -195,10 +197,12 @@ static void testStandfordBunny(){
     // 将vertices数据复制到缓冲种
     // GL_STATIC_DRAW / GL_DYNAMIC_DRAW、GL_STREAM_DRAW
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
     // 解析缓冲数据
     // 顶点位置，顶点大小(vec3)，顶点类型，是否normalize，步长，偏移量
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
     // 激活顶点属性0
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -217,11 +221,12 @@ static void testStandfordBunny(){
     while (1) {
 
         glBindVertexArray(VAO);
+        
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        // glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
         glvWriteStream(window);
 
@@ -587,7 +592,15 @@ static void testDrawCowWindow(){
     glGenTextures(1, &texture1);
 
     // load texture data
-    glBindTexture(GL_TEXTURE_2D, texture1);
+    glBindTexture(GL_TEXTURE_2D, texture1); 
+    // set the texture wrapping parameters
+    // GL_REPEAT, GL_MIRRORED_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // set texture filtering parameters
+    // GL_LINEAR, GL_NEAREST
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
     unsigned char *data = stbi_load("../resources/spot/spot_texture.png", &width, &height, &nrChannels, 0);
@@ -617,32 +630,6 @@ static void testDrawCowWindow(){
     glEnableVertexAttribArray(2);
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // load and create a texture
-    // -------------------------
-    unsigned int texture1;
-    // texture 1
-    // ---------
-    glGenTextures(1, &texture1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    // set the texture wrapping parameters
-    // GL_REPEAT, GL_MIRRORED_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    // GL_LINEAR, GL_NEAREST
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load image, create texture and generate mipmaps
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-    // The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
-    unsigned char* data = stbi_load("../resources/spot/spot_texture.png", &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    } else {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
 
     glBindVertexArray(0);
     double fps = 0.0;
@@ -651,31 +638,20 @@ static void testDrawCowWindow(){
     auto curTime = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
     double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
-    // DWORD begin;
-    double fps = 0.0;
-    int frameCount = 0;
-    auto lastTime = std::chrono::system_clock::now();
-    auto curTime = std::chrono::system_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
-    double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
     while (1)
     {
-        // begin = GetTickCount();
         glBindVertexArray(VAO);
+        
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
         
         // bind textures on corresponding texture units
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture1);
-
         glDrawArrays(GL_TRIANGLES, 0, vertex_num);
         glvWriteStream(window);
-        // std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
+
         curTime = std::chrono::system_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
         duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;

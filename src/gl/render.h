@@ -15,10 +15,7 @@ void rasterize();
 void process_pixel();
 
 // new interface for parallel
-void assemble_primitive();
-void vertex_shading();
 void geometry_processing();
-void binning();
 void rasterization();
 
 // interface multi-thread version

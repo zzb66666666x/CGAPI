@@ -7,6 +7,7 @@
 #include <string.h>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <queue>
 #include <list>
 #include <vector>
@@ -71,6 +72,9 @@ class glObject{
     virtual int byteCapacity() const = 0;
 
     GLenum bind;
+
+    // GL_STATIC_DRAW
+    GLenum usage;
 };
 
 template<class T>
@@ -264,6 +268,32 @@ struct Pixel{
     glm::vec2 texcoord;
 };
 
+class PrimitiveCache{
+public:
+    int removeCacheData(unsigned int VAO){
+        int ret = indexCache.erase(VAO);
+        return ret == 0 ? GL_FALSE : GL_TRUE;
+    }
+
+    int getCacheData(unsigned int VAO, std::vector<int>& indices)
+    {
+        auto it = indexCache.find(VAO);
+        if (it == indexCache.end()) {
+            return GL_FALSE;
+        }
+        indices = it->second;
+        return GL_TRUE;
+    }
+
+    int addCacheData(unsigned int VAO, std::vector<int> &indices){
+        auto ret = indexCache.insert(std::make_pair(VAO, indices));
+        return ret.second ? GL_TRUE : GL_FALSE;
+    }
+
+private:
+    std::unordered_map<unsigned int, std::vector<int>> indexCache;
+};
+
 class glPipeline{
     public:
         glPipeline();
@@ -277,7 +307,9 @@ class glPipeline{
         std::queue<Triangle*> triangle_stream;
         // triangle list for new interfaces
         std::vector<Triangle> triangle_list;
-        std::vector<int> indices;
+        
+        // id: VAOId
+        PrimitiveCache indexCache;
 
         std::list<render_fp> exec;
         // pixel processing task list
