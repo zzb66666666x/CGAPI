@@ -19,6 +19,7 @@ set(GL_HEADERS
 	src/gl/geometry.h
 	src/gl/formats.h
 	src/gl/configs.h
+	src/gl/binning.h
 	src/gl/glsl/texture.h
 )
 
@@ -34,6 +35,7 @@ set(GL_SOURCES
 	src/gl/glcontext.cpp
 	src/gl/render.cpp
 	src/gl/geometry.cpp
+	src/gl/binning.cpp
 )
 
 set(GLV_SOURCES

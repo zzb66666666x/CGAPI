@@ -499,13 +499,19 @@ void* _thr_rasterize(void* thread_id);
 // helpers
 static inline void _merge_crawlers();
 
-// thread sync, the barrier to sync threads after processing 3 vertices
+// thread utils for vertex processing
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
 int process_vertex_sync = 0;
 
+// thread untils for rasterizing
+static pthread_mutex_t rasterize_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t rasterize_cv = PTHREAD_COND_INITIALIZER;
+int rasterize_sync = 0;
+
 // global variables
-volatile int quit_vertex_processing = 0; // for terminate the threads, make thread functions quit while loop
+volatile int quit_vertex_processing = 0;
+volatile int quit_rasterizing = 0;
 TriangleCrawler crawlers[PROCESS_VERTEX_THREAD_COUNT];
 
 // pipeline status
@@ -518,10 +524,8 @@ void terminate_all_threads()
 {
     GET_CURRENT_CONTEXT(C);
     quit_vertex_processing = 1;
-    for (int i = 0; i < PROCESS_VERTEX_THREAD_COUNT; i++) {
-        pthread_cancel(C->threads.thr_arr[i]);
-        pthread_join(C->threads.thr_arr[i], NULL);
-    }
+    quit_rasterizing = 1;
+    // terminate threads in use
     C->threads.reset();
 }
 
@@ -733,12 +737,47 @@ void* _thr_process_vertex(void* thread_id)
 void rasterize_threadmain()
 {
     // std::cout << "begin to rasterize\n";
-    rasterize_with_shading();
+    // rasterize_with_shading();
+    static int first_entry = 1;
+    static int thread_ids[RASTERIZE_THREAD_COUNT];
+    GET_CURRENT_CONTEXT(C);
+    GET_PIPELINE(P);
+    pthread_t* ths = C->threads.thr_arr;
+    // set the multi-threading
+    pthread_mutex_lock(&rasterize_mtx);
+    if (first_entry) {
+        first_entry = 0;
+        // create threads
+        assert(C->threads.get(thread_ids, RASTERIZE_THREAD_COUNT) == GL_SUCCESS);
+        for (int i = 0; i < RASTERIZE_THREAD_COUNT; i++) {
+            pthread_create(&ths[thread_ids[i]], NULL, _thr_rasterize, (void*)(long long)i);
+        }
+    }
+    quit_rasterizing = 0;
+    rasterize_sync = 0;
+    pthread_cond_broadcast(&rasterize_cv);
+    pthread_mutex_unlock(&rasterize_mtx);
+    // make main thread sleep
+    pthread_mutex_lock(&pipeline_mtx);
+    pipeline_stage = DOING_RASTERIZATION;
+    while (pipeline_stage == DOING_RASTERIZATION) {
+        pthread_cond_wait(&pipeline_cv, &pipeline_mtx);
+    }
+    pthread_mutex_unlock(&pipeline_mtx);
 }
 
 void* _thr_rasterize(void* thread_id)
 {
+    int id = (int)(long long)(thread_id);
+    GET_CURRENT_CONTEXT(C);
+    glProgram local_shader = C->shader;
 
+    while (!quit_rasterizing){
+        // pop out triangle
+        // rasterize
+        
+        // sync point
+    }
     return nullptr;
 }
 
