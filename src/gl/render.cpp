@@ -270,17 +270,8 @@ void geometry_processing()
      */
     GET_PIPELINE(ppl);
     GET_CURRENT_CONTEXT(ctx);
-
+    
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
-
-    // check if the config is activated
-    for (int i = 0; i < ctx->shader.layout_cnt; ++i) {
-        if (ctx->shader.layouts[i] != LAYOUT_INVALID
-            && (ctx->shader.layouts[i] >= ppl->vao_ptr->getSize()
-                || !vattrib_data[ctx->shader.layouts[i]].activated)) {
-            ctx->shader.layouts[i] = LAYOUT_INVALID;
-        }
-    }
 
     std::vector<int> indices;
     int triangle_size = 0;
@@ -343,12 +334,11 @@ void geometry_processing()
     void* input_ptr;
     unsigned char* buf;
     glProgram shader = ctx->shader;
-    int i, j;
-#pragma omp parallel for private(input_ptr) private(buf) private(shader) private(i) private(j)
+#pragma omp parallel for private(input_ptr) private(buf) private(shader)
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_ind=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
-        for (i = 0; i < 3; ++i) {
-            for (j = 0; j < shader.layout_cnt; ++j) {
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < shader.layout_cnt; ++j) {
                 switch (shader.layouts[j]) {
                     case LAYOUT_POSITION:
                         input_ptr = &(shader.input_Pos);

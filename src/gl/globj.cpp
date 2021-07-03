@@ -11,7 +11,7 @@
 // glm::mat4 glProgram::model = glm::mat4(1.0f); 
 // glm::mat4 glProgram::view = glm::mat4(1.0f);
 // glm::mat4 glProgram::projection = glm::mat4(1.0f);
-int glProgram::layouts[GL_MAX_TEXTURE_UNITS];
+int glProgram::layouts[GL_MAX_VERTEX_ATTRIB_NUM];
 int glProgram::layout_cnt;
 
 int glManager::insertStorage(GLenum dtype, glObject& obj){
@@ -100,16 +100,20 @@ glThreads::glThreads(){
 
 }
 
-glProgram::glProgram(){
+glProgram::glProgram()
+{
     layout_cnt = GL_MAX_VERTEX_ATTRIB_NUM;
-    for (int i = 0; i < GL_MAX_VERTEX_ATTRIB_NUM; i++)
-    {
+}
+
+void glProgram::initialize_layouts()
+{
+    for (int i = 0; i < GL_MAX_VERTEX_ATTRIB_NUM; i++) {
         layouts[i] = LAYOUT_INVALID;
     }
     layouts[0] = LAYOUT_POSITION;
     layouts[1] = LAYOUT_COLOR;
-    // layouts[2] = LAYOUT_TEXCOORD;
-    // layouts[3] = LAYOUT_NORMAL;
+    layouts[2] = LAYOUT_TEXCOORD;
+    layouts[3] = LAYOUT_NORMAL;
 }
 
 void glProgram::default_vertex_shader(){

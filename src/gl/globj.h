@@ -248,6 +248,7 @@ class glProgram{
     PixelShaderResult default_fragment_shader(PixelShaderParam &params);
     void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
     void set_diffuse_texture(GLenum unit);
+    void initialize_layouts();
 };
 
 class glRenderPayload{
@@ -307,7 +308,6 @@ class glPipeline{
         std::queue<Triangle*> triangle_stream;
         // triangle list for new interfaces
         std::vector<Triangle> triangle_list;
-        
         // id: VAOId
         PrimitiveCache indexCache;
 

@@ -18,6 +18,7 @@ gl_context::gl_context(int npixels, bool double_buf){
         zbuf_2 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
     }
     shader = glProgram();
+    shader.initialize_layouts();
     payload = glRenderPayload();
     pipeline = glPipeline();
     pipeline.pixel_tasks = std::vector<Pixel>(npixels);

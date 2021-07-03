@@ -397,6 +397,22 @@ void glEnable(GLenum cap){
     }
 }
 
+static void check_set_layouts(){
+    GET_CURRENT_CONTEXT(C);
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)C->pipeline.vao_ptr->getDataPtr();
+    // printf("vao_ptr.size = %d\n",ppl->vao_ptr->getSize());
+    // check if the config is activated
+    for (int i = 0; i < C->shader.layout_cnt; ++i) {
+        if (C->shader.layouts[i] != LAYOUT_INVALID
+            && C->shader.layouts[i] >= C->pipeline.vao_ptr->getSize()) {
+            C->shader.layouts[i] = LAYOUT_INVALID;
+        } else if (!vattrib_data[C->shader.layouts[i]].activated) {
+            C->shader.layouts[i] = LAYOUT_INVALID;
+        }
+    }
+    C->shader.layouts[2] = LAYOUT_INVALID;
+}
+
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
     GET_CURRENT_CONTEXT(C);
@@ -456,6 +472,8 @@ void glDrawArrays(GLenum mode, int first, int count){
     C->pipeline.first_vertex = first;
     C->pipeline.vertex_num = count;
     C->pipeline.use_indices = false;
+
+    check_set_layouts();
 
     // draw
     auto& exec_list = C->pipeline.exec; 
@@ -528,7 +546,7 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         } else {
             ctx->pipeline.textures[cnt] = nullptr;
         }
-        cnt++;
+        ++cnt; 
     }
     // prepare pipeline environment
     ctx->pipeline.vao_ptr = vao_ptr;
@@ -538,6 +556,8 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
     ctx->pipeline.ebo_config.first_indices = indices;
     ctx->pipeline.ebo_config.indices_type = type;
     ctx->pipeline.use_indices = true;
+
+    check_set_layouts();
 
     // draw
     std::list<render_fp>& exec_list = ctx->pipeline.exec;
