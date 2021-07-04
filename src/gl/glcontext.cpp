@@ -32,6 +32,7 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     gl_context * ctx = new gl_context(npixels, double_buf);
     ctx->width = width;
     ctx->height = height;
+    ctx->pipeline.bins = new ScreenBins(width, height);
     ctx->znear = 0.1;
     ctx->zfar = 50;
     // _cg_context_sanity_check(ctx);

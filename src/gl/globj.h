@@ -15,6 +15,7 @@
 #include "geometry.h"
 #include "render.h"
 #include "formats.h"
+#include "binning.h"
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 #include "glsl/texture.h"
@@ -259,10 +260,12 @@ struct Pixel{
 class glPipeline{
     public:
         glPipeline();
+        ~glPipeline();
         // the number of cpu core
         int cpu_num;
         // data needed for render functions
         std::queue<Triangle*> triangle_stream;
+        pthread_mutex_t triangle_stream_mtx;
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
@@ -281,6 +284,8 @@ class glPipeline{
         } ebo_config;
         std::vector<Triangle> triangle_list;
         std::vector<int> indices;
+        // binning data
+        ScreenBins* bins;
 };
 
 #endif

@@ -2,13 +2,14 @@
 #include "../../include/gl/common.h"
 #include "configs.h"
 #include "glcontext.h"
+#include "binning.h"
 #include <assert.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <pthread.h>
 #include <stdio.h>
-
+#include <set>
 #include <atomic>
 #include <thread>
 
@@ -494,6 +495,7 @@ void rasterize_with_shading(){
 ////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
 // thread functions
 void* _thr_process_vertex(void* thread_id);
+void* _thr_binning(void* thread_id);
 void* _thr_rasterize(void* thread_id);
 
 // helpers
@@ -504,6 +506,11 @@ static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t vertex_threads_cv = PTHREAD_COND_INITIALIZER;
 int process_vertex_sync = 0;
 
+// thread utils for binning
+static pthread_mutex_t binning_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t binning_cv = PTHREAD_COND_INITIALIZER;
+int binning_sync = 0;
+
 // thread untils for rasterizing
 static pthread_mutex_t rasterize_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t rasterize_cv = PTHREAD_COND_INITIALIZER;
@@ -512,6 +519,7 @@ int rasterize_sync = 0;
 // global variables
 volatile int quit_vertex_processing = 0;
 volatile int quit_rasterizing = 0;
+volatile int quit_binning = 0;
 TriangleCrawler crawlers[PROCESS_VERTEX_THREAD_COUNT];
 
 // pipeline status
@@ -734,6 +742,79 @@ void* _thr_process_vertex(void* thread_id)
     return nullptr;
 }
 
+void binning_threadmain(){
+    static int first_entry = 1;
+    static int thread_ids[BINNING_THREAD_COUNT];
+    GET_CURRENT_CONTEXT(C);
+    GET_PIPELINE(P);
+    pthread_t* ths = C->threads.thr_arr;
+    // set the multi-threading
+    pthread_mutex_lock(&binning_mtx);
+    if (first_entry) {
+        first_entry = 0;
+        // create threads
+        assert(C->threads.get(thread_ids, BINNING_THREAD_COUNT) == GL_SUCCESS);
+        for (int i = 0; i < BINNING_THREAD_COUNT; i++) {
+            pthread_create(&ths[thread_ids[i]], NULL, _thr_binning, (void*)(long long)i);
+        }
+    }
+    quit_binning = 0;
+    binning_sync = 0;
+    pthread_cond_broadcast(&binning_cv);
+    pthread_mutex_unlock(&rasterize_mtx);
+    // make main thread sleep
+    pthread_mutex_lock(&pipeline_mtx);
+    pipeline_stage = DOING_BINNING;
+    while (pipeline_stage == DOING_BINNING) {
+        pthread_cond_wait(&pipeline_cv, &pipeline_mtx);
+    }
+    pthread_mutex_unlock(&pipeline_mtx);
+}
+
+void* _thr_binning(void* thread_id){
+    // int id = (int)(long long)(thread_id);
+    GET_PIPELINE(P);
+    Triangle* cur_tri;
+    while (!quit_binning){
+        while (1){
+            pthread_mutex_lock(& P->triangle_stream_mtx);
+            if (P->triangle_stream.empty()){
+                pthread_mutex_unlock(& P->triangle_stream_mtx);
+                break;
+            }
+            cur_tri = P->triangle_stream.front();
+            P->triangle_stream.pop();
+            pthread_mutex_unlock(& P-> triangle_stream_mtx);
+            std::set<Bin*> overlap_bins = binning_overlap(cur_tri, P->bins);
+            std::set<Bin*>::iterator it;
+            for (it = overlap_bins.begin(); it != overlap_bins.end(); it++){
+                Bin* temp_bin = *it;
+                uint64_t mask = compute_cover_mask(cur_tri, temp_bin);
+                if (mask != 0){
+                    pthread_mutex_lock(&temp_bin->lock);
+                    temp_bin->tasks.emplace((primitive_t){cur_tri, mask});
+                    pthread_mutex_unlock(&temp_bin->lock);
+                }
+            }
+        }
+        // finish binning, sleep
+        pthread_mutex_lock(&binning_mtx);
+        binning_sync++;
+        if (binning_sync != BINNING_THREAD_COUNT){
+            binning_sync = 0;
+            // move the pipeline forward
+            pthread_mutex_lock(&pipeline_mtx);
+            pipeline_stage = DOING_RASTERIZATION;
+            pthread_cond_signal(&pipeline_cv);
+            pthread_mutex_unlock(&pipeline_mtx);
+            while (pthread_cond_wait(&binning_cv, &binning_mtx) != 0);
+        }else{
+            while(pthread_cond_wait(&binning_cv, &binning_mtx) != 0);
+        }
+        pthread_mutex_unlock(&binning_mtx);
+    }
+}
+
 void rasterize_threadmain()
 {
     // std::cout << "begin to rasterize\n";
@@ -770,13 +851,94 @@ void* _thr_rasterize(void* thread_id)
 {
     int id = (int)(long long)(thread_id);
     GET_CURRENT_CONTEXT(C);
+    GET_PIPELINE(P);
+    int bin_idx = id;
+    Bin* cur_bin;
+    int pixel_end_x; // pixel index should be < than that 
+    int pixel_end_y;
+    uint64_t bit_mask = 1;
     glProgram local_shader = C->shader;
-
+    float* zbuf = (float*)C->zbuf->getDataPtr();
+    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
     while (!quit_rasterizing){
-        // pop out triangle
-        // rasterize
-        
-        // sync point
+        while (1){
+            // grab one bin to rasterize
+            cur_bin = P->bins->get_bin_by_index(bin_idx);
+            if (cur_bin == nullptr)
+                break;
+            pixel_end_x = cur_bin->pixel_bin_x + BIN_SIDE_LENGTH;
+            pixel_end_x = cur_bin->pixel_bin_y + BIN_SIDE_LENGTH;
+            if (!cur_bin->is_full){
+                pixel_end_x = MIN(pixel_end_x, C->width);
+                pixel_end_y = MIN(pixel_end_y, C->height);
+            }
+            // loop over the triangles belong to it
+            while (! cur_bin->tasks.empty()){
+                primitive_t& pri = cur_bin->tasks.front();
+                uint64_t cover_mask = pri.cover_mask;
+                int cnt = 0;
+                while (cover_mask != 0){
+                    if (cover_mask & bit_mask){
+                        // process pixels in the tile
+                        int x, y, tile_pixel_begin_x, tile_pixel_begin_y, tile_pixel_end_x, tile_pixel_end_y;
+                        x = cnt % TILE_NUM_PER_AXIS;
+                        y = cnt / TILE_NUM_PER_AXIS;
+                        Triangle* t = pri.tri;
+                        glm::vec4* screen_pos = t->screen_pos;
+                        cur_bin->get_tile(x, y, &tile_pixel_begin_x, &tile_pixel_begin_y);
+                        tile_pixel_end_x = MIN(pixel_end_x, tile_pixel_begin_x+TILE_SIDE_LENGTH);
+                        tile_pixel_end_y = MIN(pixel_end_y, tile_pixel_begin_x+TILE_SIDE_LENGTH);
+                        for(int temp_pixel_x = tile_pixel_begin_x; temp_pixel_x < tile_pixel_end_x; temp_pixel_x++){
+                            for (int temp_pixel_y = tile_pixel_begin_y; temp_pixel_y < tile_pixel_end_y; temp_pixel_y++){
+                                int index = GET_INDEX(temp_pixel_x, temp_pixel_y, C->width, C->height);
+                                if (!t->inside(temp_pixel_x+0.5f, temp_pixel_y+0.5f))
+                                    continue;
+                                glm::vec3 coef = t->computeBarycentric2D(temp_pixel_x + 0.5f, temp_pixel_y + 0.5f);
+                                // perspective correction
+                                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
+                                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
+                                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
+                                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+                                if (!C->use_z_test) {
+                                    throw std::runtime_error("please open the z depth test\n");
+                                }else{
+                                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                                    if (zp < zbuf[index]) {
+                                        zbuf[index] = zp;
+                                        // fragment shader input
+                                        local_shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                                        local_shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                                        // fragment shading
+                                        local_shader.default_fragment_shader();
+                                        frame_buf[index].R = local_shader.frag_Color.x * 255.0f;
+                                        frame_buf[index].G = local_shader.frag_Color.y * 255.0f;
+                                        frame_buf[index].B = local_shader.frag_Color.z * 255.0f;
+                                } 
+                            }
+                        }
+                    }
+                    cnt ++;
+                    cover_mask = cover_mask >> 1;
+                }
+                delete pri.tri;
+                cur_bin->tasks.pop();
+            }
+            bin_idx += BINNING_THREAD_COUNT;
+        }
+        // finish rasterizing, sync point
+        pthread_mutex_lock(&rasterize_mtx);
+        rasterize_sync ++;
+        if(rasterize_sync == RASTERIZE_THREAD_COUNT){
+            rasterize_sync = 0;
+            pthread_mutex_lock(&pipeline_mtx);
+            pipeline_stage = PIPELINE_FINISH;
+            pthread_cond_signal(&pipeline_cv);
+            pthread_mutex_unlock(&pipeline_mtx);
+            while (pthread_cond_wait(&rasterize_cv, &rasterize_mtx) != 0);
+        }else{
+            while(pthread_cond_wait(&rasterize_cv, &rasterize_mtx) != 0);
+        }
+        pthread_mutex_unlock(&rasterize_mtx);
     }
     return nullptr;
 }

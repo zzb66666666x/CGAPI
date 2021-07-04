@@ -1,7 +1,6 @@
 #include "configs.h"
 #include "binning.h"
 #include <glm/glm.hpp>
-#include <set>
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -75,8 +74,8 @@ uint64_t compute_cover_mask(Triangle* tri, Bin* bin){
     uint64_t ans = 0;
     uint64_t bit_mask = 1;
     int pixel_tile_x, pixel_tile_y;
-    for (int i=0; i<TILE_NUM_PER_AXIS; i++){
-        for (int j=0; j<TILE_NUM_PER_AXIS; j++){
+    for (int j=0; j<TILE_NUM_PER_AXIS; j++){
+        for (int i=0; i<TILE_NUM_PER_AXIS; i++){
             bin->get_tile(i, j, &pixel_tile_x, &pixel_tile_y);
             if (tile_overlap_triangle(tri, pixel_tile_x, pixel_tile_y)){
                 ans = ans | bit_mask;

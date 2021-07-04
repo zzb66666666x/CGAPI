@@ -179,6 +179,7 @@ glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();
     vertex_num = 0;
     first_vertex = 0;
+    triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
     // if testing ebo
     // exec.emplace_back(process_geometry_ebo);
     // exec.emplace_back(rasterize_ebo);
@@ -192,5 +193,10 @@ glPipeline::glPipeline(){
     for (int i=0; i<GL_MAX_TEXTURE_UNITS; i++){
         textures[i] = nullptr;
     }
+    bins = nullptr;
+}
+
+glPipeline::~glPipeline(){
+    delete bins;
 }
 

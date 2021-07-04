@@ -1,0 +1,94 @@
+Date : 2021-07-04 17:20:48
+Directory : d:\MyCode\Cpp\CGAPI
+Total : 50 files,  87596 codes, 1899 comments, 2311 blanks, all 91806 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| PDF      |          2 |     76,630 |          0 |        618 |     77,248 |
+| C++      |         41 |     10,067 |      1,898 |      1,508 |     13,473 |
+| Markdown |          6 |        840 |          0 |        184 |      1,024 |
+| XML      |          1 |         59 |          1 |          1 |         61 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                  | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                     |         50 |     87,596 |      1,899 |      2,311 |     91,806 |
+| experiments                                           |         10 |        313 |         64 |         90 |        467 |
+| experiments\JIT                                       |         10 |        313 |         64 |         90 |        467 |
+| experiments\JIT\include                               |          7 |        259 |         64 |         77 |        400 |
+| include                                               |          3 |        125 |         56 |         40 |        221 |
+| include\gl                                            |          2 |        106 |         23 |         26 |        155 |
+| include\glv                                           |          1 |         19 |         33 |         14 |         66 |
+| notes                                                 |          3 |        835 |          0 |        180 |      1,015 |
+| reference                                             |          2 |     76,630 |          0 |        618 |     77,248 |
+| resources                                             |          1 |         59 |          1 |          1 |         61 |
+| resources\spot                                        |          1 |         59 |          1 |          1 |         61 |
+| src                                                   |         21 |      2,600 |        278 |        286 |      3,164 |
+| src\gl                                                |         15 |      2,275 |        244 |        237 |      2,756 |
+| src\gl\glsl                                           |          2 |         69 |          9 |         12 |         90 |
+| src\glv                                               |          2 |        157 |         32 |         29 |        218 |
+| src\utests                                            |          2 |         68 |          2 |          7 |         77 |
+| src\utils                                             |          2 |        100 |          0 |         13 |        113 |
+| tests                                                 |          9 |      7,033 |      1,500 |      1,096 |      9,629 |
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                              | language | code       | comment    | blank      | total      |
++-------------------------------------------------------+----------+------------+------------+------------+------------+
+| d:\MyCode\Cpp\CGAPI\README.md                         | Markdown |          1 |          0 |          0 |          1 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\README.md         | Markdown |          3 |          0 |          4 |          7 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\float.h   | C++      |         44 |          4 |         10 |         58 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\libtcc.h  | C++      |         40 |         32 |         29 |        101 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\stdarg.h  | C++      |         62 |          5 |         13 |         80 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\stdbool.h | C++      |          7 |          1 |          4 |         12 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\stddef.h  | C++      |         40 |          7 |          8 |         55 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\tcclib.h  | C++      |         61 |         10 |         10 |         81 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\include\varargs.h | C++      |          5 |          5 |          3 |         13 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\main.cpp          | C++      |         43 |          0 |          7 |         50 |
+| d:\MyCode\Cpp\CGAPI\experiments\JIT\support.h         | C++      |          8 |          0 |          2 |         10 |
+| d:\MyCode\Cpp\CGAPI\include\gl\common.h               | C++      |         67 |         13 |         19 |         99 |
+| d:\MyCode\Cpp\CGAPI\include\gl\gl.h                   | C++      |         39 |         10 |          7 |         56 |
+| d:\MyCode\Cpp\CGAPI\include\glv\glv.h                 | C++      |         19 |         33 |         14 |         66 |
+| d:\MyCode\Cpp\CGAPI\notes\Log.md                      | Markdown |         43 |          0 |         25 |         68 |
+| d:\MyCode\Cpp\CGAPI\notes\mesa drawing process.md     | Markdown |        150 |          0 |         32 |        182 |
+| d:\MyCode\Cpp\CGAPI\notes\mesa gl_context.md          | Markdown |        642 |          0 |        123 |        765 |
+| d:\MyCode\Cpp\CGAPI\reference\GLSLangSpec.1.20.pdf    | PDF      |      8,563 |          0 |        554 |      9,117 |
+| d:\MyCode\Cpp\CGAPI\reference\glspec21.pdf            | PDF      |     68,067 |          0 |         64 |     68,131 |
+| d:\MyCode\Cpp\CGAPI\resources\spot\spot_texture.svg   | XML      |         59 |          1 |          1 |         61 |
+| d:\MyCode\Cpp\CGAPI\src\gl\binning.cpp                | C++      |         72 |          5 |         10 |         87 |
+| d:\MyCode\Cpp\CGAPI\src\gl\binning.h                  | C++      |         62 |          3 |         12 |         77 |
+| d:\MyCode\Cpp\CGAPI\src\gl\configs.h                  | C++      |          5 |          1 |          4 |         10 |
+| d:\MyCode\Cpp\CGAPI\src\gl\formats.h                  | C++      |         29 |          4 |         10 |         43 |
+| d:\MyCode\Cpp\CGAPI\src\gl\geometry.cpp               | C++      |        110 |          3 |          5 |        118 |
+| d:\MyCode\Cpp\CGAPI\src\gl\geometry.h                 | C++      |         97 |          4 |          9 |        110 |
+| d:\MyCode\Cpp\CGAPI\src\gl\gl.cpp                     | C++      |        522 |         49 |         45 |        616 |
+| d:\MyCode\Cpp\CGAPI\src\gl\glcontext.cpp              | C++      |         74 |          4 |          9 |         87 |
+| d:\MyCode\Cpp\CGAPI\src\gl\glcontext.h                | C++      |         36 |          9 |          6 |         51 |
+| d:\MyCode\Cpp\CGAPI\src\gl\globj.cpp                  | C++      |        163 |         16 |         24 |        203 |
+| d:\MyCode\Cpp\CGAPI\src\gl\globj.h                    | C++      |        234 |         26 |         32 |        292 |
+| d:\MyCode\Cpp\CGAPI\src\gl\glsl\texture.cpp           | C++      |         37 |          1 |          2 |         40 |
+| d:\MyCode\Cpp\CGAPI\src\gl\glsl\texture.h             | C++      |         32 |          8 |         10 |         50 |
+| d:\MyCode\Cpp\CGAPI\src\gl\render.cpp                 | C++      |        778 |        108 |         52 |        938 |
+| d:\MyCode\Cpp\CGAPI\src\gl\render.h                   | C++      |         24 |          3 |          7 |         34 |
+| d:\MyCode\Cpp\CGAPI\src\glv\glv.cpp                   | C++      |        134 |         14 |         20 |        168 |
+| d:\MyCode\Cpp\CGAPI\src\glv\internal.h                | C++      |         23 |         18 |          9 |         50 |
+| d:\MyCode\Cpp\CGAPI\src\utests\README.md              | Markdown |          1 |          0 |          0 |          1 |
+| d:\MyCode\Cpp\CGAPI\src\utests\test_globjs.cpp        | C++      |         67 |          2 |          7 |         76 |
+| d:\MyCode\Cpp\CGAPI\src\utils\id.cpp                  | C++      |         73 |          0 |          6 |         79 |
+| d:\MyCode\Cpp\CGAPI\src\utils\id.h                    | C++      |         27 |          0 |          7 |         34 |
+| d:\MyCode\Cpp\CGAPI\tests\OBJ_Loader.h                | C++      |        827 |        201 |        143 |      1,171 |
+| d:\MyCode\Cpp\CGAPI\tests\shared_data.cpp             | C++      |         76 |          2 |         12 |         90 |
+| d:\MyCode\Cpp\CGAPI\tests\shared_data.h               | C++      |          5 |          0 |          3 |          8 |
+| d:\MyCode\Cpp\CGAPI\tests\stb_image.h                 | C++      |      5,688 |      1,230 |        844 |      7,762 |
+| d:\MyCode\Cpp\CGAPI\tests\test_basics.cpp             | C++      |         88 |         15 |         24 |        127 |
+| d:\MyCode\Cpp\CGAPI\tests\test_bunny.cpp              | C++      |         86 |         15 |         20 |        121 |
+| d:\MyCode\Cpp\CGAPI\tests\test_cow.cpp                | C++      |        109 |         13 |         18 |        140 |
+| d:\MyCode\Cpp\CGAPI\tests\test_ebo.cpp                | C++      |         70 |          8 |         13 |         91 |
+| d:\MyCode\Cpp\CGAPI\tests\test_texture.cpp            | C++      |         84 |         16 |         19 |        119 |
+| Total                                                 |          |     87,596 |      1,899 |      2,311 |     91,806 |
++-------------------------------------------------------+----------+------------+------------+------------+------------+
