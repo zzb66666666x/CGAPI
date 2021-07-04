@@ -500,6 +500,7 @@ void* _thr_rasterize(void* thread_id);
 
 // helpers
 static inline void _merge_crawlers();
+static inline void _free_triangles_after_rasterize();
 
 // thread utils for vertex processing
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -547,7 +548,11 @@ static inline void _merge_crawlers(){
         TriangleCrawler& crawler = crawlers[crawlerID];
         crawlerID = (crawlerID+1) % PROCESS_VERTEX_THREAD_COUNT;
         if (cnt%3 == 0 && cnt>0){
+            // for compatibility of old functions (they use queue to store triangle pointers)
             glapi_ctx->pipeline.triangle_stream.push(tri);
+            // for parallel computation in binning and rasterizing, use std vector to store tri pointers
+            // since using a queue requires a mutex lock
+            glapi_ctx->pipeline.triangle_ptrs.push_back(tri);
             tri = new Triangle;
         }
         if(flag){
@@ -683,6 +688,7 @@ void process_geometry_threadmain()
         pthread_cond_wait(&pipeline_cv, &pipeline_mtx);
     }
     pthread_mutex_unlock(&pipeline_mtx);
+    // std::cout<<"finish vertex processing"<<std::endl;
 }
 
 void* _thr_process_vertex(void* thread_id)
@@ -761,7 +767,7 @@ void binning_threadmain(){
     quit_binning = 0;
     binning_sync = 0;
     pthread_cond_broadcast(&binning_cv);
-    pthread_mutex_unlock(&rasterize_mtx);
+    pthread_mutex_unlock(&binning_mtx);
     // make main thread sleep
     pthread_mutex_lock(&pipeline_mtx);
     pipeline_stage = DOING_BINNING;
@@ -769,22 +775,34 @@ void binning_threadmain(){
         pthread_cond_wait(&pipeline_cv, &pipeline_mtx);
     }
     pthread_mutex_unlock(&pipeline_mtx);
+    // std::cout<<"finish binning"<<std::endl;
 }
 
 void* _thr_binning(void* thread_id){
-    // int id = (int)(long long)(thread_id);
+    int id = (int)(long long)(thread_id);
     GET_PIPELINE(P);
     Triangle* cur_tri;
+    int tri_idx;
     while (!quit_binning){
+        // start of each frame
+        tri_idx = id;
         while (1){
-            pthread_mutex_lock(& P->triangle_stream_mtx);
-            if (P->triangle_stream.empty()){
-                pthread_mutex_unlock(& P->triangle_stream_mtx);
+            // IF YOU ARE USING QUEUE TO STORE TRIANGLE POINTERS
+            // pthread_mutex_lock(& P->triangle_stream_mtx);
+            // if (P->triangle_stream.empty()){
+            //     pthread_mutex_unlock(& P->triangle_stream_mtx);
+            //     break;
+            // }
+            // cur_tri = P->triangle_stream.front();
+            // P->triangle_stream.pop();
+            // pthread_mutex_unlock(& P-> triangle_stream_mtx);
+            // USE VECTOR FOR NO LOCK OPERATION
+            if (tri_idx >= P->triangle_ptrs.size()){
                 break;
             }
-            cur_tri = P->triangle_stream.front();
-            P->triangle_stream.pop();
-            pthread_mutex_unlock(& P-> triangle_stream_mtx);
+            cur_tri = P->triangle_ptrs[tri_idx];
+            tri_idx += BINNING_THREAD_COUNT;
+            // check triangle's overlap with bins
             std::set<Bin*> overlap_bins = binning_overlap(cur_tri, P->bins);
             std::set<Bin*>::iterator it;
             for (it = overlap_bins.begin(); it != overlap_bins.end(); it++){
@@ -792,15 +810,16 @@ void* _thr_binning(void* thread_id){
                 uint64_t mask = compute_cover_mask(cur_tri, temp_bin);
                 if (mask != 0){
                     pthread_mutex_lock(&temp_bin->lock);
-                    temp_bin->tasks.emplace((primitive_t){cur_tri, mask});
+                    temp_bin->tasks.push((primitive_t){cur_tri, mask});
                     pthread_mutex_unlock(&temp_bin->lock);
                 }
             }
         }
+        // std::cout<<"partially finish binning"<<std::endl;
         // finish binning, sleep
         pthread_mutex_lock(&binning_mtx);
         binning_sync++;
-        if (binning_sync != BINNING_THREAD_COUNT){
+        if (binning_sync == BINNING_THREAD_COUNT){
             binning_sync = 0;
             // move the pipeline forward
             pthread_mutex_lock(&pipeline_mtx);
@@ -813,6 +832,7 @@ void* _thr_binning(void* thread_id){
         }
         pthread_mutex_unlock(&binning_mtx);
     }
+    return nullptr;
 }
 
 void rasterize_threadmain()
@@ -845,6 +865,16 @@ void rasterize_threadmain()
         pthread_cond_wait(&pipeline_cv, &pipeline_mtx);
     }
     pthread_mutex_unlock(&pipeline_mtx);
+    // std::cout<<"finish rasterizing"<<std::endl;
+}
+
+static inline void _free_triangles_after_rasterize(){
+    GET_PIPELINE(P);
+    std::vector<Triangle*>::iterator it;
+    for(it = P->triangle_ptrs.begin(); it!=P->triangle_ptrs.end(); it++){
+        delete (*it);
+    }
+    P->triangle_ptrs.clear();
 }
 
 void* _thr_rasterize(void* thread_id)
@@ -852,7 +882,7 @@ void* _thr_rasterize(void* thread_id)
     int id = (int)(long long)(thread_id);
     GET_CURRENT_CONTEXT(C);
     GET_PIPELINE(P);
-    int bin_idx = id;
+    int bin_idx;
     Bin* cur_bin;
     int pixel_end_x; // pixel index should be < than that 
     int pixel_end_y;
@@ -861,20 +891,26 @@ void* _thr_rasterize(void* thread_id)
     float* zbuf = (float*)C->zbuf->getDataPtr();
     color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
     while (!quit_rasterizing){
+        // start of one frame
+        bin_idx = id;
+        // loop over the bin tasks (of the whole screen) belonging to each thread
         while (1){
             // grab one bin to rasterize
             cur_bin = P->bins->get_bin_by_index(bin_idx);
             if (cur_bin == nullptr)
                 break;
             pixel_end_x = cur_bin->pixel_bin_x + BIN_SIDE_LENGTH;
-            pixel_end_x = cur_bin->pixel_bin_y + BIN_SIDE_LENGTH;
+            pixel_end_y = cur_bin->pixel_bin_y + BIN_SIDE_LENGTH;
             if (!cur_bin->is_full){
                 pixel_end_x = MIN(pixel_end_x, C->width);
                 pixel_end_y = MIN(pixel_end_y, C->height);
             }
+            // check point
+            // std::cout<<"bin: "<<bin_idx<<" with pos: "<<cur_bin->pixel_bin_x<<" "<<cur_bin->pixel_bin_y<<"  ";
+            // std::cout<<"has triangles: "<<cur_bin->tasks.size()<<std::endl;
             // loop over the triangles belong to it
             while (! cur_bin->tasks.empty()){
-                primitive_t& pri = cur_bin->tasks.front();
+                primitive_t pri = cur_bin->tasks.front();
                 uint64_t cover_mask = pri.cover_mask;
                 int cnt = 0;
                 while (cover_mask != 0){
@@ -887,7 +923,7 @@ void* _thr_rasterize(void* thread_id)
                         glm::vec4* screen_pos = t->screen_pos;
                         cur_bin->get_tile(x, y, &tile_pixel_begin_x, &tile_pixel_begin_y);
                         tile_pixel_end_x = MIN(pixel_end_x, tile_pixel_begin_x+TILE_SIDE_LENGTH);
-                        tile_pixel_end_y = MIN(pixel_end_y, tile_pixel_begin_x+TILE_SIDE_LENGTH);
+                        tile_pixel_end_y = MIN(pixel_end_y, tile_pixel_begin_y+TILE_SIDE_LENGTH);
                         for(int temp_pixel_x = tile_pixel_begin_x; temp_pixel_x < tile_pixel_end_x; temp_pixel_x++){
                             for (int temp_pixel_y = tile_pixel_begin_y; temp_pixel_y < tile_pixel_end_y; temp_pixel_y++){
                                 int index = GET_INDEX(temp_pixel_x, temp_pixel_y, C->width, C->height);
@@ -913,6 +949,7 @@ void* _thr_rasterize(void* thread_id)
                                         frame_buf[index].R = local_shader.frag_Color.x * 255.0f;
                                         frame_buf[index].G = local_shader.frag_Color.y * 255.0f;
                                         frame_buf[index].B = local_shader.frag_Color.z * 255.0f;
+                                    }
                                 } 
                             }
                         }
@@ -920,16 +957,17 @@ void* _thr_rasterize(void* thread_id)
                     cnt ++;
                     cover_mask = cover_mask >> 1;
                 }
-                delete pri.tri;
                 cur_bin->tasks.pop();
             }
             bin_idx += BINNING_THREAD_COUNT;
         }
+        // std::cout<<"partially finish rasterizing"<<std::endl;
         // finish rasterizing, sync point
         pthread_mutex_lock(&rasterize_mtx);
         rasterize_sync ++;
         if(rasterize_sync == RASTERIZE_THREAD_COUNT){
             rasterize_sync = 0;
+            _free_triangles_after_rasterize();
             pthread_mutex_lock(&pipeline_mtx);
             pipeline_stage = PIPELINE_FINISH;
             pthread_cond_signal(&pipeline_cv);

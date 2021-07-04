@@ -54,6 +54,9 @@ std::set<Bin*> binning_overlap(Triangle* tri, ScreenBins* screen_bins){
     ans.insert(screen_bins->get_bin(maxx, maxy));
     ans.insert(screen_bins->get_bin(maxx, miny));
     ans.insert(screen_bins->get_bin(minx, maxy));
+    if (ans.find(nullptr) != ans.end()){
+        throw std::runtime_error("you shouldn't fin triangles outside of screen\n");
+    }
     return ans;
 }
 
@@ -71,6 +74,8 @@ static int tile_overlap_triangle(Triangle* tri, int tile_begin_x, int tile_begin
 // for the bit mask, this order goes from least significant bit to the most
 // aka. 2^0 maps to left down corner, 2^63 maps to top right corner
 uint64_t compute_cover_mask(Triangle* tri, Bin* bin){
+    if (tri==nullptr || bin==nullptr)
+        throw std::runtime_error("cannot compute mask because of nullptr params\n");
     uint64_t ans = 0;
     uint64_t bit_mask = 1;
     int pixel_tile_x, pixel_tile_y;

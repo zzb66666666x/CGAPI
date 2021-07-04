@@ -130,7 +130,7 @@ glProgram::glProgram(){
     }
     layouts[0] = LAYOUT_POSITION;
     layouts[1] = LAYOUT_COLOR;
-    // layouts[2] = LAYOUT_TEXCOORD;
+    layouts[2] = LAYOUT_TEXCOORD;
     // layouts[3] = LAYOUT_NORMAL;
 }
 
@@ -144,10 +144,10 @@ void glProgram::default_vertex_shader(){
 
 void glProgram::default_fragment_shader(){
     // without texture
-    frag_Color = diffuse_Color;
+    // frag_Color = diffuse_Color;
 
     // with texture
-    // frag_Color = glm::vec3(texture2D(diffuse_texture, texcoord));
+    frag_Color = glm::vec3(texture2D(diffuse_texture, texcoord));
 }
 
 void glProgram::set_transform_matrices(int width, int height, float znear, float zfar, float angle){
@@ -156,7 +156,7 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     projection = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+    model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -186,6 +186,7 @@ glPipeline::glPipeline(){
     // exec.emplace_back(process_pixel);
     // if using multi-threading
     exec.emplace_back(process_geometry_threadmain);
+    exec.emplace_back(binning_threadmain);
     exec.emplace_back(rasterize_threadmain);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;

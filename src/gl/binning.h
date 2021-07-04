@@ -7,7 +7,6 @@
 #include <set>
 #include <pthread.h>
 #include "geometry.h"
-#include "glcontext.h"
 
 //////////////////////// NOTE ////////////////////////
 // in this file: screen starts from left down corner!
@@ -47,8 +46,8 @@ class ScreenBins{
         num_bins_along_x = (w % BIN_SIDE_LENGTH == 0) ? w/BIN_SIDE_LENGTH : w/BIN_SIDE_LENGTH+1;
         num_bins_along_y = (h % BIN_SIDE_LENGTH == 0) ? h/BIN_SIDE_LENGTH : h/BIN_SIDE_LENGTH+1;
         // storage order: first go from origin to x dir, then go up in y dir, then go right in x dir
-        for (int j=0; j<num_bins_along_x; j++){
-            for (int i=0; i<num_bins_along_y; i++){
+        for (int j=0; j<num_bins_along_y; j++){
+            for (int i=0; i<num_bins_along_x; i++){
                 Bin bin(i,j);
                 if (bin.pixel_bin_x + BIN_SIDE_LENGTH > w || bin.pixel_bin_y + BIN_SIDE_LENGTH > h)
                     bin.is_full == false;

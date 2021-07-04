@@ -107,6 +107,9 @@ int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgr
     shader.gl_Position.z /= shader.gl_Position.w;
     shader.gl_Position.x = 0.5 * C->width * (shader.gl_Position.x + 1.0);
     shader.gl_Position.y = 0.5 * C->height * (shader.gl_Position.y + 1.0);
+    // if (shader.gl_Position.x < 0 || shader.gl_Position.y < 0 || shader.gl_Position.x > C->width || shader.gl_Position.y > C->height){
+    //     throw std::runtime_error("outside of screen?\n");
+    // }
     shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;   
     data_float_vec4[VSHADER_OUT_POSITION].push(shader.gl_Position);
     data_float_vec3[VSHADER_OUT_COLOR].push(shader.gl_VertexColor);

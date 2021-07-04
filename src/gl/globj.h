@@ -266,6 +266,8 @@ class glPipeline{
         // data needed for render functions
         std::queue<Triangle*> triangle_stream;
         pthread_mutex_t triangle_stream_mtx;
+        // in multi-thread pixel processing version of code, list is better for parallel computing
+        std::vector<Triangle*> triangle_ptrs;   
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
