@@ -410,7 +410,6 @@ static void check_set_layouts(){
             C->shader.layouts[i] = LAYOUT_INVALID;
         }
     }
-    C->shader.layouts[2] = LAYOUT_INVALID;
 }
 
 // draw

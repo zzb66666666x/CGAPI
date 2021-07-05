@@ -130,15 +130,15 @@ PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // frag_Color = diffuse_Color;
 
     PixelShaderResult result;
-    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-    // result.fragColor = color;
+    glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
+    result.fragColor = color;
 
     // result.fragColor.x = params.color.x * 255;
     // result.fragColor.y = params.color.y * 255;
     // result.fragColor.z = params.color.z * 255;
 
-    result.fragColor = glm::vec4(params.normal, 1.0f);
-    result.fragColor *= 255.0f;
+    // result.fragColor = glm::vec4(params.normal, 1.0f);
+    // result.fragColor *= 255.0f;
 
     return result;
 }
@@ -147,8 +147,11 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     model = glm::mat4(1.0f); 
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
-    // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    // model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
+
+    // for cow
+    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
 
     // for bunny
     // model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
@@ -156,9 +159,9 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
 
     // for wheel
-    model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+    // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    // model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
 
     // model_inv_trans = glm::transpose(glm::inverse(model));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
