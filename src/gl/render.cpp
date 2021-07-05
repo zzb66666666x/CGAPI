@@ -211,31 +211,6 @@ void rasterize()
     }
 }
 
-// for processing pixel in parallel
-static void process_pixel_task(int begin, int end, std::vector<Pixel>& pixel_tasks, color_t* frame_buf)
-{
-    GET_CURRENT_CONTEXT(ctx);
-    for (int i = begin; i < end; ++i) {
-        if (pixel_tasks[i].write) {
-            PixelShaderParam params;
-            params.texcoord = pixel_tasks[i].texcoord;
-            params.color = pixel_tasks[i].vertexColor;
-            PixelShaderResult res = ctx->shader.default_fragment_shader(params);
-            frame_buf[i].R = res.fragColor.x;
-            frame_buf[i].G = res.fragColor.y;
-            frame_buf[i].B = res.fragColor.z;
-            pixel_tasks[i].write = false;
-            // PixelShaderParam params;
-            // params.texcoord = pixel_tasks[i].texcoord;
-            // PixelShaderResult res = ctx->shader.default_fragment_shader(params);
-            // frame_buf[i].R = res.fragColor.x;
-            // frame_buf[i].G = res.fragColor.y;
-            // frame_buf[i].B = res.fragColor.z;
-            // pixel_tasks[i].write = false;
-        }
-    }
-}
-
 void process_pixel()
 {
     GET_CURRENT_CONTEXT(ctx);
@@ -251,6 +226,7 @@ void process_pixel()
             PixelShaderParam params;
             params.texcoord = pixel_tasks[i].texcoord;
             params.color = pixel_tasks[i].vertexColor;
+            params.normal = pixel_tasks[i].normal;
             PixelShaderResult res = ctx->shader.default_fragment_shader(params);
             frame_buf[i].R = res.fragColor.x;
             frame_buf[i].G = res.fragColor.y;
@@ -282,24 +258,27 @@ void geometry_processing()
             // first ebo data index
             const void* first_indices = (const void*)ppl->ebo_config.first_indices;
             switch (ppl->ebo_config.indices_type) {
-            case GL_UNSIGNED_INT: {
-                // ebo data array
-                unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
-                int first_index = (size_t)first_indices / sizeof(unsigned int);
-                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
-                // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
-                ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
-                // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
-                indices.resize(ebuf_size - first_index);
+                case GL_UNSIGNED_INT: {
+                    // ebo data array
+                    unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
+                    int first_index = (size_t)first_indices / sizeof(unsigned int);
+                    int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
+                    // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
+                    ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
+                    // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+                    indices.resize(ebuf_size - first_index);
 #pragma omp parallel for
-                for (int i = first_index; i < ebuf_size; ++i) {
-                    indices[i] = ebuf_data[i];
-                }
-                triangle_size = (ebuf_size - first_index) / 3;
-            } break;
-            default:
-                break;
+                    for (int i = first_index; i < ebuf_size; ++i) {
+                        indices[i] = ebuf_data[i];
+                    }
+                    triangle_size = (ebuf_size - first_index) / 3;
+                } break;
+                default:
+                    break;
             }
+            ppl->indexCache.addCacheData(vaoId, indices);
+        }else{
+            triangle_size = indices.size() / 3;
         }
 
     } else {
@@ -321,6 +300,9 @@ void geometry_processing()
                 // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
             }
             triangle_size = (vertex_num - first_vertex_ind) / 3;
+            ppl->indexCache.addCacheData(vaoId, indices);
+        }else{
+            triangle_size = indices.size() / 3;
         }
     }
 
@@ -404,6 +386,7 @@ void geometry_processing()
             triangle_list[tri_ind].color[i] = shader.gl_VertexColor;
             triangle_list[tri_ind].frag_shading_pos[i] = shader.frag_Pos;
             triangle_list[tri_ind].texcoord[i] = shader.iTexcoord;
+            triangle_list[tri_ind].vert_normal[i] = shader.gl_Normal;
         }
     }
 }
@@ -414,6 +397,8 @@ void rasterization()
     std::vector<Triangle>& triangle_list = ctx->pipeline.triangle_list;
     int width = ctx->width, height = ctx->height;
     std::vector<Pixel>& pixel_tasks = ctx->pipeline.pixel_tasks;
+    
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
 
     Triangle* t = nullptr;
     int len = triangle_list.size();
@@ -454,6 +439,15 @@ void rasterization()
                         pixel_tasks[index].write = true;
                         pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                        pixel_tasks[index].normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
+                        // PixelShaderParam params;
+                        // params.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                        // params.color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                        // params.normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
+                        // PixelShaderResult res = ctx->shader.default_fragment_shader(params);
+                        // frame_buf[index].R = res.fragColor.x;
+                        // frame_buf[index].G = res.fragColor.y;
+                        // frame_buf[index].B = res.fragColor.z;
                     }
                 }
             }

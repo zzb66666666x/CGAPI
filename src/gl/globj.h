@@ -211,6 +211,7 @@ class glThreads{
 struct PixelShaderParam{
     glm::vec2 texcoord;
     glm::vec3 color;
+    glm::vec3 normal;
 };
 
 struct PixelShaderResult{
@@ -227,11 +228,12 @@ class glProgram{
     glm::vec3 input_Pos;
     glm::vec3 vert_Color;
     glm::vec2 iTexcoord;
+    glm::vec3 vert_Normal;
+
     // vertex shader output variable
     glm::vec4 gl_Position;
     glm::vec3 gl_VertexColor;
     glm::vec3 gl_Normal;
-    glm::vec3 vert_Normal;
 
     // fragment shader
     glm::vec3 diffuse_Color;
@@ -239,7 +241,8 @@ class glProgram{
     glm::vec3 frag_Color;
     glm::vec2 texcoord;
 
-    glm::mat4 model; 
+    glm::mat4 model;
+    glm::mat4 model_inv_trans;
     glm::mat4 view;
     glm::mat4 projection;
     sampler2D diffuse_texture;
@@ -267,6 +270,7 @@ struct Pixel{
     // programmable input
     glm::vec3 vertexColor;
     glm::vec2 texcoord;
+    glm::vec3 normal;
 };
 
 class PrimitiveCache{

@@ -121,7 +121,9 @@ void glProgram::default_vertex_shader(){
     frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
     gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
     gl_VertexColor = vert_Color;
-    gl_Normal = glm::vec3(0,0,0);
+
+    // gl_Normal = glm::vec3(model_inv_trans * glm::vec4(vert_Normal, 0.0f));
+    gl_Normal = vert_Normal;
 }
 
 PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
@@ -131,10 +133,13 @@ PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
     // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
     // result.fragColor = color;
 
-    result.fragColor.x = params.color.x * 255;
-    result.fragColor.y = params.color.y * 255;
-    result.fragColor.z = params.color.z * 255;
-    
+    // result.fragColor.x = params.color.x * 255;
+    // result.fragColor.y = params.color.y * 255;
+    // result.fragColor.z = params.color.z * 255;
+
+    result.fragColor = glm::vec4(params.normal, 1.0f);
+    result.fragColor *= 255.0f;
+
     return result;
 }
 
@@ -143,13 +148,19 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
     // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
     // model = glm::scale(model, glm::vec3(1.5f, 1.5f, 1.5f));
 
     // for bunny
-    model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
-    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.6f, 1.0f, 0.8f));
-    model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+    // model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
+    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    // model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+
+    // for wheel
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+
+    // model_inv_trans = glm::transpose(glm::inverse(model));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -176,6 +187,8 @@ glPipeline::glPipeline(){
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
     // exec.emplace_back(process_geometry_threadmain);
     // exec.emplace_back(rasterize_threadmain);
+    // exec.emplace_back(process_pixel);
+
     exec.emplace_back(geometry_processing);
     exec.emplace_back(rasterization);
     exec.emplace_back(process_pixel);
