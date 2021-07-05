@@ -55,18 +55,13 @@ std::set<Bin*> binning_overlap(Triangle* tri, ScreenBins* screen_bins){
     ans.insert(screen_bins->get_bin(maxx, miny));
     ans.insert(screen_bins->get_bin(minx, maxy));
     if (ans.find(nullptr) != ans.end()){
-        throw std::runtime_error("you shouldn't fin triangles outside of screen\n");
+        throw std::runtime_error("you shouldn't find triangles outside of screen\n");
     }
     return ans;
 }
 
 static int tile_overlap_triangle(Triangle* tri, int tile_begin_x, int tile_begin_y){
-    if (tri->inside(tile_begin_x + 0.5f, tile_begin_y + 0.5f) || 
-        tri->inside(tile_begin_x + TILE_SIDE_LENGTH - 0.5f, tile_begin_y) ||
-        tri->inside(tile_begin_x + 0.5f, tile_begin_y + TILE_SIDE_LENGTH - 0.5f) ||
-        tri->inside(tile_begin_x + TILE_SIDE_LENGTH - 0.5f, tile_begin_y + TILE_SIDE_LENGTH -0.5f))
-        return 1;
-    return 0;
+    return 1;
 }
 
 // return bitmask has 64bits

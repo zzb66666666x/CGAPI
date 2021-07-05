@@ -26,7 +26,7 @@ static _GLVStream *create_window_stream(int width, int height, const char *name)
     window->height = height;
     window->width = width;
     window->type = GLV_STREAM_WINDOW;
-    gl_context *ctx = _cg_create_context(width, height, true);
+    gl_context *ctx = _cg_create_context(width, height, false);
     _cg_make_current(ctx);
     _glvContext->ctx = ctx;
     _glvContext->curStream = window;

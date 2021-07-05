@@ -888,10 +888,10 @@ void* _thr_rasterize(void* thread_id)
     int pixel_end_y;
     uint64_t bit_mask = 1;
     glProgram local_shader = C->shader;
-    float* zbuf = (float*)C->zbuf->getDataPtr();
-    color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
     while (!quit_rasterizing){
         // start of one frame
+        float* zbuf = (float*)C->zbuf->getDataPtr();
+        color_t* frame_buf = (color_t*)C->framebuf->getDataPtr();
         bin_idx = id;
         // loop over the bin tasks (of the whole screen) belonging to each thread
         while (1){
@@ -907,7 +907,8 @@ void* _thr_rasterize(void* thread_id)
             }
             // check point
             // std::cout<<"bin: "<<bin_idx<<" with pos: "<<cur_bin->pixel_bin_x<<" "<<cur_bin->pixel_bin_y<<"  ";
-            // std::cout<<"has triangles: "<<cur_bin->tasks.size()<<std::endl;
+            // std::cout<<"has triangles: "<<cur_bin->tasks.size()<<"  ";
+            // std::cout<<"is full: "<<cur_bin->is_full<<std::endl;
             // loop over the triangles belong to it
             while (! cur_bin->tasks.empty()){
                 primitive_t pri = cur_bin->tasks.front();
@@ -964,6 +965,7 @@ void* _thr_rasterize(void* thread_id)
         // std::cout<<"partially finish rasterizing"<<std::endl;
         // finish rasterizing, sync point
         pthread_mutex_lock(&rasterize_mtx);
+        ScreenBins * temp = C->pipeline.bins;
         rasterize_sync ++;
         if(rasterize_sync == RASTERIZE_THREAD_COUNT){
             rasterize_sync = 0;

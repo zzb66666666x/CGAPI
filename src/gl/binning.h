@@ -24,7 +24,7 @@ class Bin{
     public:
         Bin(int x, int y): bin_x(x), bin_y(y){
             pixel_bin_x = bin_x * BIN_SIDE_LENGTH;
-            pixel_bin_y= bin_y * BIN_SIDE_LENGTH;
+            pixel_bin_y = bin_y * BIN_SIDE_LENGTH;
             is_full = true; // default
             lock = PTHREAD_MUTEX_INITIALIZER;
         }
@@ -42,7 +42,7 @@ class Bin{
 
 class ScreenBins{
     public:
-    ScreenBins(int w, int h): width(width), height(h){
+    ScreenBins(int w, int h): width(w), height(h){
         num_bins_along_x = (w % BIN_SIDE_LENGTH == 0) ? w/BIN_SIDE_LENGTH : w/BIN_SIDE_LENGTH+1;
         num_bins_along_y = (h % BIN_SIDE_LENGTH == 0) ? h/BIN_SIDE_LENGTH : h/BIN_SIDE_LENGTH+1;
         // storage order: first go from origin to x dir, then go up in y dir, then go right in x dir
@@ -50,7 +50,7 @@ class ScreenBins{
             for (int i=0; i<num_bins_along_x; i++){
                 Bin bin(i,j);
                 if (bin.pixel_bin_x + BIN_SIDE_LENGTH > w || bin.pixel_bin_y + BIN_SIDE_LENGTH > h)
-                    bin.is_full == false;
+                    bin.is_full = false;
                 bins.push_back(bin);
             }
         }
