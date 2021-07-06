@@ -110,22 +110,12 @@ std::set<Bin*> binning_overlap(Triangle* tri, ScreenBins* screen_bins){
     if (tri == nullptr)
         return ans;
     // AABB
-    #if(SAVE_POINTERS_IN_TRIANGLE == 0)
     glm::vec4* screen_pos = tri->screen_pos;
     int minx, maxx, miny, maxy, x, y; 
     minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
     miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
     maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
     maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
-    #endif
-    #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-    glm::vec4** screen_pos = tri->screen_pos_ptrs;
-    int minx, maxx, miny, maxy, x, y; 
-    minx = MIN(screen_pos[0]->x, MIN(screen_pos[1]->x, screen_pos[2]->x));
-    miny = MIN(screen_pos[0]->y, MIN(screen_pos[1]->y, screen_pos[2]->y));
-    maxx = MAX(screen_pos[0]->x, MAX(screen_pos[1]->x, screen_pos[2]->x));
-    maxy = MAX(screen_pos[0]->y, MAX(screen_pos[1]->y, screen_pos[2]->y));
-    #endif
     ans.insert(screen_bins->get_bin(minx, miny));
     ans.insert(screen_bins->get_bin(maxx, maxy));
     ans.insert(screen_bins->get_bin(maxx, miny));
@@ -145,12 +135,7 @@ uint64_t compute_cover_mask(Triangle* tri, Bin* bin){
         throw std::runtime_error("cannot compute mask because of nullptr params\n");
     uint64_t ans = 0;    
     // scanline algorithm
-    #if(SAVE_POINTERS_IN_TRIANGLE == 0)
     Triangle2D tri_2d(&(tri->screen_pos[0]), &(tri->screen_pos[1]), &(tri->screen_pos[2]));
-    #endif
-    #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-    Triangle2D tri_2d(tri->screen_pos_ptrs);
-    #endif
     scanline_data_t scanline_data[BIN_SIDE_LENGTH];
     for (int tile_y=0; tile_y<TILE_NUM_PER_AXIS; tile_y++){
         float min_x = bin->pixel_bin_x + BIN_SIDE_LENGTH;
@@ -158,10 +143,10 @@ uint64_t compute_cover_mask(Triangle* tri, Bin* bin){
         float cur_scanline_y = (float)(bin->pixel_bin_y + tile_y * TILE_SIDE_LENGTH);
         bool flag = false;
         if (cur_scanline_y <= tri_2d.screen_pos_ptrs[2]->y &&
-            tri_2d.screen_pos_ptrs[0]->y <= cur_scanline_y+TILE_SIDE_LENGTH-1){
+            tri_2d.screen_pos_ptrs[0]->y <= cur_scanline_y+TILE_SIDE_LENGTH){
             for (int i = 0; i<TILE_SIDE_LENGTH; i++){
                 scanline_data_t& line = scanline_data[tile_y * TILE_SIDE_LENGTH + i];
-                bool ret = tri_2d.intersect(cur_scanline_y + (float)i, &(line.intersect_x), bin);
+                bool ret = tri_2d.intersect(cur_scanline_y + (float)i + 0.5f, &(line.intersect_x), bin);
                 flag |= ret;
                 line.has_overlap = ret;
                 if (ret){

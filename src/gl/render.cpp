@@ -3,7 +3,6 @@
 #include "configs.h"
 #include "glcontext.h"
 #include "binning.h"
-#include "geometry.h"
 #include <assert.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -500,6 +499,7 @@ void* _thr_binning(void* thread_id);
 void* _thr_rasterize(void* thread_id);
 
 // helpers
+static inline void _merge_crawlers();
 static inline void _free_triangles_after_rasterize();
 
 // thread utils for vertex processing
@@ -536,6 +536,112 @@ void terminate_all_threads()
     quit_rasterizing = 1;
     // terminate threads in use
     C->threads.reset();
+}
+
+static inline void _merge_crawlers(){
+    // only one thread is allowed to enter this function in one time
+    Triangle * tri = new Triangle;
+    int cnt = 0;
+    int crawlerID = 0;
+    int flag = 1;
+    while (flag){
+        TriangleCrawler& crawler = crawlers[crawlerID];
+        crawlerID = (crawlerID+1) % PROCESS_VERTEX_THREAD_COUNT;
+        if (cnt%3 == 0 && cnt>0){
+            // for compatibility of old functions (they use queue to store triangle pointers)
+            glapi_ctx->pipeline.triangle_stream.push(tri);
+            // for parallel computation in binning and rasterizing, use std vector to store tri pointers
+            // since using a queue requires a mutex lock
+            glapi_ctx->pipeline.triangle_ptrs.push_back(tri);
+            tri = new Triangle;
+        }
+        if(flag){
+            // vec2
+            std::map<int, std::queue<glm::vec2>>::iterator it;
+            glm::vec2 * vec_ptr;
+            for (it = crawler.data_float_vec2.begin(); it != crawler.data_float_vec2.end(); it++){
+                vec_ptr = nullptr;
+                switch(it->first){
+                    case VSHADER_OUT_TEXCOORD:
+                        vec_ptr = &(tri->texcoord[cnt%3]);
+                        break;
+                    default:
+                        break;
+                }
+                if (it->second.empty() || vec_ptr == nullptr){
+                    flag = 0;
+                    delete tri;
+                    tri = nullptr;
+                    break;
+                }
+                else{
+                    *vec_ptr = it->second.front();
+                    it->second.pop();
+                }
+            }
+        }
+        if (flag){
+            // vec3 
+            std::map<int,std::queue<glm::vec3>>::iterator it;
+            glm::vec3* vec_ptr;
+            for (it = crawler.data_float_vec3.begin(); it != crawler.data_float_vec3.end(); it++){
+                vec_ptr = nullptr;
+                switch(it->first){
+                    case VSHADER_OUT_COLOR:
+                        vec_ptr = &(tri->color[cnt%3]);
+                        break;
+                    case VSHADER_OUT_NORMAL:
+                        vec_ptr = &(tri->vert_normal[cnt%3]);
+                        break;
+                    case VSHADER_OUT_FRAGPOS:
+                        vec_ptr = &(tri->frag_shading_pos[cnt%3]);
+                        break;
+                    default:
+                        break;
+                }
+                if (it->second.empty() || vec_ptr==nullptr){
+                    flag = 0;
+                    delete tri;
+                    tri = nullptr;
+                    break;
+                }
+                else{
+                    *vec_ptr = it->second.front();
+                    it->second.pop();
+                }
+            }
+        }
+        if (flag){
+            // vec4
+            std::map<int, std::queue<glm::vec4>>::iterator it;
+            glm::vec4* vec_ptr;
+            for (it = crawler.data_float_vec4.begin(); it != crawler.data_float_vec4.end(); it++){
+                vec_ptr = nullptr;
+                switch(it->first){
+                    case VSHADER_OUT_POSITION:
+                        vec_ptr = &(tri->screen_pos[cnt%3]);
+                        break;
+                    default:
+                        break;
+                }
+                if (it->second.empty() || vec_ptr==nullptr){
+                    flag = 0;
+                    delete tri;
+                    tri = nullptr;
+                    break;
+                }
+                else{
+                    *vec_ptr = it->second.front();
+                    it->second.pop();
+                }
+            }
+        }
+        // std::cout<<tri->color[0].x<<" "<<tri->color[0].y<<" "<<tri->color[0].z<<std::endl;
+        // std::cout<<tri->color[1].x<<" "<<tri->color[1].y<<" "<<tri->color[1].z<<std::endl;
+        // std::cout<<tri->color[2].x<<" "<<tri->color[2].y<<" "<<tri->color[2].z<<std::endl;
+        // std::cout<<std::endl;
+        cnt++;
+    }
 }
 
 void process_geometry_threadmain()
@@ -622,12 +728,7 @@ void* _thr_process_vertex(void* thread_id)
         if (process_vertex_sync == PROCESS_VERTEX_THREAD_COUNT){
             process_vertex_sync = 0;
             // merge crawlers
-            #if(SAVE_POINTERS_IN_TRIANGLE == 0)
-            merge_crawlers(crawlers);
-            #endif
-            #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-            merge_crawlers_faster(crawlers);
-            #endif
+            _merge_crawlers();
             // move the pipeline forward
             pthread_mutex_lock(&pipeline_mtx);
             pipeline_stage = DOING_RASTERIZATION;
@@ -642,6 +743,7 @@ void* _thr_process_vertex(void* thread_id)
         pthread_mutex_unlock(&vertex_threads_mtx);
         // 5. reset the crawler and ready for next frame
         crawlers[id].reset_config();
+        crawlers[id].reset_data();
     }
     return nullptr;
 }
@@ -767,11 +869,6 @@ void rasterize_threadmain()
 }
 
 static inline void _free_triangles_after_rasterize(){
-    // reset the triangle crawlers
-    for (int i=0; i<PROCESS_VERTEX_THREAD_COUNT; i++){
-        crawlers[i].reset_data();
-    }
-    // free the space of triangle_ptrs
     GET_PIPELINE(P);
     std::vector<Triangle*>::iterator it;
     for(it = P->triangle_ptrs.begin(); it!=P->triangle_ptrs.end(); it++){
@@ -824,12 +921,7 @@ void* _thr_rasterize(void* thread_id)
                         x = cnt % TILE_NUM_PER_AXIS;
                         y = cnt / TILE_NUM_PER_AXIS;
                         Triangle* t = pri.tri;
-                        #if(SAVE_POINTERS_IN_TRIANGLE == 0)
                         glm::vec4* screen_pos = t->screen_pos;
-                        #endif
-                        #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-                        glm::vec4** screen_pos = t->screen_pos_ptrs;
-                        #endif
                         cur_bin->get_tile(x, y, &tile_pixel_begin_x, &tile_pixel_begin_y);
                         tile_pixel_end_x = MIN(pixel_end_x, tile_pixel_begin_x+TILE_SIDE_LENGTH);
                         tile_pixel_end_y = MIN(pixel_end_y, tile_pixel_begin_y+TILE_SIDE_LENGTH);
@@ -840,38 +932,19 @@ void* _thr_rasterize(void* thread_id)
                                     continue;
                                 glm::vec3 coef = t->computeBarycentric2D(temp_pixel_x + 0.5f, temp_pixel_y + 0.5f);
                                 // perspective correction
-                                #if(SAVE_POINTERS_IN_TRIANGLE == 0)
                                 float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
                                 float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
                                 float beta = coef[1] * Z_viewspace / screen_pos[1].w;
                                 float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
-                                #endif
-                                #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-                                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0]->w + coef[1] / screen_pos[1]->w + coef[2] / screen_pos[2]->w);
-                                float alpha = coef[0] * Z_viewspace / screen_pos[0]->w;
-                                float beta = coef[1] * Z_viewspace / screen_pos[1]->w;
-                                float gamma = coef[2] * Z_viewspace / screen_pos[2]->w;
-                                #endif
                                 if (!C->use_z_test) {
                                     throw std::runtime_error("please open the z depth test\n");
                                 }else{
-                                    #if(SAVE_POINTERS_IN_TRIANGLE == 0)
                                     float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
-                                    #endif
-                                    #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-                                    float zp = alpha * screen_pos[0]->z + beta * screen_pos[1]->z + gamma * screen_pos[2]->z;
-                                    #endif
                                     if (zp < zbuf[index]) {
                                         zbuf[index] = zp;
                                         // fragment shader input
-                                        #if(SAVE_POINTERS_IN_TRIANGLE == 0)
                                         local_shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                                         local_shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
-                                        #endif
-                                        #if(SAVE_POINTERS_IN_TRIANGLE == 1)
-                                        local_shader.diffuse_Color = interpolate(alpha, beta, gamma, *(t->color_ptrs[0]), *(t->color_ptrs[1]), *(t->color_ptrs[2]), 1);
-                                        local_shader.texcoord = interpolate(alpha, beta, gamma, *(t->texcoord_ptrs[0]), *(t->texcoord_ptrs[1]), *(t->texcoord_ptrs[2]), 1);
-                                        #endif
                                         // fragment shading
                                         local_shader.default_fragment_shader();
                                         frame_buf[index].R = local_shader.frag_Color.x * 255.0f;

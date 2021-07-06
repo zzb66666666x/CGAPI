@@ -34,60 +34,49 @@ static void testStandfordBunny(){
         // Copy one of the loaded meshes to be our current mesh
         objl::Mesh curMesh = Loader.LoadedMeshes[i];
 
-        // for (int j = 0; j < curMesh.Vertices.size(); j++) {
-        //     vertices.push_back(curMesh.Vertices[j].Position.X);
-        //     vertices.push_back(curMesh.Vertices[j].Position.Y);
-        //     vertices.push_back(curMesh.Vertices[j].Position.Z);
-        //     vertices.push_back(0.3f);
-        //     vertices.push_back(0.4f);
-        //     vertices.push_back(0.8f);
-        //     vertices.push_back(curMesh.Vertices[j].Normal.X);
-        //     vertices.push_back(curMesh.Vertices[j].Normal.Y);
-        //     vertices.push_back(curMesh.Vertices[j].Normal.Z);
-        // }
+        for (int j = 0; j < curMesh.Vertices.size(); j++) {
+            vertices.push_back(curMesh.Vertices[j].Position.X);
+            vertices.push_back(curMesh.Vertices[j].Position.Y);
+            vertices.push_back(curMesh.Vertices[j].Position.Z);
+
+            vertices.push_back(0.3f);
+            vertices.push_back(0.4f);
+            vertices.push_back(0.8f);
+            // vertices.push_back(curMesh.Vertices[j].Normal.X);
+            // vertices.push_back(curMesh.Vertices[j].Normal.Y);
+            // vertices.push_back(curMesh.Vertices[j].Normal.Z);
+        }
 
         // Go through every 3rd index and print the
         //	triangle that these indices represent
         for (int j = 0; j < curMesh.Indices.size(); j += 3) {
-            // indices.push_back(curMesh.Indices[j]);
-            // indices.push_back(curMesh.Indices[j + 1]);
-            // indices.push_back(curMesh.Indices[j + 2]);
-            unsigned int tri_indices [] = {
-                curMesh.Indices[j],
-                curMesh.Indices[j+1],
-                curMesh.Indices[j+2]
-            };
-            for (int i = 0; i<3; i++){
-                int index = tri_indices[i];
-                vertices.push_back(curMesh.Vertices[index].Position.X);
-                vertices.push_back(curMesh.Vertices[index].Position.Y);
-                vertices.push_back(curMesh.Vertices[index].Position.Z);
-                vertices.push_back(0.3f);
-                vertices.push_back(0.4f);
-                vertices.push_back(0.8f);
-            }
+            indices.push_back(curMesh.Indices[j]);
+            indices.push_back(curMesh.Indices[j + 1]);
+            indices.push_back(curMesh.Indices[j + 2]);
+            // file << "T" << j / 3 << ": " << curMesh.Indices[j] << ", " << curMesh.Indices[j + 1] << ", " << curMesh.Indices[j + 2] << "\n";
         }
     }
-    // printf("indices size: %u\n", indices.size());
-    // printf("triangle size: %u\n", indices.size() / 3);
-    printf("triangles: %d \n", vertices.size()/6/3);
+    printf("indices size: %u\n", indices.size());
+    printf("triangle size: %u\n", indices.size() / 3);
     unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-    // glGenBuffers(1, &EBO);
+    glGenBuffers(1, &EBO);
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
+    // 将vertices数据复制到缓冲种
+    // GL_STATIC_DRAW / GL_DYNAMIC_DRAW、GL_STREAM_DRAW
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
+    // 解析缓冲数据
+    // 顶点位置，顶点大小(vec3)，顶点类型，是否normalize，步长，偏移量
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-
+    // 激活顶点属性0
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
