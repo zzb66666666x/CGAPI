@@ -1,11 +1,11 @@
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
 #include "OBJ_Loader.h"
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <benchmark/benchmark.h>
 #include <iostream>
 #include <vector>
-#define STB_IMAGE_IMPLEMENTATION
 
 const int WIDTH = 800, HEIGHT = 600;
 

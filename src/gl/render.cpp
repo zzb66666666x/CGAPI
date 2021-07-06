@@ -9,8 +9,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#include <omp.h>
 #include <atomic>
+#include <omp.h>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -20,6 +20,14 @@
 // static helpers
 static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::vec3& vert1, glm::vec3& vert2, glm::vec3& vert3, float weight);
 static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2& vert1, glm::vec2& vert2, glm::vec2& vert3, float weight);
+
+static void back_face_culling(Triangle& t)
+{
+    glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
+    glm::vec3 v02 = t.screen_pos[2] - t.screen_pos[0];
+    glm::vec3 res = glm::cross(v01, v02);
+    t.culling = res.z < 0.0f;
+}
 
 // for test
 float angle = 0.0f;
@@ -44,8 +52,7 @@ void process_geometry()
             continue;
         } else if (!vattrib_data[C->shader.layouts[i]].activated) {
             C->shader.layouts[i] = LAYOUT_INVALID;
-        }
-        else{
+        } else {
             // valid layout
             int temp = C->shader.layouts[i];
             indices[temp] = (P->first_vertex) * (vattrib_data[temp].stride);
@@ -90,8 +97,7 @@ void process_geometry()
             if (input_ptr == nullptr)
                 continue;
             vertex_attrib_t& config = vattrib_data[layout];
-            buf = vbuf_data + (P->first_vertex) * (config.stride) +
-                  (indices[layout] + (int)((long long)config.pointer));
+            buf = vbuf_data + (P->first_vertex) * (config.stride) + (indices[layout] + (int)((long long)config.pointer));
             switch (config.type) {
             case GL_FLOAT:
                 switch (config.size) {
@@ -120,7 +126,7 @@ void process_geometry()
             if (indices[layout] >= vbuf_size) {
                 flag = 0;
             }
-        } 
+        }
         // 4. vertex shading
         C->shader.default_vertex_shader();
 
@@ -246,7 +252,7 @@ void geometry_processing()
      */
     GET_PIPELINE(ppl);
     GET_CURRENT_CONTEXT(ctx);
-    
+
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
 
     std::vector<int> indices;
@@ -277,7 +283,7 @@ void geometry_processing()
                     break;
             }
             ppl->indexCache.addCacheData(vaoId, indices);
-        }else{
+        } else {
             triangle_size = indices.size() / 3;
         }
 
@@ -301,7 +307,7 @@ void geometry_processing()
             }
             triangle_size = (vertex_num - first_vertex_ind) / 3;
             ppl->indexCache.addCacheData(vaoId, indices);
-        }else{
+        } else {
             triangle_size = indices.size() / 3;
         }
     }
@@ -312,15 +318,17 @@ void geometry_processing()
     triangle_list.resize(triangle_size);
 
     angle = angle + 1.0f;
-    
+
     void* input_ptr;
     unsigned char* buf;
     glProgram shader = ctx->shader;
-#pragma omp parallel for private(input_ptr) private(buf) private(shader)
+    int i, j;
+#pragma omp parallel for private(input_ptr) private(buf) private(shader) private(i) private(j)
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_ind=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < shader.layout_cnt; ++j) {
+        // parse data
+        for (i = 0; i < 3; ++i) {
+            for (j = 0; j < shader.layout_cnt; ++j) {
                 switch (shader.layouts[j]) {
                     case LAYOUT_POSITION:
                         input_ptr = &(shader.input_Pos);
@@ -347,13 +355,13 @@ void geometry_processing()
                 switch (config.type) {
                     case GL_FLOAT:
                         switch (config.size) {
-                            case 2:{
+                            case 2: {
                                 glm::vec2* vec2 = (glm::vec2*)input_ptr;
                                 vec2->x = *(float*)(buf + 0);
                                 vec2->y = *(float*)(buf + sizeof(float) * 1);
                                 break;
                             }
-                            case 3:{
+                            case 3: {
                                 glm::vec3* vec3 = (glm::vec3*)input_ptr;
                                 vec3->x = *(float*)(buf + 0);
                                 vec3->y = *(float*)(buf + sizeof(float) * 1);
@@ -362,7 +370,7 @@ void geometry_processing()
                             }
                             default:
                                 throw std::runtime_error("not supported size\n");
-                        }
+                            }
                         break;
                     default:
                         throw std::runtime_error("not supported type\n");
@@ -373,20 +381,44 @@ void geometry_processing()
             shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
             shader.default_vertex_shader();
 
-            shader.gl_Position.x /= shader.gl_Position.w;
-            shader.gl_Position.y /= shader.gl_Position.w;
-            shader.gl_Position.z /= shader.gl_Position.w;
-            // 5. view port transformation
-            shader.gl_Position.x = 0.5 * ctx->width * (shader.gl_Position.x + 1.0);
-            shader.gl_Position.y = 0.5 * ctx->height * (shader.gl_Position.y + 1.0);
-            // [-1,1] to [0,1]
-            shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;
-            // 6. assemble triangle
+            // shader.gl_Position.x /= shader.gl_Position.w;
+            // shader.gl_Position.y /= shader.gl_Position.w;
+            // shader.gl_Position.z /= shader.gl_Position.w;
+
+            // // 5. view port transformation
+            // shader.gl_Position.x = 0.5 * ctx->width * (shader.gl_Position.x + 1.0);
+            // shader.gl_Position.y = 0.5 * ctx->height * (shader.gl_Position.y + 1.0);
+
+            // // [-1,1] to [0,1]
+            // shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;
+
+            // assemble triangle
             triangle_list[tri_ind].screen_pos[i] = shader.gl_Position;
             triangle_list[tri_ind].color[i] = shader.gl_VertexColor;
             triangle_list[tri_ind].frag_shading_pos[i] = shader.frag_Pos;
             triangle_list[tri_ind].texcoord[i] = shader.iTexcoord;
             triangle_list[tri_ind].vert_normal[i] = shader.gl_Normal;
+        }
+
+        // TODO view frustum culling
+        // TODO back face culling
+        if (true) {
+            back_face_culling(triangle_list[tri_ind]);
+        }
+
+        if (triangle_list[tri_ind].culling) {
+            continue;
+        }
+
+        for (i = 0; i < 3; ++i) {
+            triangle_list[tri_ind].screen_pos[i] /= triangle_list[tri_ind].screen_pos[i].w;
+
+            // view port transformation
+            triangle_list[tri_ind].screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind].screen_pos[i].x + 1.0);
+            triangle_list[tri_ind].screen_pos[i].y = 0.5 * ctx->height * (triangle_list[tri_ind].screen_pos[i].y + 1.0);
+
+            // [-1,1] to [0,1]
+            triangle_list[tri_ind].screen_pos[i].z = triangle_list[tri_ind].screen_pos[i].z * 0.5 + 0.5;
         }
     }
 }
@@ -397,14 +429,21 @@ void rasterization()
     std::vector<Triangle>& triangle_list = ctx->pipeline.triangle_list;
     int width = ctx->width, height = ctx->height;
     std::vector<Pixel>& pixel_tasks = ctx->pipeline.pixel_tasks;
-    
+
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
 
     Triangle* t = nullptr;
     int len = triangle_list.size();
+    float* zbuf = (float*)ctx->zbuf->getDataPtr();
 #pragma omp parallel for private(t)
     for (int i = 0; i < len; ++i) {
         t = &triangle_list[i];
+        
+        if (t->culling) {
+            t->culling = false;
+            continue;
+        }
+
         glm::vec4* screen_pos = t->screen_pos;
         int minx, maxx, miny, maxy, x, y;
         minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
@@ -412,7 +451,6 @@ void rasterization()
         maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
-        float* zbuf = (float*)ctx->zbuf->getDataPtr();
         // AABB algorithm
         for (y = miny; y <= maxy; ++y) {
             for (x = minx; x <= maxx; ++x) {
@@ -440,14 +478,6 @@ void rasterization()
                         pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
                         pixel_tasks[index].normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
-                        // PixelShaderParam params;
-                        // params.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
-                        // params.color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
-                        // params.normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
-                        // PixelShaderResult res = ctx->shader.default_fragment_shader(params);
-                        // frame_buf[index].R = res.fragColor.x;
-                        // frame_buf[index].G = res.fragColor.y;
-                        // frame_buf[index].B = res.fragColor.z;
                     }
                 }
             }
@@ -489,95 +519,93 @@ void terminate_all_threads()
     }
 }
 
-static inline void _merge_crawlers(){
+static inline void _merge_crawlers()
+{
     // only one thread is allowed to enter this function in one time
-    Triangle * tri = new Triangle;
+    Triangle* tri = new Triangle;
     int cnt = 0;
     int crawlerID = 0;
     int flag = 1;
-    while (flag){
+    while (flag) {
         TriangleCrawler& crawler = crawlers[crawlerID];
-        crawlerID = (crawlerID+1) % PROCESS_VERTEX_THREAD_COUNT;
-        if (cnt%3 == 0 && cnt>0){
+        crawlerID = (crawlerID + 1) % PROCESS_VERTEX_THREAD_COUNT;
+        if (cnt % 3 == 0 && cnt > 0) {
             glapi_ctx->pipeline.triangle_stream.push(tri);
             tri = new Triangle;
         }
-        if(flag){
+        if (flag) {
             // vec2
             std::map<int, std::queue<glm::vec2>>::iterator it;
-            glm::vec2 * vec_ptr;
-            for (it = crawler.data_float_vec2.begin(); it != crawler.data_float_vec2.end(); it++){
+            glm::vec2* vec_ptr;
+            for (it = crawler.data_float_vec2.begin(); it != crawler.data_float_vec2.end(); it++) {
                 vec_ptr = nullptr;
-                switch(it->first){
+                switch (it->first) {
                     case VSHADER_OUT_TEXCOORD:
-                        vec_ptr = &(tri->texcoord[cnt%3]);
+                        vec_ptr = &(tri->texcoord[cnt % 3]);
                         break;
                     default:
                         break;
                 }
-                if (it->second.empty() || vec_ptr == nullptr){
+                if (it->second.empty() || vec_ptr == nullptr) {
                     flag = 0;
                     delete tri;
                     tri = nullptr;
                     break;
-                }
-                else{
+                } else {
                     *vec_ptr = it->second.front();
                     it->second.pop();
                 }
             }
         }
-        if (flag){
-            // vec3 
-            std::map<int,std::queue<glm::vec3>>::iterator it;
+        if (flag) {
+            // vec3
+            std::map<int, std::queue<glm::vec3>>::iterator it;
             glm::vec3* vec_ptr;
-            for (it = crawler.data_float_vec3.begin(); it != crawler.data_float_vec3.end(); it++){
+            for (it = crawler.data_float_vec3.begin(); it != crawler.data_float_vec3.end(); it++) {
                 vec_ptr = nullptr;
-                switch(it->first){
+                switch (it->first) {
                     case VSHADER_OUT_COLOR:
-                        vec_ptr = &(tri->color[cnt%3]);
+                        vec_ptr = &(tri->color[cnt % 3]);
                         break;
                     case VSHADER_OUT_NORMAL:
-                        vec_ptr = &(tri->vert_normal[cnt%3]);
+                        vec_ptr = &(tri->vert_normal[cnt % 3]);
                         break;
                     case VSHADER_OUT_FRAGPOS:
-                        vec_ptr = &(tri->frag_shading_pos[cnt%3]);
+                        vec_ptr = &(tri->frag_shading_pos[cnt % 3]);
                         break;
                     default:
                         break;
                 }
-                if (it->second.empty() || vec_ptr==nullptr){
+                if (it->second.empty() || vec_ptr == nullptr) {
                     flag = 0;
                     delete tri;
                     tri = nullptr;
                     break;
-                }
-                else{
+                } else {
                     *vec_ptr = it->second.front();
                     it->second.pop();
                 }
             }
         }
-        if (flag){
+        if (flag) {
             // vec4
             std::map<int, std::queue<glm::vec4>>::iterator it;
             glm::vec4* vec_ptr;
-            for (it = crawler.data_float_vec4.begin(); it != crawler.data_float_vec4.end(); it++){
+            for (it = crawler.data_float_vec4.begin(); it != crawler.data_float_vec4.end(); it++) {
                 vec_ptr = nullptr;
-                switch(it->first){
+                switch (it->first) {
                     case VSHADER_OUT_POSITION:
-                        vec_ptr = &(tri->screen_pos[cnt%3]);
+                        vec_ptr = &(tri->screen_pos[cnt % 3]);
                         break;
                     default:
                         break;
                 }
-                if (it->second.empty() || vec_ptr==nullptr){
+                if (it->second.empty() || vec_ptr == nullptr) {
                     flag = 0;
                     delete tri;
                     tri = nullptr;
                     break;
-                }
-                else{
+                } else {
                     *vec_ptr = it->second.front();
                     it->second.pop();
                 }
@@ -594,7 +622,7 @@ static inline void _merge_crawlers(){
 void process_geometry_threadmain()
 {
     static int first_entry = 1;
-    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = {0};
+    static int thread_ids[PROCESS_VERTEX_THREAD_COUNT] = { 0 };
     GET_CURRENT_CONTEXT(C);
     GET_PIPELINE(P);
     // update the angle
@@ -650,28 +678,28 @@ void* _thr_process_vertex(void* thread_id)
     while (!quit_vertex_processing) {
         // do one frame's job, and sleep
         // 1. fetch data from context
-        vattrib_data = (vertex_attrib_t*) C->pipeline.vao_ptr->getDataPtr();
+        vattrib_data = (vertex_attrib_t*)C->pipeline.vao_ptr->getDataPtr();
         vbuf_data = (char*)C->pipeline.vbo_ptr->getDataPtr();
         vbuf_size = C->pipeline.vbo_ptr->getSize();
         // 2. register config information of all layouts to crawler
-        for (int i=0; i<GL_MAX_VERTEX_ATTRIB_NUM; i++){
+        for (int i = 0; i < GL_MAX_VERTEX_ATTRIB_NUM; i++) {
             int layout = local_shader.layouts[i];
-            if (layout>=0 && layout<GL_MAX_VERTEX_ATTRIB_NUM){
+            if (layout >= 0 && layout < GL_MAX_VERTEX_ATTRIB_NUM) {
                 crawlers[id].set_config(layout, vattrib_data[layout].size, vattrib_data[layout].stride,
-                (int)(long long)vattrib_data[layout].pointer, vattrib_data[layout].type);
+                    (int)(long long)vattrib_data[layout].pointer, vattrib_data[layout].type);
             }
         }
         crawlers[id].set_start_point(local_shader.layouts, local_shader.layout_cnt, id, C->pipeline.first_vertex);
         // 3. crawl the data until return failure
-        while (1){
+        while (1) {
             int ret = crawlers[id].crawl(vbuf_data, vbuf_size, C->pipeline.first_vertex, local_shader);
-            if (ret==GL_FAILURE)
-                break; 
+            if (ret == GL_FAILURE)
+                break;
         }
         // 4. sync and merge crawlers
         pthread_mutex_lock(&vertex_threads_mtx);
-        process_vertex_sync ++;
-        if (process_vertex_sync == PROCESS_VERTEX_THREAD_COUNT){
+        process_vertex_sync++;
+        if (process_vertex_sync == PROCESS_VERTEX_THREAD_COUNT) {
             process_vertex_sync = 0;
             // merge crawlers
             _merge_crawlers();
@@ -680,10 +708,9 @@ void* _thr_process_vertex(void* thread_id)
             pipeline_stage = DOING_RASTERIZATION;
             pthread_cond_signal(&pipeline_cv);
             pthread_mutex_unlock(&pipeline_mtx);
-            // sleep 
+            // sleep
             while (pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx) != 0);
-        }
-        else{
+        } else {
             while (pthread_cond_wait(&vertex_threads_cv, &vertex_threads_mtx) != 0);
         }
         pthread_mutex_unlock(&vertex_threads_mtx);

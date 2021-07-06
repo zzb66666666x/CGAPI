@@ -392,6 +392,8 @@ void glEnable(GLenum cap){
             C->use_z_test = true;
             C->zbuf = &C->zbuf_1;
             break;
+        case GL_CULL_FACE:
+            C->cull_face = true;
         default:
             break;
     }
