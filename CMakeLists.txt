@@ -4,9 +4,11 @@ cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 # set(CMAKE_CXX_FLAGS "-g -O0")
-set(CMAKE_CXX_FLAGS "-O3")
+# set(CMAKE_CXX_FLAGS "-mavx")
+# set(CMAKE_CXX_FLAGS "-save-temps")
+# set(CMAKE_CXX_FLAGS "-O3")
 # use openmp
-set(CMAKE_CXX_FLAGS "-fopenmp")
+set(CMAKE_CXX_FLAGS "-fopenmp -mavx -O3")
 include_directories(
 	include/gl
 	include/glv
@@ -63,6 +65,9 @@ set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+# set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
+# find_package(benchmark REQUIRED)
+
 ################################################
 ################# library make #################
 ################################################
@@ -79,6 +84,7 @@ target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
 # target_link_libraries(glite ${Boost_LIBRARIES})
 # target_link_libraries(glite glm::glm)
+# target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 
 ################################################
 ################# utest make ###################
@@ -93,5 +99,7 @@ add_executable(
 ################################################
 ################## test make ###################
 ################################################
-add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
-target_link_libraries(basic_lib_usage glite)
+# add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
+add_executable(lib_benchmark tests/lib_benchmark.cpp)
+# target_link_libraries(basic_lib_usage glite)
+target_link_libraries(lib_benchmark glite)
