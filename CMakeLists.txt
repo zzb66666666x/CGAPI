@@ -21,6 +21,7 @@ set(GL_HEADERS
 	src/gl/configs.h
 	src/gl/binning.h
 	src/gl/glsl/texture.h
+	src/gl/glsl/constants.h
 )
 
 set(GLV_HEADERS 

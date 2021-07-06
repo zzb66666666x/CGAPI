@@ -10,6 +10,7 @@
 #include <queue>
 #include <assert.h>
 #include <math.h>
+#include "glsl/constants.h"
 
 class Triangle
 {
@@ -24,11 +25,11 @@ public:
     glm::vec2 texcoord[3];
 
     // to boost performance, we have save pointers instead of vectors
-    // glm::vec4* screen_pos_ptrs[3];
-    // glm::vec3* color_ptrs[3];
-    // glm::vec3* frag_shading_pos_ptrs[3];
-    // glm::vec3* vert_normal_ptrs[3];
-    // glm::vec2* texcoord_ptrs[3];
+    glm::vec4* screen_pos_ptrs[3];
+    glm::vec3* color_ptrs[3];
+    glm::vec3* frag_shading_pos_ptrs[3];
+    glm::vec3* vert_normal_ptrs[3];
+    glm::vec2* texcoord_ptrs[3];
 
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
@@ -74,26 +75,28 @@ class TriangleCrawler{
         }
         inline void reset_data(){
             {
-                std::map<int, std::queue<glm::vec2>>::iterator it;
+                std::map<int, std::vector<glm::vec2>>::iterator it;
                 for (it=data_float_vec2.begin(); it!=data_float_vec2.end(); it++){
-                    while (! it->second.empty())
-                        it->second.pop();
+                    it->second.clear();
                 }
             }
             {
-                std::map<int, std::queue<glm::vec3>>::iterator it;
+                std::map<int, std::vector<glm::vec3>>::iterator it;
                 for (it=data_float_vec3.begin(); it!=data_float_vec3.end(); it++){
-                    while (! it->second.empty())
-                        it->second.pop();
+                    it->second.clear();
                 }
             }
             {
-                std::map<int, std::queue<glm::vec4>>::iterator it;
+                std::map<int, std::vector<glm::vec4>>::iterator it;
                 for (it=data_float_vec4.begin(); it!=data_float_vec4.end(); it++){
-                    while (! it->second.empty())
-                        it->second.pop();
+                    it->second.clear();
                 }
             }
+            indices[VSHADER_OUT_POSITION] = 0;
+            indices[VSHADER_OUT_COLOR] = 0;
+            indices[VSHADER_OUT_FRAGPOS] = 0;
+            indices[VSHADER_OUT_NORMAL] = 0;
+            indices[VSHADER_OUT_TEXCOORD] = 0;
         }
         inline void set_start_point(int * layouts, int layout_cnt, int thread_id, int first_vertex){
             for (int i=0; i<layout_cnt; i++){
@@ -106,11 +109,14 @@ class TriangleCrawler{
         }
         int crawl(char* source, int buf_size, int first_vertex, glProgram& shader);
 
-        std::map<int, std::queue<glm::vec2>> data_float_vec2;
-        std::map<int, std::queue<glm::vec3>> data_float_vec3;
-        std::map<int, std::queue<glm::vec4>> data_float_vec4;
+        std::map<int, std::vector<glm::vec2>> data_float_vec2;
+        std::map<int, std::vector<glm::vec3>> data_float_vec3;
+        std::map<int, std::vector<glm::vec4>> data_float_vec4;
+        std::map<int, int> indices;
         crawler_config_t config;
 };
 
+void merge_crawlers(TriangleCrawler* crawlers);
+void merge_crawlers_faster(TriangleCrawler* crawlers);
 
 #endif
