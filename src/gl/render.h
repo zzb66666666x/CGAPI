@@ -6,8 +6,8 @@
 typedef void (*render_fp)();
 
 #define PROCESS_VERTEX_THREAD_COUNT 6
-#define RASTERIZE_THREAD_COUNT      6
-#define BINNING_THREAD_COUNT        6
+#define RASTERIZE_THREAD_COUNT      8
+#define BINNING_THREAD_COUNT        10
 #define DOING_VERTEX_PROCESSING     1
 #define DOING_BINNING               2
 #define DOING_RASTERIZATION         3

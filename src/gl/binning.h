@@ -6,6 +6,7 @@
 #include <array>
 #include <set>
 #include <pthread.h>
+#include <algorithm>
 #include "geometry.h"
 
 //////////////////////// NOTE ////////////////////////
@@ -67,6 +68,23 @@ class ScreenBins{
     int num_bins_along_y;
     std::vector<Bin> bins;
     int counter;
+};
+
+struct CompareVec4Y{
+    bool operator()(glm::vec4 * v1, glm::vec4 * v2) const{   
+        return v1->y < v2->y;
+    }   
+};
+
+extern CompareVec4Y compare_vec4_y;
+
+class Triangle2D{
+    public:
+    Triangle2D(glm::vec4 *p1, glm::vec4 *p2, glm::vec4 *p3);
+    Triangle2D(glm::vec4 ** points);
+    bool intersect(float scanline_y, std::array<float, 2> * ans, Bin* bin);
+    inline float interp(float a, float Fa, float b, float Fb, float x);
+    std::array<glm::vec4* ,3> screen_pos_ptrs;
 };
 
 std::set<Bin*> binning_overlap(Triangle* tri, ScreenBins* screen_bins);

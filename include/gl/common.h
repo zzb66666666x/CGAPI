@@ -88,7 +88,7 @@ GL_TEXTURE15
 
 }GLenum;
 
-#define THREAD_NUM  18
+#define THREAD_NUM  30
 #define GL_MAX_VERTEX_ATTRIB_NUM    16
 #define GL_MAX_TEXTURE_UNITS        16
 

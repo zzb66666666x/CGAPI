@@ -23,6 +23,13 @@ public:
     glm::vec3 vert_normal[3];
     glm::vec2 texcoord[3];
 
+    // to boost performance, we have save pointers instead of vectors
+    // glm::vec4* screen_pos_ptrs[3];
+    // glm::vec3* color_ptrs[3];
+    // glm::vec3* frag_shading_pos_ptrs[3];
+    // glm::vec3* vert_normal_ptrs[3];
+    // glm::vec2* texcoord_ptrs[3];
+
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
 
@@ -99,7 +106,6 @@ class TriangleCrawler{
         }
         int crawl(char* source, int buf_size, int first_vertex, glProgram& shader);
 
-        std::map<int, std::queue<glm::vec1>> data_float_vec1;
         std::map<int, std::queue<glm::vec2>> data_float_vec2;
         std::map<int, std::queue<glm::vec3>> data_float_vec3;
         std::map<int, std::queue<glm::vec4>> data_float_vec4;

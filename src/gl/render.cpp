@@ -500,6 +500,7 @@ void* _thr_rasterize(void* thread_id);
 
 // helpers
 static inline void _merge_crawlers();
+static inline void _merge_crawlers_faster();
 static inline void _free_triangles_after_rasterize();
 
 // thread utils for vertex processing
@@ -642,6 +643,10 @@ static inline void _merge_crawlers(){
         // std::cout<<std::endl;
         cnt++;
     }
+}
+
+static inline void _merge_crawlers_faster(){
+
 }
 
 void process_geometry_threadmain()
@@ -922,6 +927,7 @@ void* _thr_rasterize(void* thread_id)
                         y = cnt / TILE_NUM_PER_AXIS;
                         Triangle* t = pri.tri;
                         glm::vec4* screen_pos = t->screen_pos;
+                        // glm::vec4** screen_pos = t->screen_pos_ptrs;
                         cur_bin->get_tile(x, y, &tile_pixel_begin_x, &tile_pixel_begin_y);
                         tile_pixel_end_x = MIN(pixel_end_x, tile_pixel_begin_x+TILE_SIDE_LENGTH);
                         tile_pixel_end_y = MIN(pixel_end_y, tile_pixel_begin_y+TILE_SIDE_LENGTH);
@@ -936,10 +942,15 @@ void* _thr_rasterize(void* thread_id)
                                 float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
                                 float beta = coef[1] * Z_viewspace / screen_pos[1].w;
                                 float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+                                // float Z_viewspace = 1.0 / (coef[0] / screen_pos[0]->w + coef[1] / screen_pos[1]->w + coef[2] / screen_pos[2]->w);
+                                // float alpha = coef[0] * Z_viewspace / screen_pos[0]->w;
+                                // float beta = coef[1] * Z_viewspace / screen_pos[1]->w;
+                                // float gamma = coef[2] * Z_viewspace / screen_pos[2]->w;
                                 if (!C->use_z_test) {
                                     throw std::runtime_error("please open the z depth test\n");
                                 }else{
                                     float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                                    // float zp = alpha * screen_pos[0]->z + beta * screen_pos[1]->z + gamma * screen_pos[2]->z;
                                     if (zp < zbuf[index]) {
                                         zbuf[index] = zp;
                                         // fragment shader input
@@ -960,7 +971,7 @@ void* _thr_rasterize(void* thread_id)
                 }
                 cur_bin->tasks.pop();
             }
-            bin_idx += BINNING_THREAD_COUNT;
+            bin_idx += RASTERIZE_THREAD_COUNT;
         }
         // std::cout<<"partially finish rasterizing"<<std::endl;
         // finish rasterizing, sync point
