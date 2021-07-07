@@ -23,6 +23,8 @@ public:
     glm::vec3 vert_normal[3];
     glm::vec2 texcoord[3];
 
+    bool culling = false;
+
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
 

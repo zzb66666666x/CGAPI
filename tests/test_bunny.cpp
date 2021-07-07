@@ -10,10 +10,12 @@ using namespace std;
 const int WIDTH = 800, HEIGHT = 600;
 
 static void testStandfordBunny(){
+
     if (!glvInit()) {
         std::cout << "glv Init failed\n";
         return;
     }
+
     GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "bunny_test", GLV_STREAM_WINDOW);
     glEnable(GL_DEPTH_TEST);
 
@@ -39,12 +41,13 @@ static void testStandfordBunny(){
             vertices.push_back(curMesh.Vertices[j].Position.Y);
             vertices.push_back(curMesh.Vertices[j].Position.Z);
 
-            vertices.push_back(0.3f);
-            vertices.push_back(0.4f);
-            vertices.push_back(0.8f);
-            // vertices.push_back(curMesh.Vertices[j].Normal.X);
-            // vertices.push_back(curMesh.Vertices[j].Normal.Y);
-            // vertices.push_back(curMesh.Vertices[j].Normal.Z);
+            // vertices.push_back(0.3f);
+            // vertices.push_back(0.4f);
+            // vertices.push_back(0.8f);
+
+            vertices.push_back(curMesh.Vertices[j].Normal.X);
+            vertices.push_back(curMesh.Vertices[j].Normal.Y);
+            vertices.push_back(curMesh.Vertices[j].Normal.Z);
         }
 
         // Go through every 3rd index and print the
@@ -56,6 +59,7 @@ static void testStandfordBunny(){
             // file << "T" << j / 3 << ": " << curMesh.Indices[j] << ", " << curMesh.Indices[j + 1] << ", " << curMesh.Indices[j + 2] << "\n";
         }
     }
+    printf("vertices size: %u\n", vertices.size() / 6);
     printf("indices size: %u\n", indices.size());
     printf("triangle size: %u\n", indices.size() / 3);
     unsigned int VBO, VAO, EBO;
@@ -67,10 +71,12 @@ static void testStandfordBunny(){
     // 将vertices数据复制到缓冲种
     // GL_STATIC_DRAW / GL_DYNAMIC_DRAW、GL_STREAM_DRAW
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
     // 解析缓冲数据
     // 顶点位置，顶点大小(vec3)，顶点类型，是否normalize，步长，偏移量
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
     // 激活顶点属性0
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -89,11 +95,11 @@ static void testStandfordBunny(){
     while (1) {
 
         glBindVertexArray(VAO);
+        
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
         glvWriteStream(window);
 

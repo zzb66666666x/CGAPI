@@ -5,7 +5,7 @@
 
 typedef void (*render_fp)();
 
-#define PROCESS_VERTEX_THREAD_COUNT 6
+#define PROCESS_VERTEX_THREAD_COUNT 1
 #define RASTERIZE_THREAD_COUNT      8
 #define BINNING_THREAD_COUNT        10
 #define DOING_VERTEX_PROCESSING     1
@@ -16,18 +16,17 @@ typedef void (*render_fp)();
 
 // single thread interface
 void process_geometry();
-void process_geometry_ebo();
 void rasterize();
-void rasterize_ebo();
 void process_pixel();
 void rasterize_with_shading();
 
-// improved pixel processing APIs
-void binning_threadmain();
+// openmp version of multi-threading
+void process_geometry_ebo_openmp();
 
 // interface multi-thread version
 void terminate_all_threads();
 void process_geometry_threadmain();
+void binning_threadmain();
 void rasterize_threadmain();
 void process_pixel_threadmain();
 

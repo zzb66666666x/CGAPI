@@ -42,13 +42,37 @@ Bin* ScreenBins::pop_bin(){
     return ans;
 }
 
+void ScreenBins::prepare_non_empty_bins(){
+    if (non_empty_bins.size() > 0){
+        non_empty_bins.clear();
+    }
+    std::vector<Bin>::iterator it;
+    Bin* ptr;
+    int idx = 0;
+    for (it = bins.begin(); it!= bins.end(); it++){
+        if (it->tasks.size() > 0){
+            non_empty_bins.push_back(&(bins[idx]));
+        }
+        idx ++;
+    }
+}
+
+Bin* ScreenBins::get_non_empty_bin(int idx){
+    if (idx >= non_empty_bins.size())
+        return nullptr;
+    return non_empty_bins[idx];
+}
+
 CompareVec4Y compare_vec4_y;
+CompareVec4X compare_vec4_x;
 
 Triangle2D::Triangle2D(glm::vec4 *p1, glm::vec4 *p2, glm::vec4 *p3){
     screen_pos_ptrs[0] = p1;
     screen_pos_ptrs[1] = p2;
     screen_pos_ptrs[2] = p3;
     std::sort(screen_pos_ptrs.begin(), screen_pos_ptrs.end(), compare_vec4_y);
+    // sorted_by_x = screen_pos_ptrs;
+    // std::sort(sorted_by_x.begin(), sorted_by_x.end(), compare_vec4_x);
 }
 
 Triangle2D::Triangle2D(glm::vec4 ** points){
@@ -56,6 +80,8 @@ Triangle2D::Triangle2D(glm::vec4 ** points){
     screen_pos_ptrs[1] = points[1];
     screen_pos_ptrs[2] = points[2];
     std::sort(screen_pos_ptrs.begin(), screen_pos_ptrs.end(), compare_vec4_y);
+    // sorted_by_x = screen_pos_ptrs;
+    // std::sort(sorted_by_x.begin(), sorted_by_x.end(), compare_vec4_x);
 }
 
 bool Triangle2D::intersect(float scanline_y, std::array<float, 2> * ans, Bin* bin){
@@ -141,9 +167,12 @@ uint64_t compute_cover_mask(Triangle* tri, Bin* bin){
         float min_x = bin->pixel_bin_x + BIN_SIDE_LENGTH;
         float max_x = bin->pixel_bin_x;
         float cur_scanline_y = (float)(bin->pixel_bin_y + tile_y * TILE_SIDE_LENGTH);
+        float cur_bin_begin_x = (float)(bin->pixel_bin_x);
         bool flag = false;
         if (cur_scanline_y <= tri_2d.screen_pos_ptrs[2]->y &&
-            tri_2d.screen_pos_ptrs[0]->y <= cur_scanline_y+TILE_SIDE_LENGTH){
+            tri_2d.screen_pos_ptrs[0]->y <= cur_scanline_y+TILE_SIDE_LENGTH){             
+            // cur_bin_begin_x <= tri_2d.sorted_by_x[2]->x &&
+            // tri_2d.sorted_by_x[0]->x <= cur_bin_begin_x + BIN_SIDE_LENGTH
             for (int i = 0; i<TILE_SIDE_LENGTH; i++){
                 scanline_data_t& line = scanline_data[tile_y * TILE_SIDE_LENGTH + i];
                 bool ret = tri_2d.intersect(cur_scanline_y + (float)i + 0.5f, &(line.intersect_x), bin);

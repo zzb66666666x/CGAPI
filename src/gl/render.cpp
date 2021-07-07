@@ -12,6 +12,7 @@
 #include <set>
 #include <atomic>
 #include <thread>
+#include <omp.h>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -30,6 +31,14 @@ inline static glm::vec3 interpolate(float alpha, float beta, float gamma, glm::v
 inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::vec2& vert1, glm::vec2& vert2, glm::vec2& vert3, float weight)
 {
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
+}
+
+static void back_face_culling(Triangle& t)
+{
+    glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
+    glm::vec3 v02 = t.screen_pos[2] - t.screen_pos[0];
+    glm::vec3 res = glm::cross(v01, v02);
+    t.culling = res.z < 0.0f;
 }
 
 ////////////////// SINGLE-THREAD VERSION OF RENDERING //////////////////
@@ -157,154 +166,6 @@ void process_geometry()
     }
 }
 
-// process vertex with support for EBO
-void process_geometry_ebo()
-{
-    /**
-     * input processing
-     */
-    GET_PIPELINE(ppl);
-    GET_CURRENT_CONTEXT(ctx);
-    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
-
-    // check if the config is activated
-    for (int i = 0; i < ctx->shader.layout_cnt; ++i) {
-        if (ctx->shader.layouts[i] != LAYOUT_INVALID
-            && (ctx->shader.layouts[i] >= ppl->vao_ptr->getSize()
-                || !vattrib_data[ctx->shader.layouts[i]].activated)) {
-            ctx->shader.layouts[i] = LAYOUT_INVALID;
-        }
-    }
-
-    std::vector<int>& indices = ppl->indices;
-    int triangle_size = 0;
-    if (ppl->use_indices) {
-        // first ebo data index
-        const void* first_indices = (const void*)ppl->ebo_config.first_indices;
-        switch (ppl->ebo_config.indices_type) {
-            case GL_UNSIGNED_INT: {
-                // ebo data array
-                unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
-                int first_index = (size_t)first_indices / sizeof(unsigned int);
-                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
-                // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
-                ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
-                // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
-                indices.resize(ebuf_size - first_index);
-                for (int i = first_index; i < ebuf_size; ++i) {
-                    indices[i] = ebuf_data[i];
-                }
-                triangle_size = (ebuf_size - first_index) / 3;
-            } break;
-            default:
-                break;
-        }
-
-    } else {
-        int first_vertex_ind = ppl->first_vertex;
-        int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
-        // int vertex_offsets[3] = { 0, 0, 0 };
-
-        // parse vertex data
-        // use the first stride to determine start of vertex buffer
-        // vbuf_data += first_vertex_ind * vattrib_data[0].stride;
-
-        // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
-        vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
-        indices.resize(vertex_num - first_vertex_ind);
-        for (int i = 0, len = vertex_num - first_vertex_ind; i < len; ++i) {
-            indices[i] = first_vertex_ind + i;
-        }
-        triangle_size = (vertex_num - first_vertex_ind) / 3;
-    }
-
-    /**
-     * 
-     */
-    unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
-
-    std::vector<Triangle>& triangle_list = ppl->triangle_list;
-    triangle_list.resize(triangle_size);
-    int tri_ind = 0;
-    void* input_ptr;
-    unsigned char* buf;
-    // angle = angle + 2.0f;
-    while (tri_ind < triangle_size) {
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < ctx->shader.layout_cnt; ++j) {
-                if (ctx->shader.layouts[j] > 3) {
-                    throw std::runtime_error("invalid layout\n");
-                }
-                switch (ctx->shader.layouts[j]) {
-                    case LAYOUT_POSITION:
-                        input_ptr = &(ctx->shader.input_Pos);
-                        break;
-                    case LAYOUT_COLOR:
-                        input_ptr = &(ctx->shader.vert_Color);
-                        break;
-                    case LAYOUT_TEXCOORD:
-                        input_ptr = &(ctx->shader.iTexcoord);
-                        break;
-                    case LAYOUT_NORMAL:
-                        input_ptr = &(ctx->shader.vert_Normal);
-                        break;
-                    case LAYOUT_INVALID:
-                    default:
-                        input_ptr = nullptr;
-                        break;
-                }
-                if (input_ptr == nullptr) {
-                    continue;
-                }
-                vertex_attrib_t& config = vattrib_data[ctx->shader.layouts[j]];
-                // buf = vbuf_data + (indices[i] + (int)((long long)config.pointer));
-                buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
-                switch (config.type) {
-                    case GL_FLOAT:
-                        switch (config.size) {
-                            case 2: {
-                                glm::vec2* vec2 = (glm::vec2*)input_ptr;
-                                vec2->x = *(float*)(buf + 0);
-                                vec2->y = *(float*)(buf + sizeof(float) * 1);
-                                break;
-                            }
-                            case 3: {
-                                glm::vec3* vec3 = (glm::vec3*)input_ptr;
-                                vec3->x = *(float*)(buf + 0);
-                                vec3->y = *(float*)(buf + sizeof(float) * 1);
-                                vec3->z = *(float*)(buf + sizeof(float) * 2);
-                                break;
-                            }
-                            default:
-                                throw std::runtime_error("not supported size\n");
-                            }
-                            break;
-                    default:
-                        throw std::runtime_error("not supported type\n");
-                }
-            }
-            // 4. vertex shading
-            ctx->shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
-            ctx->shader.default_vertex_shader();
-
-            ctx->shader.gl_Position.x /= ctx->shader.gl_Position.w;
-            ctx->shader.gl_Position.y /= ctx->shader.gl_Position.w;
-            ctx->shader.gl_Position.z /= ctx->shader.gl_Position.w;
-            // 5. view port transformation
-            ctx->shader.gl_Position.x = 0.5 * ctx->width * (ctx->shader.gl_Position.x + 1.0);
-            ctx->shader.gl_Position.y = 0.5 * ctx->height * (ctx->shader.gl_Position.y + 1.0);
-            // [-1,1] to [0,1]
-            ctx->shader.gl_Position.z = ctx->shader.gl_Position.z * 0.5 + 0.5;
-            // 6. assemble triangle
-            triangle_list[tri_ind].screen_pos[i] = ctx->shader.gl_Position;
-            triangle_list[tri_ind].color[i] = ctx->shader.gl_VertexColor;
-            triangle_list[tri_ind].frag_shading_pos[i] = ctx->shader.frag_Pos;
-            triangle_list[tri_ind].texcoord[i] = ctx->shader.iTexcoord;
-        }
-        ++tri_ind;
-    }
-}
-
 // single thread version of rasterization
 // generating pixel tasks for fragment shading
 void rasterize()
@@ -357,58 +218,6 @@ void rasterize()
         }
 
         delete t;
-    }
-}
-
-// raterization with the support for EBO drawing
-void rasterize_ebo()
-{
-    GET_CURRENT_CONTEXT(ctx);
-    std::vector<Triangle>& triangle_list = ctx->pipeline.triangle_list;
-    int width = ctx->width, height = ctx->height;
-    std::vector<Pixel>& pixel_tasks = ctx->pipeline.pixel_tasks;
-
-    Triangle* t = nullptr;
-    for (int i = 0, len = triangle_list.size(); i < len; ++i) {
-        t = &triangle_list[i];
-        glm::vec4* screen_pos = t->screen_pos;
-        int minx, maxx, miny, maxy, x, y;
-        minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
-        miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
-        maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
-        maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
-
-        float* zbuf = (float*)ctx->zbuf->getDataPtr();
-        // AABB algorithm
-        for (y = miny; y <= maxy; ++y) {
-            for (x = minx; x <= maxx; ++x) {
-                int index = GET_INDEX(x, y, width, height);
-                if (!t->inside(x + 0.5f, y + 0.5f))
-                    continue;
-
-                // alpha beta gamma
-                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
-                // perspective correction
-                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
-                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
-                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
-                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
-
-                if (!ctx->use_z_test) {
-                    pixel_tasks[index].write = true;
-                    pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
-                } else {
-                    // zp: z value after interpolation
-                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
-                    if (zp < zbuf[index]) {
-                        zbuf[index] = zp;
-                        pixel_tasks[index].write = true;
-                        pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
-                        pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -492,7 +301,189 @@ void rasterize_with_shading(){
     }
 }
 
-////////////////// MULTI-THREADS VERSION OF RENDERING //////////////////
+////////////////// OPENMP MULTI-THREADS VERSION OF RENDERING //////////////////
+void process_geometry_ebo_openmp(){
+    /**
+     * input assembly
+     */
+    GET_PIPELINE(ppl);
+    GET_CURRENT_CONTEXT(ctx);
+
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
+
+    std::vector<int> indices;
+    int triangle_size = 0;
+    if (ppl->use_indices) {
+        int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+        ppl->indexCache.getCacheData(vaoId, indices);
+        if (!(ppl->ebo_config.ebo_ptr->usage == GL_STATIC_DRAW && ppl->vbo_ptr->usage == GL_STATIC_DRAW && indices.size() != 0)) {
+            // first ebo data index
+            const void* first_indices = (const void*)ppl->ebo_config.first_indices;
+            switch (ppl->ebo_config.indices_type) {
+                case GL_UNSIGNED_INT: {
+                    // ebo data array
+                    unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
+                    int first_index = (size_t)first_indices / sizeof(unsigned int);
+                    int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
+                    // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
+                    ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
+                    // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+                    indices.resize(ebuf_size - first_index);
+#pragma omp parallel for
+                    for (int i = first_index; i < ebuf_size; ++i) {
+                        indices[i] = ebuf_data[i];
+                    }
+                    triangle_size = (ebuf_size - first_index) / 3;
+                } break;
+                default:
+                    break;
+            }
+            ppl->indexCache.addCacheData(vaoId, indices);
+        } else {
+            triangle_size = indices.size() / 3;
+        }
+
+    } else {
+        int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+        ppl->indexCache.getCacheData(vaoId, indices);
+        if (!(ppl->vbo_ptr->usage == GL_STATIC_DRAW && indices.size() != 0)) {
+
+            int first_vertex_ind = ppl->first_vertex;
+            int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
+
+            // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
+            vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
+            indices.resize(vertex_num - first_vertex_ind);
+
+            int len = vertex_num - first_vertex_ind;
+#pragma omp parallel for
+            for (int i = 0; i < len; ++i) {
+                indices[i] = first_vertex_ind + i;
+                // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
+            }
+            triangle_size = (vertex_num - first_vertex_ind) / 3;
+            ppl->indexCache.addCacheData(vaoId, indices);
+        } else {
+            triangle_size = indices.size() / 3;
+        }
+    }
+
+    unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
+
+    std::vector<Triangle*>& triangle_list = ppl->triangle_list;
+
+    // check and delete
+    if(triangle_list.size() != triangle_size){
+        if(triangle_list.size() != 0){
+            for (int i = 0, len = triangle_list.size(); i < len; ++i) {
+                delete triangle_list[i];
+            }
+        }else{
+            triangle_list.resize(triangle_size);
+            for (int i = 0; i < triangle_size; ++i) {
+                triangle_list[i] = new Triangle();
+            }
+        }
+    }
+
+    angle = angle + 1.0f;
+
+    // begin parallel block
+    void* input_ptr;
+    unsigned char* buf;
+    glProgram shader = ctx->shader;
+    shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
+    int i, j;
+#pragma omp parallel for schedule(static, 8)\
+private(input_ptr) private(buf) private(shader) private(i) private(j)
+    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
+        // printf("tri_ind=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
+        // parse data
+        for (i = 0; i < 3; ++i) {
+            for (j = 0; j < shader.layout_cnt; ++j) {
+                switch (shader.layouts[j]) {
+                    case LAYOUT_POSITION:
+                        input_ptr = &(shader.input_Pos);
+                        break;
+                    case LAYOUT_COLOR:
+                        input_ptr = &(shader.vert_Color);
+                        break;
+                    case LAYOUT_TEXCOORD:
+                        input_ptr = &(shader.iTexcoord);
+                        break;
+                    case LAYOUT_NORMAL:
+                        input_ptr = &(shader.vert_Normal);
+                        break;
+                    case LAYOUT_INVALID:
+                    default:
+                        input_ptr = nullptr;
+                        break;
+                }
+                if (input_ptr == nullptr) {
+                    continue;
+                }
+                vertex_attrib_t& config = vattrib_data[shader.layouts[j]];
+                buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+                switch (config.type) {
+                    case GL_FLOAT:
+                        switch (config.size) {
+                            case 2: {
+                                glm::vec2* vec2 = (glm::vec2*)input_ptr;
+                                vec2->x = *(float*)(buf + 0);
+                                vec2->y = *(float*)(buf + sizeof(float) * 1);
+                                break;
+                            }
+                            case 3: {
+                                glm::vec3* vec3 = (glm::vec3*)input_ptr;
+                                vec3->x = *(float*)(buf + 0);
+                                vec3->y = *(float*)(buf + sizeof(float) * 1);
+                                vec3->z = *(float*)(buf + sizeof(float) * 2);
+                                break;
+                            }
+                            default:
+                                throw std::runtime_error("not supported size\n");
+                            }
+                        break;
+                    default:
+                        throw std::runtime_error("not supported type\n");
+                }
+            }
+
+            // 4. vertex shading
+            shader.default_vertex_shader();
+
+            // assemble triangle
+            triangle_list[tri_ind]->screen_pos[i] = shader.gl_Position;
+            triangle_list[tri_ind]->color[i] = shader.gl_VertexColor;
+            triangle_list[tri_ind]->frag_shading_pos[i] = shader.frag_Pos;
+            triangle_list[tri_ind]->texcoord[i] = shader.iTexcoord;
+            triangle_list[tri_ind]->vert_normal[i] = shader.gl_Normal;
+        }
+
+        // TODO view frustum culling
+        // TODO back face culling
+        if (true) {
+            back_face_culling(*triangle_list[tri_ind]);
+        }
+
+        if (triangle_list[tri_ind]->culling) {
+            continue;
+        }
+
+        for (i = 0; i < 3; ++i) {
+            triangle_list[tri_ind]->screen_pos[i] /= triangle_list[tri_ind]->screen_pos[i].w;
+
+            // view port transformation
+            triangle_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0);
+            triangle_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (triangle_list[tri_ind]->screen_pos[i].y + 1.0);
+
+            // [-1,1] to [0,1]
+            triangle_list[tri_ind]->screen_pos[i].z = triangle_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
+        }
+    }
+}
+
+////////////////// MANUAL MULTI-THREADS VERSION OF RENDERING //////////////////
 // thread functions
 void* _thr_process_vertex(void* thread_id);
 void* _thr_binning(void* thread_id);
@@ -500,7 +491,7 @@ void* _thr_rasterize(void* thread_id);
 
 // helpers
 static inline void _merge_crawlers();
-static inline void _free_triangles_after_rasterize();
+static inline void _free_triangles();
 
 // thread utils for vertex processing
 static pthread_mutex_t vertex_threads_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -533,6 +524,7 @@ void terminate_all_threads()
 {
     GET_CURRENT_CONTEXT(C);
     quit_vertex_processing = 1;
+    quit_binning = 1;
     quit_rasterizing = 1;
     // terminate threads in use
     C->threads.reset();
@@ -552,7 +544,7 @@ static inline void _merge_crawlers(){
             glapi_ctx->pipeline.triangle_stream.push(tri);
             // for parallel computation in binning and rasterizing, use std vector to store tri pointers
             // since using a queue requires a mutex lock
-            glapi_ctx->pipeline.triangle_ptrs.push_back(tri);
+            glapi_ctx->pipeline.triangle_list.push_back(tri);
             tri = new Triangle;
         }
         if(flag){
@@ -797,11 +789,15 @@ void* _thr_binning(void* thread_id){
             // P->triangle_stream.pop();
             // pthread_mutex_unlock(& P-> triangle_stream_mtx);
             // USE VECTOR FOR NO LOCK OPERATION
-            if (tri_idx >= P->triangle_ptrs.size()){
+            if (tri_idx >= P->triangle_list.size()){
                 break;
             }
-            cur_tri = P->triangle_ptrs[tri_idx];
+            cur_tri = P->triangle_list[tri_idx];
             tri_idx += BINNING_THREAD_COUNT;
+            if (cur_tri->culling) {
+                cur_tri->culling = false;
+                continue;
+            }
             // check triangle's overlap with bins
             std::set<Bin*> overlap_bins = binning_overlap(cur_tri, P->bins);
             std::set<Bin*>::iterator it;
@@ -821,6 +817,8 @@ void* _thr_binning(void* thread_id){
         binning_sync++;
         if (binning_sync == BINNING_THREAD_COUNT){
             binning_sync = 0;
+            // calculate bins with non-zero triangles
+            P->bins->prepare_non_empty_bins();
             // move the pipeline forward
             pthread_mutex_lock(&pipeline_mtx);
             pipeline_stage = DOING_RASTERIZATION;
@@ -868,13 +866,13 @@ void rasterize_threadmain()
     // std::cout<<"finish rasterizing"<<std::endl;
 }
 
-static inline void _free_triangles_after_rasterize(){
+static inline void _free_triangles(){
     GET_PIPELINE(P);
     std::vector<Triangle*>::iterator it;
-    for(it = P->triangle_ptrs.begin(); it!=P->triangle_ptrs.end(); it++){
+    for(it = P->triangle_list.begin(); it!=P->triangle_list.end(); it++){
         delete (*it);
     }
-    P->triangle_ptrs.clear();
+    P->triangle_list.clear();
 }
 
 void* _thr_rasterize(void* thread_id)
@@ -896,7 +894,8 @@ void* _thr_rasterize(void* thread_id)
         // loop over the bin tasks (of the whole screen) belonging to each thread
         while (1){
             // grab one bin to rasterize
-            cur_bin = P->bins->get_bin_by_index(bin_idx);
+            // cur_bin = P->bins->get_bin_by_index(bin_idx);
+            cur_bin = P->bins->get_non_empty_bin(bin_idx);
             if (cur_bin == nullptr)
                 break;
             pixel_end_x = cur_bin->pixel_bin_x + BIN_SIDE_LENGTH;
@@ -969,7 +968,7 @@ void* _thr_rasterize(void* thread_id)
         rasterize_sync ++;
         if(rasterize_sync == RASTERIZE_THREAD_COUNT){
             rasterize_sync = 0;
-            _free_triangles_after_rasterize();
+            // _free_triangles();
             pthread_mutex_lock(&pipeline_mtx);
             pipeline_stage = PIPELINE_FINISH;
             pthread_cond_signal(&pipeline_cv);

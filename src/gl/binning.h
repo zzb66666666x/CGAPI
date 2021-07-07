@@ -61,12 +61,15 @@ class ScreenBins{
     Bin* get_bin_by_index(int idx);
     void reset_counter();
     Bin* pop_bin();
+    void prepare_non_empty_bins();
+    Bin* get_non_empty_bin(int idx);
 
     int width;
     int height;
     int num_bins_along_x;
     int num_bins_along_y;
     std::vector<Bin> bins;
+    std::vector<Bin*> non_empty_bins;
     int counter;
 };
 
@@ -76,7 +79,15 @@ struct CompareVec4Y{
     }   
 };
 
+struct CompareVec4X{
+    bool operator()(glm::vec4 * v1, glm::vec4 * v2) const{   
+        return v1->x < v2->x;
+    }   
+};
+
+
 extern CompareVec4Y compare_vec4_y;
+extern CompareVec4X compare_vec4_x;
 
 class Triangle2D{
     public:
@@ -85,6 +96,7 @@ class Triangle2D{
     bool intersect(float scanline_y, std::array<float, 2> * ans, Bin* bin);
     inline float interp(float a, float Fa, float b, float Fb, float x);
     std::array<glm::vec4* ,3> screen_pos_ptrs;
+    // std::array<glm::vec4* ,3> sorted_by_x;
 };
 
 std::set<Bin*> binning_overlap(Triangle* tri, ScreenBins* screen_bins);

@@ -20,6 +20,7 @@
 #include "../../include/gl/common.h"
 #include "glsl/texture.h"
 #include <thread>
+#include <unordered_map>
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -72,6 +73,8 @@ class glObject{
     virtual int byteCapacity() const = 0;
 
     GLenum bind;
+    // GL_STATIC_DRAW
+    GLenum usage;
 };
 
 template<class T>
@@ -257,6 +260,32 @@ struct Pixel{
     glm::vec2 texcoord;
 };
 
+class PrimitiveCache{
+public:
+    int removeCacheData(unsigned int VAO){
+        int ret = indexCache.erase(VAO);
+        return ret == 0 ? GL_FALSE : GL_TRUE;
+    }
+
+    int getCacheData(unsigned int VAO, std::vector<int>& indices)
+    {
+        auto it = indexCache.find(VAO);
+        if (it == indexCache.end()) {
+            return GL_FALSE;
+        }
+        indices = it->second;
+        return GL_TRUE;
+    }
+
+    int addCacheData(unsigned int VAO, std::vector<int> &indices){
+        auto ret = indexCache.insert(std::make_pair(VAO, indices));
+        return ret.second ? GL_TRUE : GL_FALSE;
+    }
+
+private:
+    std::unordered_map<unsigned int, std::vector<int>> indexCache;
+};
+
 class glPipeline{
     public:
         glPipeline();
@@ -266,8 +295,9 @@ class glPipeline{
         // data needed for render functions
         std::queue<Triangle*> triangle_stream;
         pthread_mutex_t triangle_stream_mtx;
-        // in multi-thread pixel processing version of code, list is better for parallel computing
-        std::vector<Triangle*> triangle_ptrs;   
+        // multi-thread pixel processing version of code (manually calling pthread API)
+        // list is better for parallel computing
+        std::vector<Triangle*> triangle_list;   
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
@@ -284,8 +314,7 @@ class glPipeline{
             unsigned int indices_type;
             glObject* ebo_ptr;
         } ebo_config;
-        std::vector<Triangle> triangle_list;
-        std::vector<int> indices;
+        PrimitiveCache indexCache;
         // binning data
         ScreenBins* bins;
 };

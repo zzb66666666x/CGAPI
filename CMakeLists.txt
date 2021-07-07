@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 # set(CMAKE_CXX_FLAGS "-g -O0")
 set(CMAKE_CXX_FLAGS "-O3")
+
 include_directories(
 	include/gl
 	include/glv
@@ -63,10 +64,11 @@ set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+find_package(OpenMP)
+
 ################################################
 ################# library make #################
 ################################################
-
 add_library(glite SHARED 	
 	${GLV_SOURCES}
 	${GL_SOURCES}
@@ -77,6 +79,7 @@ add_library(glite SHARED
 )
 target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
+target_link_libraries(glite OpenMP::OpenMP_CXX)
 # target_link_libraries(glite ${Boost_LIBRARIES})
 # target_link_libraries(glite glm::glm)
 
