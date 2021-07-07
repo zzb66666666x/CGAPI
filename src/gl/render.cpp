@@ -314,8 +314,21 @@ void geometry_processing()
 
     unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
 
-    std::vector<Triangle>& triangle_list = ppl->triangle_list;
-    triangle_list.resize(triangle_size);
+    std::vector<Triangle*>& triangle_list = ppl->triangle_list;
+
+    // check and delete
+    if(triangle_list.size() != triangle_size){
+        if(triangle_list.size() != 0){
+            for (int i = 0, len = triangle_list.size(); i < len; ++i) {
+                delete triangle_list[i];
+            }
+        }else{
+            triangle_list.resize(triangle_size);
+            for (int i = 0; i < triangle_size; ++i) {
+                triangle_list[i] = new Triangle();
+            }
+        }
+    }
 
     angle = angle + 1.0f;
 
@@ -393,32 +406,32 @@ void geometry_processing()
             // shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;
 
             // assemble triangle
-            triangle_list[tri_ind].screen_pos[i] = shader.gl_Position;
-            triangle_list[tri_ind].color[i] = shader.gl_VertexColor;
-            triangle_list[tri_ind].frag_shading_pos[i] = shader.frag_Pos;
-            triangle_list[tri_ind].texcoord[i] = shader.iTexcoord;
-            triangle_list[tri_ind].vert_normal[i] = shader.gl_Normal;
+            triangle_list[tri_ind]->screen_pos[i] = shader.gl_Position;
+            triangle_list[tri_ind]->color[i] = shader.gl_VertexColor;
+            triangle_list[tri_ind]->frag_shading_pos[i] = shader.frag_Pos;
+            triangle_list[tri_ind]->texcoord[i] = shader.iTexcoord;
+            triangle_list[tri_ind]->vert_normal[i] = shader.gl_Normal;
         }
 
         // TODO view frustum culling
         // TODO back face culling
         if (true) {
-            back_face_culling(triangle_list[tri_ind]);
+            back_face_culling(*triangle_list[tri_ind]);
         }
 
-        if (triangle_list[tri_ind].culling) {
+        if (triangle_list[tri_ind]->culling) {
             continue;
         }
 
         for (i = 0; i < 3; ++i) {
-            triangle_list[tri_ind].screen_pos[i] /= triangle_list[tri_ind].screen_pos[i].w;
+            triangle_list[tri_ind]->screen_pos[i] /= triangle_list[tri_ind]->screen_pos[i].w;
 
             // view port transformation
-            triangle_list[tri_ind].screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind].screen_pos[i].x + 1.0);
-            triangle_list[tri_ind].screen_pos[i].y = 0.5 * ctx->height * (triangle_list[tri_ind].screen_pos[i].y + 1.0);
+            triangle_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0);
+            triangle_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (triangle_list[tri_ind]->screen_pos[i].y + 1.0);
 
             // [-1,1] to [0,1]
-            triangle_list[tri_ind].screen_pos[i].z = triangle_list[tri_ind].screen_pos[i].z * 0.5 + 0.5;
+            triangle_list[tri_ind]->screen_pos[i].z = triangle_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
         }
     }
 }
@@ -426,7 +439,7 @@ void geometry_processing()
 void rasterization()
 {
     GET_CURRENT_CONTEXT(ctx);
-    std::vector<Triangle>& triangle_list = ctx->pipeline.triangle_list;
+    std::vector<Triangle*>& triangle_list = ctx->pipeline.triangle_list;
     int width = ctx->width, height = ctx->height;
     std::vector<Pixel>& pixel_tasks = ctx->pipeline.pixel_tasks;
 
@@ -437,7 +450,7 @@ void rasterization()
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
 #pragma omp parallel for private(t)
     for (int i = 0; i < len; ++i) {
-        t = &triangle_list[i];
+        t = triangle_list[i];
         
         if (t->culling) {
             t->culling = false;

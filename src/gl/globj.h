@@ -311,7 +311,7 @@ class glPipeline{
         pthread_mutex_t triangle_stream_mtx;
         std::queue<Triangle*> triangle_stream;
         // triangle list for new interfaces
-        std::vector<Triangle> triangle_list;
+        std::vector<Triangle*> triangle_list;
         // id: VAOId
         PrimitiveCache indexCache;
 
