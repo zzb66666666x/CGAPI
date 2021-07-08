@@ -23,6 +23,7 @@ set(GL_HEADERS
 	src/gl/geometry.h
 	src/gl/formats.h
 	src/gl/configs.h
+	src/gl/binning.h
 	src/gl/glsl/texture.h
 )
 
@@ -38,6 +39,7 @@ set(GL_SOURCES
 	src/gl/glcontext.cpp
 	src/gl/render.cpp
 	src/gl/geometry.cpp
+	src/gl/binning.cpp
 )
 
 set(GLV_SOURCES
@@ -67,11 +69,11 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
 find_package(benchmark REQUIRED)
+find_package(OpenMP REQUIRED)
 
 ################################################
 ################# library make #################
 ################################################
-
 add_library(glite SHARED 	
 	${GLV_SOURCES}
 	${GL_SOURCES}
@@ -82,9 +84,9 @@ add_library(glite SHARED
 )
 target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
-target_link_libraries(glite ${Boost_LIBRARIES})
-target_link_libraries(glite glm::glm)
-target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
+target_link_libraries(glite OpenMP::OpenMP_CXX)
+# target_link_libraries(glite ${Boost_LIBRARIES})
+# target_link_libraries(glite glm::glm)
 
 ################################################
 ################# utest make ###################
@@ -95,11 +97,23 @@ add_executable(
 	${GL_SOURCES}
 	${UTILS_SOURCES}
 )
+target_link_libraries(test_globjs pthread)
+target_link_libraries(test_globjs OpenMP::OpenMP_CXX)
 
 ################################################
 ################## test make ###################
 ################################################
-add_executable(basic_lib_usage tests/basic_lib_usage.cpp)
-# add_executable(lib_benchmark tests/lib_benchmark.cpp)
-target_link_libraries(basic_lib_usage glite)
-# target_link_libraries(lib_benchmark glite)
+add_executable(basics tests/test_basics.cpp tests/shared_data.cpp tests/shared_data.h)
+target_link_libraries(basics glite)
+
+add_executable(ebo tests/test_ebo.cpp)
+target_link_libraries(ebo glite)
+
+add_executable(cow tests/test_cow.cpp)
+target_link_libraries(cow glite)
+
+add_executable(texture tests/test_texture.cpp tests/shared_data.cpp tests/shared_data.h)
+target_link_libraries(texture glite)
+
+add_executable(bunny tests/test_bunny.cpp)
+target_link_libraries(bunny glite)

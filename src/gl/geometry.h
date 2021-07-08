@@ -101,7 +101,6 @@ class TriangleCrawler{
         }
         int crawl(char* source, int buf_size, int first_vertex, glProgram& shader);
 
-        std::map<int, std::queue<glm::vec1>> data_float_vec1;
         std::map<int, std::queue<glm::vec2>> data_float_vec2;
         std::map<int, std::queue<glm::vec3>> data_float_vec3;
         std::map<int, std::queue<glm::vec4>> data_float_vec4;

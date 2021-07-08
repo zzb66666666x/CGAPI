@@ -1,6 +1,7 @@
 #include "configs.h"
 #include <iostream>
 #include "glcontext.h"
+#include "render.h"
 
 gl_context* glapi_ctx = nullptr;
 
@@ -23,6 +24,7 @@ gl_context::gl_context(int npixels, bool double_buf){
     payload = glRenderPayload();
     pipeline = glPipeline();
     pipeline.pixel_tasks = std::vector<Pixel>(npixels);
+    pipeline.init_pixel_locks();
     windowbuf = nullptr;
     clear_color.R = 0;
     clear_color.G = 0;
@@ -34,6 +36,7 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     gl_context * ctx = new gl_context(npixels, double_buf);
     ctx->width = width;
     ctx->height = height;
+    ctx->pipeline.bins = new ScreenBins(width, height);
     ctx->znear = 0.1;
     ctx->zfar = 50;
     // _cg_context_sanity_check(ctx);
@@ -46,6 +49,7 @@ void _cg_make_current(gl_context* ctx){
 }
 
 extern void _cg_free_context_data(gl_context* ctx){
+    terminate_all_threads();
     delete ctx;
 }
 

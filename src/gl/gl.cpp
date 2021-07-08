@@ -477,6 +477,7 @@ void glDrawArrays(GLenum mode, int first, int count){
     check_set_layouts();
 
     // draw
+    // std::cout<<"drawing one frame"<<std::endl;
     auto& exec_list = C->pipeline.exec; 
     auto iter = exec_list.begin();
     switch(mode){

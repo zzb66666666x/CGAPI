@@ -20,7 +20,7 @@ glm::vec4 texture2D(sampler2D &texture, glm::vec2 &texcoord)
                 channel = 3;
                 for (int i = 0; i < channel; ++i)
                 {
-                    res[i] = (float) texture.data[index * channel + i];
+                    res[i] = ((float) texture.data[index * channel + i]) / 255.0f;
                 }
                 break;
             case FORMAT_COLOR_8UC4:

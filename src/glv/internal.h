@@ -5,7 +5,9 @@
 #include <stdlib.h>
 
 // container of io stream's title
-#define MAX_NAME_LEN 128
+#define MAX_NAME_LEN    128
+#define KEY_ESC         27
+
 
 /**
  * macro function
@@ -33,7 +35,9 @@ typedef struct{
     _GLVStream *curStream;
 }_GLVContext;
 
-_GLVContext *_glvContext = NULL;
+extern _GLVContext *_glvContext;
+
+extern int should_exit_flag;
 
 // /**
 //  * file internal function

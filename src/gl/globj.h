@@ -16,10 +16,12 @@
 #include "geometry.h"
 #include "render.h"
 #include "formats.h"
+#include "binning.h"
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 #include "glsl/texture.h"
-#include <thread>
+#include <unordered_map>
+#include <omp.h>
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -72,7 +74,6 @@ class glObject{
     virtual int byteCapacity() const = 0;
 
     GLenum bind;
-
     // GL_STATIC_DRAW
     GLenum usage;
 };
@@ -206,16 +207,9 @@ class glThreads{
     public:
     glThreads();
     pthread_t thr_arr[THREAD_NUM];
-};
-
-struct PixelShaderParam{
-    glm::vec2 texcoord;
-    glm::vec3 color;
-    glm::vec3 normal;
-};
-
-struct PixelShaderResult{
-    glm::vec4 fragColor;
+    int usage[THREAD_NUM];
+    int get(int* arg, int thread_num);
+    void reset();
 };
 
 class glProgram{
@@ -229,12 +223,10 @@ class glProgram{
     glm::vec3 vert_Color;
     glm::vec2 iTexcoord;
     glm::vec3 vert_Normal;
-
     // vertex shader output variable
     glm::vec4 gl_Position;
     glm::vec3 gl_VertexColor;
     glm::vec3 gl_Normal;
-
     // fragment shader
     glm::vec3 diffuse_Color;
     glm::vec3 frag_Pos;
@@ -248,7 +240,7 @@ class glProgram{
     sampler2D diffuse_texture;
     // methods
     void default_vertex_shader();
-    PixelShaderResult default_fragment_shader(PixelShaderParam &params);
+    void default_fragment_shader();
     void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
     void set_diffuse_texture(GLenum unit);
     void initialize_layouts();
@@ -271,6 +263,8 @@ struct Pixel{
     glm::vec3 vertexColor;
     glm::vec2 texcoord;
     glm::vec3 normal;
+    // sync
+    omp_lock_t lock;
 };
 
 class PrimitiveCache{
@@ -302,34 +296,35 @@ private:
 class glPipeline{
     public:
         glPipeline();
-        bool use_indices;
-        // drawElement
+        ~glPipeline();
+        void init_pixel_locks();
         // the number of cpu core
         int cpu_num;
-
         // data needed for render functions
-        pthread_mutex_t triangle_stream_mtx;
         std::queue<Triangle*> triangle_stream;
-        // triangle list for new interfaces
-        std::vector<Triangle> triangle_list;
-        // id: VAOId
-        PrimitiveCache indexCache;
-
+        pthread_mutex_t triangle_stream_mtx;
+        // multi-thread pixel processing version of code (manually calling pthread API)
+        // list is better for parallel computing
+        std::vector<Triangle*> triangle_list;   
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
-        // glManager search cache  
-        // then in rendering pipeline, we don't have to search in glManager
+        // glManager search cache
         int first_vertex;
         int vertex_num;
         glObject* vao_ptr;
         glObject* vbo_ptr;
+        glObject* textures[GL_MAX_TEXTURE_UNITS];
+        // data structures supporting drawing by indices (EBO)
+        bool use_indices;
         struct {
             const void* first_indices;
             unsigned int indices_type;
             glObject* ebo_ptr;
         } ebo_config;
-        glObject* textures[GL_MAX_TEXTURE_UNITS];
+        PrimitiveCache indexCache;
+        // binning data
+        ScreenBins* bins;
 };
 
 #endif

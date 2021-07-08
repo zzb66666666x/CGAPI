@@ -59,6 +59,11 @@ int glvWriteStream(GLVStream* stream);
  */
 void glvTerminate();
 
+/**
+ * should close the window? 
+ */
+int glvWindowShouldClose(GLVStream* stream);
+
 #ifdef __cplusplus
 }
 #endif 
