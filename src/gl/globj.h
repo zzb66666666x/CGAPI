@@ -19,8 +19,8 @@
 #include "../utils/id.h"
 #include "../../include/gl/common.h"
 #include "glsl/texture.h"
-#include <thread>
 #include <unordered_map>
+#include <omp.h>
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -258,6 +258,8 @@ struct Pixel{
     // programmable input
     glm::vec3 vertexColor;
     glm::vec2 texcoord;
+    // sync
+    omp_lock_t lock;
 };
 
 class PrimitiveCache{
@@ -290,6 +292,7 @@ class glPipeline{
     public:
         glPipeline();
         ~glPipeline();
+        void init_pixel_locks();
         // the number of cpu core
         int cpu_num;
         // data needed for render functions

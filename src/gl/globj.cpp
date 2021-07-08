@@ -5,6 +5,7 @@
 #include "render.h"
 #include "glcontext.h"
 #include "glsl/texture.h"
+#include <thread>
 
 // alloc space for static variables in shader
 glm::mat4 glProgram::model = glm::mat4(1.0f); 
@@ -190,7 +191,6 @@ glPipeline::glPipeline(){
     // exec.emplace_back(binning_threadmain);
     // exec.emplace_back(rasterize_threadmain);
     exec.emplace_back(process_geometry_ebo_openmp);
-    exec.emplace_back(binning_openmp);
     exec.emplace_back(rasterize_with_shading_openmp);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
@@ -203,5 +203,15 @@ glPipeline::glPipeline(){
 
 glPipeline::~glPipeline(){
     delete bins;
+    std::vector<Pixel>::iterator it;
+    for (it=pixel_tasks.begin(); it!= pixel_tasks.end(); it++){
+        omp_destroy_lock(&(it->lock));
+    }
 }
 
+void glPipeline::init_pixel_locks(){
+    std::vector<Pixel>::iterator it;
+    for (it=pixel_tasks.begin(); it!= pixel_tasks.end(); it++){
+        omp_init_lock(&(it->lock));
+    }
+}

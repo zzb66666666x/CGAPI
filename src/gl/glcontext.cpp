@@ -22,6 +22,7 @@ gl_context::gl_context(int npixels, bool double_buf){
     payload = glRenderPayload();
     pipeline = glPipeline();
     pipeline.pixel_tasks = std::vector<Pixel>(npixels);
+    pipeline.init_pixel_locks();
     windowbuf = nullptr;
     clear_color.R = 0;
     clear_color.G = 0;

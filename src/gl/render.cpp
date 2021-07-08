@@ -10,8 +10,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <set>
-#include <atomic>
-#include <thread>
 #include <omp.h>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
@@ -483,10 +481,6 @@ private(input_ptr) private(buf) private(shader) private(i) private(j)
     }
 }
 
-void binning_openmp(){
-
-}
-
 void rasterize_with_shading_openmp(){
     GET_CURRENT_CONTEXT(ctx);
     std::vector<Triangle*>& triangle_list = ctx->pipeline.triangle_list;
@@ -500,12 +494,10 @@ void rasterize_with_shading_openmp(){
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
     glProgram shader = ctx->shader;
 
-    omp_lock_t zbuf_lock;
-    omp_init_lock(&zbuf_lock);
 #pragma omp parallel for private(t) private(shader)
     for (int i = 0; i < len; ++i) {
         t = triangle_list[i];
-        
+
         if (t->culling) {
             t->culling = false;
             continue;
@@ -538,11 +530,11 @@ void rasterize_with_shading_openmp(){
                 } 
                 else {
                     // zp: z value after interpolation
-                    // omp_set_lock(&zbuf_lock);
                     float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        // omp_unset_lock(&zbuf_lock);
+                        omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         // fragment shader input
                         shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
@@ -552,12 +544,11 @@ void rasterize_with_shading_openmp(){
                         frame_buf[index].G = shader.frag_Color.y * 255.0f;
                         frame_buf[index].B = shader.frag_Color.z * 255.0f;
                     }
-                    // omp_unset_lock(&zbuf_lock);
+                    omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                 }
             }
         }
     }
-    omp_destroy_lock(&zbuf_lock);
 }
 
 ////////////////// MANUAL MULTI-THREADS VERSION OF RENDERING //////////////////

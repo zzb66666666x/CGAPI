@@ -64,7 +64,7 @@ set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
 
 ################################################
 ################# library make #################
@@ -92,6 +92,8 @@ add_executable(
 	${GL_SOURCES}
 	${UTILS_SOURCES}
 )
+target_link_libraries(test_globjs pthread)
+target_link_libraries(test_globjs OpenMP::OpenMP_CXX)
 
 ################################################
 ################## test make ###################
