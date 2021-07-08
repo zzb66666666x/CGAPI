@@ -41,7 +41,7 @@ static void testDrawInWindow()
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    while (1)
+    while (!glvWindowShouldClose(window))
     {
         glBindVertexArray(VAO);
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);

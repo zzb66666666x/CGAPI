@@ -1,13 +1,19 @@
 #include <vector>
 #include <stdio.h>
 #include <string.h>
-
 #include "internal.h"
 #include "../../include/glv/glv.h"
 #include "../gl/glcontext.h"
 #include "../gl/globj.h"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
+
+//////////////////////////////////////////
+///////// internal variable //////////////
+//////////////////////////////////////////
+_GLVContext *_glvContext = nullptr;
+int should_exit_flag = 0;
+std::vector<float> default_frame;
 
 //////////////////////////////////////////
 ///////// window stream api //////////////
@@ -30,6 +36,11 @@ static _GLVStream *create_window_stream(int width, int height, const char *name)
     _cg_make_current(ctx);
     _glvContext->ctx = ctx;
     _glvContext->curStream = window;
+    // display a default window here
+    default_frame.resize(height*width*3);
+    cv::Mat frame(height, width, CV_32FC3, &(default_frame[0]));
+    cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
+    cv::imshow(name, frame);
     return window;
 }
 
@@ -47,7 +58,10 @@ static int write_window_stream(_GLVStream *_window)
     frame.convertTo(frame, CV_8UC3, 1.0f);
     cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
     cv::imshow(_window->name, frame);
-    cv::waitKey(1);
+    int key = cv::waitKey(1);
+    if (key == KEY_ESC){
+        should_exit_flag = 1;
+    }
     if(ctx->use_double_buf){
         _cg_swap_framebuffer(ctx);
     }
@@ -86,6 +100,7 @@ static _GLVStream *create_file_stream(int width, int height, const char *name)
 static int write_file_stream(_GLVStream *_file)
 {
     gl_context *ctx = _glvContext->ctx;
+
     color_t *framebuf_data = (color_t *)ctx->framebuf->getDataPtr();
     // int total_size = ctx->framebuf->getSize();
 
@@ -162,7 +177,24 @@ int glvWriteStream(GLVStream *stream)
 
 void glvTerminate()
 {
+    cv::destroyWindow(_glvContext->curStream->name);
     _cg_free_context_data(_glvContext->ctx);
     FREE(_glvContext->curStream);
     FREE(_glvContext);
+}
+
+int glvWindowShouldClose(GLVStream* stream){
+    if (stream == NULL)
+        return GLV_FALSE;
+    _GLVStream *_stream = (_GLVStream*) stream;
+    if (_stream->type != GLV_STREAM_WINDOW){
+        return GLV_FALSE;
+    }
+    if (cv::getWindowProperty(_glvContext->curStream->name, cv::WND_PROP_VISIBLE) == 0){
+        return GLV_TRUE;
+    }
+    if (should_exit_flag == 1){
+        return GLV_TRUE;
+    }
+    return GLV_FALSE;
 }

@@ -104,7 +104,7 @@ static void testDrawCowWindow(){
     auto curTime = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
     double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
-    while (1)
+    while (!glvWindowShouldClose(window))
     {
         // begin = GetTickCount();
         glBindVertexArray(VAO);

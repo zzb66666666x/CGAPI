@@ -119,6 +119,11 @@ int glThreads::get(int* arg, int thread_num){
 }
 
 void glThreads::reset(){
+    for (int i=0; i<THREAD_NUM; i++){
+        if (usage[i]){
+            pthread_cancel(thr_arr[i]);
+        }
+    }
     memset(usage, 0, THREAD_NUM*sizeof(int));
 }
 
@@ -182,9 +187,11 @@ glPipeline::glPipeline(){
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
     // if using multi-threading
     // exec.emplace_back(process_geometry_threadmain);
+    // exec.emplace_back(binning_threadmain);
+    // exec.emplace_back(rasterize_threadmain);
     exec.emplace_back(process_geometry_ebo_openmp);
-    exec.emplace_back(binning_threadmain);
-    exec.emplace_back(rasterize_threadmain);
+    exec.emplace_back(binning_openmp);
+    exec.emplace_back(rasterize_with_shading_openmp);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
     ebo_config.ebo_ptr = nullptr;

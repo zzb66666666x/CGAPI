@@ -1,6 +1,7 @@
 #include "configs.h"
 #include <iostream>
 #include "glcontext.h"
+#include "render.h"
 
 gl_context* glapi_ctx = nullptr;
 
@@ -45,6 +46,7 @@ void _cg_make_current(gl_context* ctx){
 }
 
 extern void _cg_free_context_data(gl_context* ctx){
+    terminate_all_threads();
     delete ctx;
 }
 

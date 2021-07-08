@@ -483,6 +483,83 @@ private(input_ptr) private(buf) private(shader) private(i) private(j)
     }
 }
 
+void binning_openmp(){
+
+}
+
+void rasterize_with_shading_openmp(){
+    GET_CURRENT_CONTEXT(ctx);
+    std::vector<Triangle*>& triangle_list = ctx->pipeline.triangle_list;
+    int width = ctx->width, height = ctx->height;
+    std::vector<Pixel>& pixel_tasks = ctx->pipeline.pixel_tasks;
+
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+
+    Triangle* t = nullptr;
+    int len = triangle_list.size();
+    float* zbuf = (float*)ctx->zbuf->getDataPtr();
+    glProgram shader = ctx->shader;
+
+    omp_lock_t zbuf_lock;
+    omp_init_lock(&zbuf_lock);
+#pragma omp parallel for private(t) private(shader)
+    for (int i = 0; i < len; ++i) {
+        t = triangle_list[i];
+        
+        if (t->culling) {
+            t->culling = false;
+            continue;
+        }
+
+        glm::vec4* screen_pos = t->screen_pos;
+        int minx, maxx, miny, maxy, x, y;
+        minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
+        miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
+        maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
+        maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
+
+        // AABB algorithm
+        for (y = miny; y <= maxy; ++y) {
+            for (x = minx; x <= maxx; ++x) {
+                int index = GET_INDEX(x, y, width, height);
+                if (!t->inside(x + 0.5f, y + 0.5f))
+                    continue;
+
+                // alpha beta gamma
+                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+                // perspective correction
+                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
+                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
+                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
+                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+
+                if (!ctx->use_z_test) {
+                    throw std::runtime_error("please open the z depth test\n");
+                } 
+                else {
+                    // zp: z value after interpolation
+                    // omp_set_lock(&zbuf_lock);
+                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    if (zp < zbuf[index]) {
+                        zbuf[index] = zp;
+                        // omp_unset_lock(&zbuf_lock);
+                        // fragment shader input
+                        shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                        shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                        // fragment shading
+                        shader.default_fragment_shader();
+                        frame_buf[index].R = shader.frag_Color.x * 255.0f;
+                        frame_buf[index].G = shader.frag_Color.y * 255.0f;
+                        frame_buf[index].B = shader.frag_Color.z * 255.0f;
+                    }
+                    // omp_unset_lock(&zbuf_lock);
+                }
+            }
+        }
+    }
+    omp_destroy_lock(&zbuf_lock);
+}
+
 ////////////////// MANUAL MULTI-THREADS VERSION OF RENDERING //////////////////
 // thread functions
 void* _thr_process_vertex(void* thread_id);
@@ -528,6 +605,8 @@ void terminate_all_threads()
     quit_rasterizing = 1;
     // terminate threads in use
     C->threads.reset();
+    // free allocated memory
+    _free_triangles();
 }
 
 static inline void _merge_crawlers(){
@@ -873,6 +952,10 @@ static inline void _free_triangles(){
         delete (*it);
     }
     P->triangle_list.clear();
+    while (!(P->triangle_stream.empty())){
+        delete P->triangle_stream.front();
+        P->triangle_stream.pop();
+    }
 }
 
 void* _thr_rasterize(void* thread_id)
@@ -964,7 +1047,6 @@ void* _thr_rasterize(void* thread_id)
         // std::cout<<"partially finish rasterizing"<<std::endl;
         // finish rasterizing, sync point
         pthread_mutex_lock(&rasterize_mtx);
-        ScreenBins * temp = C->pipeline.bins;
         rasterize_sync ++;
         if(rasterize_sync == RASTERIZE_THREAD_COUNT){
             rasterize_sync = 0;
