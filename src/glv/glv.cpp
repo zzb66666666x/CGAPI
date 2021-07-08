@@ -13,7 +13,6 @@
 //////////////////////////////////////////
 _GLVContext *_glvContext = nullptr;
 int should_exit_flag = 0;
-std::vector<float> default_frame;
 
 //////////////////////////////////////////
 ///////// window stream api //////////////
@@ -36,11 +35,6 @@ static _GLVStream *create_window_stream(int width, int height, const char *name)
     _cg_make_current(ctx);
     _glvContext->ctx = ctx;
     _glvContext->curStream = window;
-    // display a default window here
-    default_frame.resize(height*width*3);
-    cv::Mat frame(height, width, CV_32FC3, &(default_frame[0]));
-    cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
-    cv::imshow(name, frame);
     return window;
 }
 
@@ -59,8 +53,9 @@ static int write_window_stream(_GLVStream *_window)
     cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
     cv::imshow(_window->name, frame);
     int key = cv::waitKey(1);
-    if (key == KEY_ESC){
+    if (key == KEY_ESC || cv::getWindowProperty(_glvContext->curStream->name, cv::WND_PROP_VISIBLE) == 0){
         should_exit_flag = 1;
+        return GLV_FALSE;
     }
     if(ctx->use_double_buf){
         _cg_swap_framebuffer(ctx);
@@ -189,9 +184,6 @@ int glvWindowShouldClose(GLVStream* stream){
     _GLVStream *_stream = (_GLVStream*) stream;
     if (_stream->type != GLV_STREAM_WINDOW){
         return GLV_FALSE;
-    }
-    if (cv::getWindowProperty(_glvContext->curStream->name, cv::WND_PROP_VISIBLE) == 0){
-        return GLV_TRUE;
     }
     if (should_exit_flag == 1){
         return GLV_TRUE;
