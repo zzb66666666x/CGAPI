@@ -6,6 +6,7 @@
 #include "glcontext.h"
 #include "glsl/texture.h"
 #include <omp.h>
+#include <thread>
 
 // alloc space for static variables in shader
 // glm::mat4 glProgram::model = glm::mat4(1.0f); 
@@ -97,7 +98,37 @@ glRenderPayload::glRenderPayload(){
 }
 
 glThreads::glThreads(){
+    memset(usage, 0, THREAD_NUM * sizeof(int));
+}
 
+int glThreads::get(int* arg, int thread_num)
+{
+    if (thread_num <= 0 || arg == nullptr)
+        return GL_FAILURE;
+    int cnt = 0;
+    for (int i = 0; i < THREAD_NUM; i++) {
+        if (!usage[i]) {
+            arg[cnt] = i;
+            cnt++;
+        }
+        if (cnt == thread_num) {
+            for (int j = 0; j < thread_num; j++) {
+                usage[arg[j]] = 1;
+            }
+            return GL_SUCCESS;
+        }
+    }
+    return GL_FAILURE;
+}
+
+void glThreads::reset()
+{
+    for (int i = 0; i < THREAD_NUM; i++) {
+        if (usage[i]) {
+            pthread_cancel(thr_arr[i]);
+        }
+    }
+    memset(usage, 0, THREAD_NUM * sizeof(int));
 }
 
 glProgram::glProgram()
@@ -126,21 +157,12 @@ void glProgram::default_vertex_shader(){
     gl_Normal = vert_Normal;
 }
 
-PixelShaderResult glProgram::default_fragment_shader(PixelShaderParam &params){
-    // frag_Color = diffuse_Color;
+void glProgram::default_fragment_shader(){
+    // without texture
+    frag_Color = diffuse_Color;
 
-    PixelShaderResult result;
-    // glm::vec4 color = texture2D(diffuse_texture, params.texcoord);
-    // result.fragColor = color;
-
-    // result.fragColor.x = params.color.x * 255;
-    // result.fragColor.y = params.color.y * 255;
-    // result.fragColor.z = params.color.z * 255;
-
-    result.fragColor = glm::vec4(params.normal, 1.0f);
-    result.fragColor *= 255.0f;
-
-    return result;
+    // with texture
+    // frag_Color = glm::vec3(texture2D(diffuse_texture, texcoord));
 }
 
 void glProgram::set_transform_matrices(int width, int height, float znear, float zfar, float angle){
@@ -184,6 +206,7 @@ void glProgram::set_diffuse_texture(GLenum unit){
 
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();
+    // omp_set_num_threads(cpu_num);
 
     vertex_num = 0;
     first_vertex = 0;
@@ -192,9 +215,8 @@ glPipeline::glPipeline(){
     // exec.emplace_back(rasterize_threadmain);
     // exec.emplace_back(process_pixel);
 
-    exec.emplace_back(geometry_processing);
-    exec.emplace_back(rasterization);
-    exec.emplace_back(process_pixel);
+    exec.emplace_back(process_geometry_ebo_openmp);
+    exec.emplace_back(rasterize_with_shading_openmp);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
     ebo_config.ebo_ptr = nullptr;
@@ -203,3 +225,19 @@ glPipeline::glPipeline(){
     }
 }
 
+glPipeline::~glPipeline()
+{
+    delete bins;
+    std::vector<Pixel>::iterator it;
+    for (it = pixel_tasks.begin(); it != pixel_tasks.end(); it++) {
+        omp_destroy_lock(&(it->lock));
+    }
+}
+
+void glPipeline::init_pixel_locks()
+{
+    std::vector<Pixel>::iterator it;
+    for (it = pixel_tasks.begin(); it != pixel_tasks.end(); it++) {
+        omp_init_lock(&(it->lock));
+    }
+}

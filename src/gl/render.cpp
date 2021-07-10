@@ -31,12 +31,19 @@ inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::v
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
 
-static void back_face_culling(Triangle& t)
+inline static void back_face_culling(Triangle& t)
 {
     glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
     glm::vec3 v02 = t.screen_pos[2] - t.screen_pos[0];
     glm::vec3 res = glm::cross(v01, v02);
+
+    // the horizontal plane will not be culled.
     t.culling = res.z < 0.0f;
+}
+
+static void view_culling(Triangle& t, std::vector<Triangle *> &view_culling_list){
+
+
 }
 
 ////////////////// SINGLE-THREAD VERSION OF RENDERING //////////////////
@@ -299,7 +306,8 @@ void rasterize_with_shading(){
 }
 
 ////////////////// OPENMP MULTI-THREADS VERSION OF RENDERING //////////////////
-void process_geometry_ebo_openmp(){
+void process_geometry_ebo_openmp()
+{
     /**
      * input assembly
      */
@@ -317,23 +325,23 @@ void process_geometry_ebo_openmp(){
             // first ebo data index
             const void* first_indices = (const void*)ppl->ebo_config.first_indices;
             switch (ppl->ebo_config.indices_type) {
-                case GL_UNSIGNED_INT: {
-                    // ebo data array
-                    unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
-                    int first_index = (size_t)first_indices / sizeof(unsigned int);
-                    int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
-                    // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
-                    ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
-                    // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
-                    indices.resize(ebuf_size - first_index);
+            case GL_UNSIGNED_INT: {
+                // ebo data array
+                unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
+                int first_index = (size_t)first_indices / sizeof(unsigned int);
+                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
+                // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
+                ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
+                // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+                indices.resize(ebuf_size - first_index);
 #pragma omp parallel for
-                    for (int i = first_index; i < ebuf_size; ++i) {
-                        indices[i] = ebuf_data[i];
-                    }
-                    triangle_size = (ebuf_size - first_index) / 3;
-                } break;
-                default:
-                    break;
+                for (int i = first_index; i < ebuf_size; ++i) {
+                    indices[i] = ebuf_data[i];
+                }
+                triangle_size = (ebuf_size - first_index) / 3;
+            } break;
+            default:
+                break;
             }
             ppl->indexCache.addCacheData(vaoId, indices);
         } else {
@@ -370,12 +378,12 @@ void process_geometry_ebo_openmp(){
     std::vector<Triangle*>& triangle_list = ppl->triangle_list;
 
     // check and delete
-    if(triangle_list.size() != triangle_size){
-        if(triangle_list.size() != 0){
+    if (triangle_list.size() != triangle_size) {
+        if (triangle_list.size() != 0) {
             for (int i = 0, len = triangle_list.size(); i < len; ++i) {
                 delete triangle_list[i];
             }
-        }else{
+        } else {
             triangle_list.resize(triangle_size);
             for (int i = 0; i < triangle_size; ++i) {
                 triangle_list[i] = new Triangle();
@@ -389,10 +397,8 @@ void process_geometry_ebo_openmp(){
     void* input_ptr;
     unsigned char* buf;
     glProgram shader = ctx->shader;
-    shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
     int i, j;
-#pragma omp parallel for schedule(static, 8)\
-private(input_ptr) private(buf) private(shader) private(i) private(j)
+#pragma omp parallel for private(input_ptr) private(buf) private(shader) private(i) private(j)
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_ind=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
@@ -439,7 +445,7 @@ private(input_ptr) private(buf) private(shader) private(i) private(j)
                             }
                             default:
                                 throw std::runtime_error("not supported size\n");
-                            }
+                        }
                         break;
                     default:
                         throw std::runtime_error("not supported type\n");
@@ -447,6 +453,7 @@ private(input_ptr) private(buf) private(shader) private(i) private(j)
             }
 
             // 4. vertex shading
+            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
             shader.default_vertex_shader();
 
             // assemble triangle
@@ -458,10 +465,25 @@ private(input_ptr) private(buf) private(shader) private(i) private(j)
         }
 
         // TODO view frustum culling
+        //
+        // std::vector<Triangle*> view_culling_list;
+        // view_culling(*triangle_list[tri_ind], view_culling_list);
         // TODO back face culling
-        if (true) {
+        if(true){
             back_face_culling(*triangle_list[tri_ind]);
         }
+        // if (true) {
+        //     if (!triangle_list[tri_ind]->culling) {
+        //         back_face_culling(*triangle_list[tri_ind]);
+        //     } else {
+        //         for (int ind = 0, tlen = view_culling_list.size(); ind < tlen; ++ind) {
+        //             back_face_culling(*view_culling_list[ind]);
+        //             if (!view_culling_list[ind]->culling) {
+        //                 // TODO add main triangle list
+        //             }
+        //         }
+        //     }
+        // }
 
         if (triangle_list[tri_ind]->culling) {
             continue;
@@ -533,7 +555,7 @@ void rasterize_with_shading_openmp(){
                     omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         // fragment shader input
                         shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
@@ -594,7 +616,7 @@ void terminate_all_threads()
     quit_binning = 1;
     quit_rasterizing = 1;
     // terminate threads in use
-    C->threads.reset();
+    // C->threads.reset();
     // free allocated memory
     _free_triangles();
 }

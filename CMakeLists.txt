@@ -69,12 +69,12 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
 find_package(benchmark REQUIRED)
-find_package(OpenMP REQUIRED)
+# find_package(OpenMP REQUIRED)
 
 ################################################
 ################# library make #################
 ################################################
-add_library(glite SHARED 	
+add_library(glite SHARED
 	${GLV_SOURCES}
 	${GL_SOURCES}
 	${UTILS_SOURCES}
@@ -84,9 +84,10 @@ add_library(glite SHARED
 )
 target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
-target_link_libraries(glite OpenMP::OpenMP_CXX)
-# target_link_libraries(glite ${Boost_LIBRARIES})
-# target_link_libraries(glite glm::glm)
+# target_link_libraries(glite OpenMP::OpenMP_CXX)
+target_link_libraries(glite ${Boost_LIBRARIES})
+target_link_libraries(glite glm::glm)
+target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 
 ################################################
 ################# utest make ###################
@@ -98,7 +99,11 @@ add_executable(
 	${UTILS_SOURCES}
 )
 target_link_libraries(test_globjs pthread)
-target_link_libraries(test_globjs OpenMP::OpenMP_CXX)
+# target_link_libraries(test_globjs OpenMP::OpenMP_CXX)
+
+add_executable(test_pipeline src/utests/test_pipeline.cpp)
+target_link_libraries(test_pipeline glite)
+
 
 ################################################
 ################## test make ###################
@@ -117,3 +122,6 @@ target_link_libraries(texture glite)
 
 add_executable(bunny tests/test_bunny.cpp)
 target_link_libraries(bunny glite)
+
+add_executable(test_benchmark tests/test_benchmark.cpp)
+target_link_libraries(test_benchmark glite)
