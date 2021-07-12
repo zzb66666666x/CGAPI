@@ -408,7 +408,8 @@ static void check_set_layouts(){
         if (C->shader.layouts[i] != LAYOUT_INVALID
             && C->shader.layouts[i] >= C->pipeline.vao_ptr->getSize()) {
             C->shader.layouts[i] = LAYOUT_INVALID;
-        } else if (!vattrib_data[C->shader.layouts[i]].activated) {
+        } else if (C->shader.layouts[i] != LAYOUT_INVALID 
+            && !vattrib_data[C->shader.layouts[i]].activated) {
             C->shader.layouts[i] = LAYOUT_INVALID;
         }
     }

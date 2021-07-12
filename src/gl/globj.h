@@ -296,7 +296,7 @@ private:
 class glPipeline{
     public:
         glPipeline();
-        ~glPipeline();
+        // ~glPipeline();
         void init_pixel_locks();
         // the number of cpu core
         int cpu_num;
@@ -305,7 +305,11 @@ class glPipeline{
         pthread_mutex_t triangle_stream_mtx;
         // multi-thread pixel processing version of code (manually calling pthread API)
         // list is better for parallel computing
-        std::vector<Triangle*> triangle_list;   
+        std::vector<Triangle*> triangle_list;
+        // the triangles are from view frustum culling
+        std::vector<Triangle*> tri_culling_list;
+        omp_lock_t tri_culling_lock;
+
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;

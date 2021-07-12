@@ -21,7 +21,8 @@ static void check_set_layouts()
         if (C->shader.layouts[i] != LAYOUT_INVALID
             && C->shader.layouts[i] >= C->pipeline.vao_ptr->getSize()) {
             C->shader.layouts[i] = LAYOUT_INVALID;
-        } else if (!vattrib_data[C->shader.layouts[i]].activated) {
+        } else if (C->shader.layouts[i] != LAYOUT_INVALID 
+            && !vattrib_data[C->shader.layouts[i]].activated) {
             C->shader.layouts[i] = LAYOUT_INVALID;
         }
     }
@@ -272,8 +273,8 @@ static void test_write_framebuffer(benchmark::State& state)
 }
 
 // Register the function as a benchmark
-BENCHMARK(test_process_geometry_ebo_openmp)->Iterations(100);
-BENCHMARK(test_rasterize_with_shading_openmp)->Iterations(100);
-BENCHMARK(test_write_framebuffer)->Iterations(100);
+// BENCHMARK(test_process_geometry_ebo_openmp)->Iterations(1000);
+// BENCHMARK(test_rasterize_with_shading_openmp)->Iterations(1000);
+BENCHMARK(test_write_framebuffer)->Iterations(1000);
 // Run the benchmark
 BENCHMARK_MAIN();

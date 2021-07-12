@@ -178,7 +178,9 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // for bunny
     model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+    // model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+    // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
+    model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
 
     // for wheel
     // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
@@ -207,6 +209,7 @@ void glProgram::set_diffuse_texture(GLenum unit){
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();
     // omp_set_num_threads(cpu_num);
+    omp_init_lock(&tri_culling_lock);
 
     vertex_num = 0;
     first_vertex = 0;
@@ -225,14 +228,14 @@ glPipeline::glPipeline(){
     }
 }
 
-glPipeline::~glPipeline()
-{
-    delete bins;
-    std::vector<Pixel>::iterator it;
-    for (it = pixel_tasks.begin(); it != pixel_tasks.end(); it++) {
-        omp_destroy_lock(&(it->lock));
-    }
-}
+// glPipeline::~glPipeline()
+// {
+//     std::vector<Pixel>::iterator it;
+//     for (it = pixel_tasks.begin(); it != pixel_tasks.end(); it++) {
+//         omp_destroy_lock(&(it->lock));
+//     }
+//     delete bins;
+// }
 
 void glPipeline::init_pixel_locks()
 {
