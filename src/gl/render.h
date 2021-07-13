@@ -14,6 +14,8 @@ typedef void (*render_fp)();
 #define DOING_PIXEL_SHADING         4
 #define PIPELINE_FINISH             5
 
+#define GL_PARALLEL_OPEN
+
 // single thread interface
 void process_geometry();
 void rasterize();

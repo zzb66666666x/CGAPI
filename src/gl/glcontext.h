@@ -27,7 +27,11 @@ class gl_context{
     glStorage<float>    zbuf_2;
     bool                use_double_buf;
     bool                use_z_test;
-    bool                cull_face;
+    struct {
+        bool open;
+        unsigned int cull_face_mode;
+        unsigned int front_face_mode;
+    }cull_face;
     // shader
     glProgram           shader;
     // redering pipeline requirement

@@ -37,6 +37,9 @@ extern void glDrawArrays(GLenum mode, int first, int count);
 extern void glDrawElements(GLenum mode, int count, unsigned int type, const void* indices);
 extern void glClearColor(float R, float G, float B, float A);
 extern void glClear(unsigned int bitfields);
+// cull face
+extern void glCullFace(unsigned int mode);
+extern void glFrontFace(unsigned int mode);
 // IO
 extern void glReadPixels(int x, int y, int width, int height, GLenum format, GLenum type, void* data);
 // shader API

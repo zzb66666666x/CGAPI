@@ -31,6 +31,7 @@ inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::v
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
 
+/////////////////////////////////////// face culling function //////////////////////////////////
 inline static void backface_culling(Triangle& t)
 {
     glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
@@ -41,13 +42,24 @@ inline static void backface_culling(Triangle& t)
     t.culling = res.z < -0.01f;
 }
 
+/////////////////////////////////////// view frustum culling function //////////////////////////////////
+static const std::vector<glm::vec4> planes = {
+    //Near
+    glm::vec4(0, 0, 1, -1),
+    //far
+    glm::vec4(0, 0, -1, -1),
+    //left
+    glm::vec4(-1, 0, 0, -1),
+    //top
+    glm::vec4(0, 1, 0, -1),
+    //right
+    glm::vec4(1, 0, 0, -1),
+    //bottom
+    glm::vec4(0, -1, 0, -1)
+};
+
 static bool outside_clip_space(Triangle& t)
 {
-    // GET_CURRENT_CONTEXT(ctx);
-    // if ((t.screen_pos[0].w < ctx->znear && t.screen_pos[1].w < ctx->znear && t.screen_pos[2].w < ctx->znear)
-    //     || (t.screen_pos[0].w > ctx->zfar && t.screen_pos[1].w > ctx->zfar && t.screen_pos[2].w > ctx->zfar)) {
-    //     return true;
-    // }
     for (int i = 0; i < 3; ++i) {
         if ((t.screen_pos[0][i] > t.screen_pos[0].w && t.screen_pos[1][i] > t.screen_pos[1].w && t.screen_pos[2][i] > t.screen_pos[2].w)
             || (t.screen_pos[0][i] < -t.screen_pos[0].w && t.screen_pos[1][i] < -t.screen_pos[1].w && t.screen_pos[2][i] < -t.screen_pos[2].w)) {
@@ -69,48 +81,16 @@ static bool all_inside_clip_space(Triangle& t)
     return true;
 }
 
-const std::vector<glm::vec4> planes = {
-    //Near
-    glm::vec4(0, 0, 1, -1),
-    //far
-    glm::vec4(0, 0, -1, -1),
-    //left
-    glm::vec4(-1, 0, 0, -1),
-    //top
-    glm::vec4(0, 1, 0, -1),
-    //right
-    glm::vec4(1, 0, 0, -1),
-    //bottom
-    glm::vec4(0, -1, 0, -1)
-};
-
 static bool inside_plane(const glm::vec4& plane, glm::vec4& pos)
 {
-    glm::vec3 p;
-    p.x = pos.x / pos.w;
-    p.y = pos.y / pos.w;
-    p.z = pos.z / pos.w;
-    return p.x * plane.x + p.y * plane.y + p.z * plane.z + plane.w < 0;
+    return glm::dot(pos, plane) <= 0;
 }
 
 static Vertex intersect(Vertex& v1, Vertex& v2, const glm::vec4& plane)
 {
-    // glm::vec3 p1;
-    // p1.x = v1.screen_pos.x / v1.screen_pos.w;
-    // p1.y = v1.screen_pos.y / v1.screen_pos.w;
-    // p1.z = v1.screen_pos.z / v1.screen_pos.w;
-    // glm::vec3 p2;
-    // p2.x = v2.screen_pos.x / v2.screen_pos.w;
-    // p2.y = v2.screen_pos.y / v2.screen_pos.w;
-    // p2.z = v2.screen_pos.z / v2.screen_pos.w;
-    // // printf("p1.x: %f, p1.y: %f, p1.z: %f\n", p1.x, p1.y, p1.z);
-    // // printf("p2.x: %f, p2.y: %f, p2.z: %f\n", p2.x, p2.y, p2.z);
-    // float d1 = p1.x * plane.x + p1.y * plane.y + p1.z * plane.z + plane.w;
-    // float d2 = p2.x * plane.x + p2.y * plane.y + p2.z * plane.z + plane.w;
     float d1 = glm::dot(v1.screen_pos, plane);
     float d2 = glm::dot(v2.screen_pos, plane);
     float weight = d1 / (d1 - d2);
-    // printf("d1: %f, d2: %f, weight: %f\n", d1, d2, weight);
     return Vertex::lerp(v1, v2, weight);
 }
 
@@ -128,12 +108,12 @@ static void view_frustum_culling(Triangle& t, std::vector<Triangle*>& result_lis
 
     std::vector<Vertex> vertex_list(3);
     for (int i = 0; i < 3; ++i) {
-        vertex_list[i] = t.getVertex(i);
-        // vertex_list[i].screen_pos = t.screen_pos[i];
-        // vertex_list[i].color = t.color[i];
-        // vertex_list[i].frag_shading_pos = t.frag_shading_pos[i];
-        // vertex_list[i].vert_normal = t.vert_normal[i];
-        // vertex_list[i].texcoord = t.texcoord[i];
+        // vertex_list[i] = t.getVertex(i);
+        vertex_list[i].screen_pos = t.screen_pos[i];
+        vertex_list[i].color = t.color[i];
+        vertex_list[i].frag_shading_pos = t.frag_shading_pos[i];
+        vertex_list[i].vert_normal = t.vert_normal[i];
+        vertex_list[i].texcoord = t.texcoord[i];
     }
 
     for (i = 0, len = planes.size(); i < len; ++i) {
@@ -158,6 +138,7 @@ static void view_frustum_culling(Triangle& t, std::vector<Triangle*>& result_lis
     if (vertex_list.size() < 3) {
         return;
     }
+
     Triangle* tri = nullptr;
     result_list.resize(vertex_list.size() - 3 + 1);
     int next = 1;
@@ -170,7 +151,7 @@ static void view_frustum_culling(Triangle& t, std::vector<Triangle*>& result_lis
     }
 }
 
-////////////////// SINGLE-THREAD VERSION OF RENDERING //////////////////
+///////////////////////////// SINGLE-THREAD VERSION OF RENDERING ////////////////////////////
 // single thread version of processing parsing vertex data
 void process_geometry()
 {
@@ -458,7 +439,9 @@ void process_geometry_ebo_openmp()
                 ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
                 // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
                 indices.resize(ebuf_size - first_index);
+#ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for
+#endif
                 for (int i = first_index; i < ebuf_size; ++i) {
                     indices[i] = ebuf_data[i];
                 }
@@ -485,7 +468,9 @@ void process_geometry_ebo_openmp()
             indices.resize(vertex_num - first_vertex_ind);
 
             int len = vertex_num - first_vertex_ind;
+#ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for
+#endif
             for (int i = 0; i < len; ++i) {
                 indices[i] = first_vertex_ind + i;
                 // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
@@ -524,7 +509,7 @@ void process_geometry_ebo_openmp()
     unsigned char* buf;
     glProgram shader = ctx->shader;
     int i, j;
-#if 1
+#ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(input_ptr) private(buf) private(shader) private(i) private(j)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
@@ -592,35 +577,36 @@ void process_geometry_ebo_openmp()
             triangle_list[tri_ind]->vert_normal[i] = shader.gl_Normal;
         }
 
-#if 1
         // TODO view frustum culling
         // view frustum culling list
         std::vector<Triangle*> vfc_list;
         view_frustum_culling(*triangle_list[tri_ind], vfc_list);
         if (vfc_list.size() != 0) {
             omp_set_lock(&ppl->tri_culling_lock);
-            tri_culling_list.resize(tri_culling_list.size() + vfc_list.size());
-            int vind = 0;
-            for (int tind = tri_culling_list.size() - vfc_list.size(), tlen = tri_culling_list.size(); tind < tlen; ++tind) {
-                tri_culling_list[tind] = vfc_list[vind++];
+            if(ctx->cull_face.open){
+                for (int tind = 0, tlen = vfc_list.size(); tind < tlen;++tind) {
+                    backface_culling(*vfc_list[tind]);
+                    if(vfc_list[tind]->culling){
+                        delete vfc_list[tind];
+                    }else{
+                        tri_culling_list.push_back(vfc_list[tind]);
+                    }
+                }
+            }else{
+                tri_culling_list.insert(tri_culling_list.end(), vfc_list.begin(), vfc_list.end());
             }
             omp_unset_lock(&ppl->tri_culling_lock);
+        } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
+            backface_culling(*triangle_list[tri_ind]);
         }
-
-        // TODO back face culling
-        // if(true){
-        //     backface_culling(*triangle_list[tri_ind]);
-        // }
 
         if (triangle_list[tri_ind]->culling) {
             continue;
         }
-#endif
         for (i = 0; i < 3; ++i) {
             triangle_list[tri_ind]->screen_pos[i].x /= triangle_list[tri_ind]->screen_pos[i].w;
             triangle_list[tri_ind]->screen_pos[i].y /= triangle_list[tri_ind]->screen_pos[i].w;
             triangle_list[tri_ind]->screen_pos[i].z /= triangle_list[tri_ind]->screen_pos[i].w;
-            // printf("x: %f, y: %f, z: %f\n", triangle_list[tri_ind]->screen_pos[i].x, triangle_list[tri_ind]->screen_pos[i].y, triangle_list[tri_ind]->screen_pos[i].z);
 
             // view port transformation
             triangle_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0);
@@ -630,8 +616,10 @@ void process_geometry_ebo_openmp()
             triangle_list[tri_ind]->screen_pos[i].z = triangle_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
         }
     }
-#if 1
-    // printf("tri_culling_list size: %d\n", tri_culling_list.size());
+
+    // merge triangle_list and tri_culling_list
+    int ind = triangle_list.size();
+    triangle_list.resize(triangle_list.size() + tri_culling_list.size());
     for (int tri_ind = 0, len = tri_culling_list.size(); tri_ind < len; ++tri_ind) {
         for (i = 0; i < 3; ++i) {
             tri_culling_list[tri_ind]->screen_pos[i].x /= tri_culling_list[tri_ind]->screen_pos[i].w;
@@ -641,20 +629,12 @@ void process_geometry_ebo_openmp()
             // view port transformation
             tri_culling_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
             tri_culling_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
-            tri_culling_list[tri_ind]->screen_pos[i].x = (tri_culling_list[tri_ind]->screen_pos[i].x < 0 ? 0 : (tri_culling_list[tri_ind]->screen_pos[i].x >= ctx->width ? ctx->width - 1 : tri_culling_list[tri_ind]->screen_pos[i].x));
-            tri_culling_list[tri_ind]->screen_pos[i].y = (tri_culling_list[tri_ind]->screen_pos[i].y < 0 ? 0 : (tri_culling_list[tri_ind]->screen_pos[i].y >= ctx->height ? ctx->height - 1 : tri_culling_list[tri_ind]->screen_pos[i].y));
             // [-1,1] to [0,1]
             tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
-
-            // printf("x: %d, y: %d, z: %d\n", tri_culling_list[tri_ind]->screen_pos[i].x, tri_culling_list[tri_ind]->screen_pos[i].y, tri_culling_list[tri_ind]->screen_pos[i].z);
         }
-        triangle_list.push_back(tri_culling_list[tri_ind]);
+        triangle_list[ind + tri_ind] = tri_culling_list[tri_ind];
     }
-
-    // merge
-    // ppl->triangle_list.insert(ppl->triangle_list.end(), ppl->tri_culling_list.begin(), ppl->tri_culling_list.end());
     ppl->tri_culling_list.clear();
-#endif
 }
 
 void rasterize_with_shading_openmp()
@@ -670,7 +650,7 @@ void rasterize_with_shading_openmp()
     int len = triangle_list.size();
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
     glProgram shader = ctx->shader;
-#if 1
+#ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(t) private(shader)
 #endif
     for (int i = 0; i < len; ++i) {
@@ -688,7 +668,7 @@ void rasterize_with_shading_openmp()
         maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
-#if 0
+#if 1
         // view culling in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
@@ -716,7 +696,7 @@ void rasterize_with_shading_openmp()
                 } else {
                     // zp: z value after interpolation
                     float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
-                    omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
                         // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
@@ -729,7 +709,7 @@ void rasterize_with_shading_openmp()
                         frame_buf[index].G = shader.frag_Color.y * 255.0f;
                         frame_buf[index].B = shader.frag_Color.z * 255.0f;
                     }
-                    omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                 }
             }
         }
@@ -780,7 +760,7 @@ void terminate_all_threads()
     quit_binning = 1;
     quit_rasterizing = 1;
     // terminate threads in use
-    // C->threads.reset();
+    C->threads.reset();
     // free allocated memory
     _free_triangles();
 }

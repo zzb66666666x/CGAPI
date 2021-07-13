@@ -13,7 +13,7 @@ gl_context::gl_context(int npixels, bool double_buf){
     use_double_buf = double_buf;
     zbuf = &zbuf_1;
     use_z_test = false;
-    cull_face = false;
+    cull_face.open = false;
     framebuf = &framebuf_1;
     if (double_buf){
         framebuf_2 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);

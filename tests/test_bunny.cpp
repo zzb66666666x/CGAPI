@@ -1,15 +1,16 @@
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
+#include "OBJ_Loader.h"
+#include <chrono>
 #include <iostream>
 #include <vector>
-#include <chrono>
-#include "OBJ_Loader.h"
 
 using namespace std;
 
 const int WIDTH = 800, HEIGHT = 600;
 
-static void testStandfordBunny(){
+static void testStandfordBunny()
+{
 
     if (!glvInit()) {
         std::cout << "glv Init failed\n";
@@ -18,13 +19,14 @@ static void testStandfordBunny(){
 
     GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "bunny_test", GLV_STREAM_WINDOW);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     // Initialize Loader
     objl::Loader Loader;
 
     bool loadout = Loader.LoadFile("../resources/bunny/bunny.obj");
 
-    if(!loadout){
+    if (!loadout) {
         printf("bunny failed to load");
         return;
     }
@@ -92,10 +94,9 @@ static void testStandfordBunny(){
     auto curTime = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
     double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
-    while (!glvWindowShouldClose(window))
-    {
+    while (!glvWindowShouldClose(window)) {
         glBindVertexArray(VAO);
-        
+
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -106,7 +107,7 @@ static void testStandfordBunny(){
         curTime = std::chrono::system_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
         duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
-        if (duration_s > 2) //2秒之后开始统计FPS
+        if (duration_s > 5) //5秒之后开始统计FPS
         {
             fps = frameCount / duration_s;
             frameCount = 0;
@@ -120,7 +121,8 @@ static void testStandfordBunny(){
     glvTerminate();
 }
 
-int main(){
+int main()
+{
     testStandfordBunny();
     return 0;
 }

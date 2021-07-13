@@ -32,6 +32,15 @@ extern "C" {
 #define GL_TEXTURE_MAG_FILTER 0x2800
 #define GL_TEXTURE_MIN_FILTER 0x2801
 
+// cull face. The initial value is GL_BACK.
+#define GL_FRONT 0x0404
+#define GL_BACK 0x0405
+#define GL_FRONT_AND_BACK 0x0408
+
+// front face. The initial value is GL_CCW.
+#define GL_CW 0x0900
+#define GL_CCW 0x0901
+
 typedef enum{
 GL_UNDEF = -1,
 

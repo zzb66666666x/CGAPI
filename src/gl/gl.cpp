@@ -393,7 +393,9 @@ void glEnable(GLenum cap){
             C->zbuf = &C->zbuf_1;
             break;
         case GL_CULL_FACE:
-            C->cull_face = true;
+            C->cull_face.open = true;
+            C->cull_face.cull_face_mode = GL_BACK;
+            C->cull_face.front_face_mode = GL_CCW;
         default:
             break;
     }
@@ -611,12 +613,37 @@ void glClear(unsigned int bitfields){
     }
 }
 
-// IO
+//////////////////////////// cull face /////////////////////////////////
+extern void glCullFace(unsigned int mode){
+    GET_CURRENT_CONTEXT(ctx);
+    if(ctx == nullptr){
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    if (mode != GL_FRONT && mode != GL_BACK && mode != GL_FRONT_AND_BACK){
+        return;
+    }
+    ctx->cull_face.cull_face_mode = mode;
+    // TODO specify func
+}
+
+extern void glFrontFace(unsigned int mode){
+    GET_CURRENT_CONTEXT(ctx);
+    if (ctx == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    if(mode != GL_CCW && mode != GL_CW){
+        return;
+    }
+    ctx->cull_face.front_face_mode = mode;
+    // TODO specify func
+}
+
+/////////////////////////// IO ///////////////////////////
 void glReadPixels(int x, int y, int width, int height, GLenum format, GLenum type, void* data){
 
 }
 
-// shader API
+/////////////////////////// shader API ///////////////////////////
 unsigned int glCreateShader(GLenum shaderType){
     return 0;
 }

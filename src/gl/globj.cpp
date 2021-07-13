@@ -178,9 +178,9 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // for bunny
     model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    // model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+    model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
     // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
-    model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
+    // model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
 
     // for wheel
     // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
