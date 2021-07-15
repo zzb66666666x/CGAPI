@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.0.0)
-# set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
-#   CACHE STRING "Vcpkg toolchain file")
+set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
+  CACHE STRING "Vcpkg toolchain file")
 set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 # set(CMAKE_CXX_FLAGS "-g -O0")
 # set(CMAKE_CXX_FLAGS "-mavx")
 # set(CMAKE_CXX_FLAGS "-save-temps")
-set(CMAKE_CXX_FLAGS "-O3")
+# set(CMAKE_CXX_FLAGS "-O3")
 # use openmp
-
+set(CMAKE_CXX_FLAGS "-fopenmp -mavx -O3")
 include_directories(
 	include/gl
 	include/glv
@@ -54,21 +54,21 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
-# set(Boost_USE_STATIC_LIBS ON)
-# set(Boost_USE_STATIC_RUNTIME ON)
-# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-# include_directories(${Boost_INCLUDE_DIR})
-# find_package(Boost REQUIRED)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
+set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+include_directories(${Boost_INCLUDE_DIR})
+find_package(Boost REQUIRED)
 
-# set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
-# find_package(glm REQUIRED)
+set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+find_package(glm REQUIRED)
 
-# set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
+set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-# set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
-# find_package(benchmark REQUIRED)
+set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
+find_package(benchmark REQUIRED)
 
 find_package(OpenMP REQUIRED)
 
@@ -121,8 +121,11 @@ target_link_libraries(cow glite)
 add_executable(texture tests/test_texture.cpp tests/shared_data.cpp tests/shared_data.h)
 target_link_libraries(texture glite)
 
-add_executable(bunny tests/test_bunny.cpp)
-target_link_libraries(bunny glite)
+# add_executable(bunny tests/test_bunny.cpp)
+# target_link_libraries(bunny glite)
 
 add_executable(test_benchmark tests/test_benchmark.cpp)
 target_link_libraries(test_benchmark glite)
+
+add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
+target_link_libraries(test_sponza glite)

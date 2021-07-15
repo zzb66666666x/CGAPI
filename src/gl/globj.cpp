@@ -151,22 +151,23 @@ void glProgram::default_vertex_shader(){
     // std::cout<<input_Pos.x<<" "<<input_Pos.y<<" "<<input_Pos.z<<std::endl;
     frag_Pos = glm::vec3(model * glm::vec4(input_Pos.x, input_Pos.y, input_Pos.z, 1.0f));
     gl_Position = projection * view * glm::vec4(frag_Pos.x, frag_Pos.y, frag_Pos.z, 1.0f);
-    gl_VertexColor = vert_Color;
+    // gl_VertexColor = vert_Color;
 
-    // gl_Normal = glm::vec3(model_inv_trans * glm::vec4(vert_Normal, 0.0f));
-    gl_Normal = vert_Normal;
+    gl_Normal = glm::vec3(model_inv_trans * glm::vec4(vert_Normal, 0.0f));
+    // gl_Normal = vert_Normal;
 }
 
 void glProgram::default_fragment_shader(){
     // without texture
-    frag_Color = diffuse_Color;
+    // frag_Color = diffuse_Color;
+    frag_Color = glm::normalize(normal) * 0.5f + glm::vec3(0.5f, 0.5f, 0.5f);
 
     // with texture
     // frag_Color = glm::vec3(texture2D(diffuse_texture, texcoord));
 }
 
 void glProgram::set_transform_matrices(int width, int height, float znear, float zfar, float angle){
-    model = glm::mat4(1.0f); 
+    model = glm::mat4(1.0f);
     view = glm::mat4(1.0f);
     projection = glm::mat4(1.0f);
 
@@ -176,9 +177,9 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
 
     // for bunny
-    model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+    // model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
+    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    // model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
     // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
     // model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
 
@@ -187,7 +188,13 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
     // model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
 
-    // model_inv_trans = glm::transpose(glm::inverse(model));
+    // for sponza
+    model = glm::translate(model, glm::vec3(0.0f, -30.0f, -80.0f));
+    model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+    // model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
+
+    model_inv_trans = glm::transpose(glm::inverse(model));
     glm::vec3 eyepos(0.0f,0.0f,5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);

@@ -231,6 +231,7 @@ class glProgram{
     glm::vec3 diffuse_Color;
     glm::vec3 frag_Pos;
     glm::vec3 frag_Color;
+    glm::vec3 normal;
     glm::vec2 texcoord;
 
     glm::mat4 model;

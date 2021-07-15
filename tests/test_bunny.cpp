@@ -19,7 +19,7 @@ static void testStandfordBunny()
 
     GLVStream* window = glvCreateStream(WIDTH, HEIGHT, "bunny_test", GLV_STREAM_WINDOW);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    // glEnable(GL_CULL_FACE);
 
     // Initialize Loader
     objl::Loader Loader;
@@ -43,9 +43,9 @@ static void testStandfordBunny()
             vertices.push_back(curMesh.Vertices[j].Position.Y);
             vertices.push_back(curMesh.Vertices[j].Position.Z);
 
-            // vertices.push_back(0.3f);
-            // vertices.push_back(0.4f);
-            // vertices.push_back(0.8f);
+            vertices.push_back(0.3f);
+            vertices.push_back(0.4f);
+            vertices.push_back(0.8f);
 
             vertices.push_back(curMesh.Vertices[j].Normal.X);
             vertices.push_back(curMesh.Vertices[j].Normal.Y);
@@ -76,12 +76,14 @@ static void testStandfordBunny()
 
     // 解析缓冲数据
     // 顶点位置，顶点大小(vec3)，顶点类型，是否normalize，步长，偏移量
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
 
     // 激活顶点属性0
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(3);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);

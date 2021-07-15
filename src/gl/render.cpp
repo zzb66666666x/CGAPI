@@ -430,25 +430,25 @@ void process_geometry_ebo_openmp()
             // first ebo data index
             const void* first_indices = (const void*)ppl->ebo_config.first_indices;
             switch (ppl->ebo_config.indices_type) {
-            case GL_UNSIGNED_INT: {
-                // ebo data array
-                unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
-                int first_index = (size_t)first_indices / sizeof(unsigned int);
-                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
-                // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
-                ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
-                // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
-                indices.resize(ebuf_size - first_index);
+                case GL_UNSIGNED_INT: {
+                    // ebo data array
+                    unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
+                    int first_index = (size_t)first_indices / sizeof(unsigned int);
+                    int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
+                    // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
+                    ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
+                    // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+                    indices.resize(ebuf_size - first_index);
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for
 #endif
-                for (int i = first_index; i < ebuf_size; ++i) {
-                    indices[i] = ebuf_data[i];
-                }
-                triangle_size = (ebuf_size - first_index) / 3;
-            } break;
-            default:
-                break;
+                    for (int i = first_index; i < ebuf_size; ++i) {
+                        indices[i] = ebuf_data[i];
+                    }
+                    triangle_size = (ebuf_size - first_index) / 3;
+                } break;
+                default:
+                    break;
             }
             ppl->indexCache.addCacheData(vaoId, indices);
         } else {
@@ -500,7 +500,7 @@ void process_geometry_ebo_openmp()
         triangle_list.resize(triangle_size);
     }
 
-    angle = angle + 1.0f;
+    // angle = angle + 1.0f;
 
     std::vector<Triangle*>& tri_culling_list = ppl->tri_culling_list;
 
@@ -543,30 +543,30 @@ void process_geometry_ebo_openmp()
                 switch (config.type) {
                     case GL_FLOAT:
                         switch (config.size) {
-                        case 2: {
-                            glm::vec2* vec2 = (glm::vec2*)input_ptr;
-                            vec2->x = *(float*)(buf + 0);
-                            vec2->y = *(float*)(buf + sizeof(float) * 1);
-                            break;
+                            case 2: {
+                                glm::vec2* vec2 = (glm::vec2*)input_ptr;
+                                vec2->x = *(float*)(buf + 0);
+                                vec2->y = *(float*)(buf + sizeof(float) * 1);
+                                break;
+                            }
+                            case 3: {
+                                glm::vec3* vec3 = (glm::vec3*)input_ptr;
+                                vec3->x = *(float*)(buf + 0);
+                                vec3->y = *(float*)(buf + sizeof(float) * 1);
+                                vec3->z = *(float*)(buf + sizeof(float) * 2);
+                                break;
+                            }
+                            default:
+                                throw std::runtime_error("not supported size\n");
                         }
-                        case 3: {
-                            glm::vec3* vec3 = (glm::vec3*)input_ptr;
-                            vec3->x = *(float*)(buf + 0);
-                            vec3->y = *(float*)(buf + sizeof(float) * 1);
-                            vec3->z = *(float*)(buf + sizeof(float) * 2);
-                            break;
-                        }
-                        default:
-                            throw std::runtime_error("not supported size\n");
-                        }
-                        break;
+                    break;
                     default:
                         throw std::runtime_error("not supported type\n");
                 }
             }
 
             // 4. vertex shading
-            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
+            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, 45.0f);
             shader.default_vertex_shader();
             // printf("i: %d\n", i);
             // assemble triangle
@@ -577,13 +577,12 @@ void process_geometry_ebo_openmp()
             triangle_list[tri_ind]->vert_normal[i] = shader.gl_Normal;
         }
 
-        // TODO view frustum culling
         // view frustum culling list
         std::vector<Triangle*> vfc_list;
         view_frustum_culling(*triangle_list[tri_ind], vfc_list);
         if (vfc_list.size() != 0) {
-            omp_set_lock(&ppl->tri_culling_lock);
-            if(ctx->cull_face.open){
+            if (ctx->cull_face.open) {
+                omp_set_lock(&ppl->tri_culling_lock);
                 for (int tind = 0, tlen = vfc_list.size(); tind < tlen;++tind) {
                     backface_culling(*vfc_list[tind]);
                     if(vfc_list[tind]->culling){
@@ -592,10 +591,12 @@ void process_geometry_ebo_openmp()
                         tri_culling_list.push_back(vfc_list[tind]);
                     }
                 }
-            }else{
+                omp_unset_lock(&ppl->tri_culling_lock);
+            } else {
+                omp_set_lock(&ppl->tri_culling_lock);
                 tri_culling_list.insert(tri_culling_list.end(), vfc_list.begin(), vfc_list.end());
+                omp_unset_lock(&ppl->tri_culling_lock);
             }
-            omp_unset_lock(&ppl->tri_culling_lock);
         } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
             backface_culling(*triangle_list[tri_ind]);
         }
@@ -696,20 +697,20 @@ void rasterize_with_shading_openmp()
                 } else {
                     // zp: z value after interpolation
                     float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
-                    // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         // fragment shader input
                         shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                        shader.normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
                         // fragment shading
                         shader.default_fragment_shader();
                         frame_buf[index].R = shader.frag_Color.x * 255.0f;
                         frame_buf[index].G = shader.frag_Color.y * 255.0f;
                         frame_buf[index].B = shader.frag_Color.z * 255.0f;
                     }
-                    // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                 }
             }
         }
