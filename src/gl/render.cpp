@@ -96,9 +96,8 @@ static Vertex intersect(Vertex& v1, Vertex& v2, const glm::vec4& plane)
 
 static void view_frustum_culling(Triangle& t, std::vector<Triangle*>& result_list)
 {
-    t.culling = outside_clip_space(t);
     // if all vertices are outside or inside, it will return directly.
-    if (t.culling || all_inside_clip_space(t)) {
+    if ((t.culling = outside_clip_space(t)) || all_inside_clip_space(t)) {
         return;
     }
     // for loop
@@ -566,7 +565,7 @@ void process_geometry_ebo_openmp()
             }
 
             // 4. vertex shading
-            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, 45.0f);
+            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
             shader.default_vertex_shader();
             // printf("i: %d\n", i);
             // assemble triangle
@@ -671,7 +670,7 @@ void rasterize_with_shading_openmp()
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
 #if 1
-        // view culling in rasterization
+        // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
         maxx = maxx >= width ? width - 1 : maxx;
@@ -692,8 +691,9 @@ void rasterize_with_shading_openmp()
                 // float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
                 // float beta = coef[1] * Z_viewspace / screen_pos[1].w;
                 // float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
-                float zp = coef.x * screen_pos[0].z + coef.y * screen_pos[1].z + coef.z * screen_pos[2].z;
-                float Z = 1.0 / (coef.x + coef.y + coef.z);
+
+                float zp = coef[0] * screen_pos[0].z + coef[1] * screen_pos[1].z + coef[2] * screen_pos[2].z;
+                float Z = 1.0 / (coef[0] + coef[1] + coef[2]);
 
                 zp *= Z;
 
@@ -712,7 +712,10 @@ void rasterize_with_shading_openmp()
                         // pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         // pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
                         // pixel_tasks[index].normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
+                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // // all threads always make it 'true';
                         // pixel_tasks[index].write = true;
+
                         // fragment shader input
                         shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
