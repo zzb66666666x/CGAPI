@@ -33,13 +33,14 @@ class gl_context{
         unsigned int front_face_mode;
     }cull_face;
     // shader
-    glProgram           shader;
+    glProgram               shader;
+    glProgrammableShader    glsl_shader;
     // redering pipeline requirement
-    glRenderPayload     payload;
+    glRenderPayload         payload;
     // pipeline of function pointers and their data 
-    glPipeline          pipeline;
+    glPipeline              pipeline;
     // framebuffer clear color
-    color_t             clear_color;
+    color_t                 clear_color;
 };
 
 extern gl_context* glapi_ctx;

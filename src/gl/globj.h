@@ -22,6 +22,7 @@
 #include "glsl/texture.h"
 #include <unordered_map>
 #include <omp.h>
+#include "glsl/shader.hpp"
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -245,6 +246,15 @@ class glProgram{
     void set_transform_matrices(int width, int height, float znear, float zfar, float angle);
     void set_diffuse_texture(GLenum unit);
     void initialize_layouts();
+};
+
+class glProgrammableShader{
+    public:
+    std::map<GLenum, Shader> shaders;
+    std::vector<Shader*> call_chain;
+
+    void link_programs();
+    Shader& get_shader(GLenum shader_type);
 };
 
 class glRenderPayload{
