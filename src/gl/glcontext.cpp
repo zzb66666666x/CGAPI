@@ -38,7 +38,7 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     ctx->height = height;
     ctx->pipeline.bins = new ScreenBins(width, height);
     ctx->znear = 0.1;
-    ctx->zfar = 5000;
+    ctx->zfar = 500;
     // _cg_context_sanity_check(ctx);
     // std::cout<<"context ptr: "<<ctx<<std::endl;
     return ctx;

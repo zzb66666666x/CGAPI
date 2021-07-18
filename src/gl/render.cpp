@@ -96,9 +96,8 @@ static Vertex intersect(Vertex& v1, Vertex& v2, const glm::vec4& plane)
 
 static void view_frustum_culling(Triangle& t, std::vector<Triangle*>& result_list)
 {
-    t.culling = outside_clip_space(t);
     // if all vertices are outside or inside, it will return directly.
-    if (t.culling || all_inside_clip_space(t)) {
+    if ((t.culling = outside_clip_space(t)) || all_inside_clip_space(t)) {
         return;
     }
     // for loop
@@ -566,7 +565,7 @@ void process_geometry_ebo_openmp()
             }
 
             // 4. vertex shading
-            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, 45.0f);
+            shader.set_transform_matrices(ctx->width, ctx->height, ctx->znear, ctx->zfar, angle);
             shader.default_vertex_shader();
             // printf("i: %d\n", i);
             // assemble triangle
@@ -630,6 +629,7 @@ void process_geometry_ebo_openmp()
             // view port transformation
             tri_culling_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
             tri_culling_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
+
             // [-1,1] to [0,1]
             tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
         }
@@ -670,7 +670,7 @@ void rasterize_with_shading_openmp()
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
 #if 1
-        // view culling in rasterization
+        // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
         maxx = maxx >= width ? width - 1 : maxx;
@@ -687,19 +687,35 @@ void rasterize_with_shading_openmp()
                 // alpha beta gamma
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
                 // perspective correction
-                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
-                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
-                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
-                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+                // float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
+                // float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
+                // float beta = coef[1] * Z_viewspace / screen_pos[1].w;
+                // float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
 
+                float zp = coef[0] * screen_pos[0].z + coef[1] * screen_pos[1].z + coef[2] * screen_pos[2].z;
+                float Z = 1.0 / (coef[0] + coef[1] + coef[2]);
+
+                zp *= Z;
+
+                float alpha = coef[0];
+                float beta = coef[1];
+                float gamma = coef[2];
+                
                 if (!ctx->use_z_test) {
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    // float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
                     omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
+                        // pixel_tasks[index].vertexColor = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
+                        // pixel_tasks[index].texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
+                        // pixel_tasks[index].normal = interpolate(alpha, beta, gamma, t->vert_normal[0], t->vert_normal[1], t->vert_normal[2], 1);
+                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // // all threads always make it 'true';
+                        // pixel_tasks[index].write = true;
+
                         // fragment shader input
                         shader.diffuse_Color = interpolate(alpha, beta, gamma, t->color[0], t->color[1], t->color[2], 1);
                         shader.texcoord = interpolate(alpha, beta, gamma, t->texcoord[0], t->texcoord[1], t->texcoord[2], 1);
@@ -713,6 +729,28 @@ void rasterize_with_shading_openmp()
                     omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                 }
             }
+        }
+    }
+}
+
+void process_pixel_openmp(){
+    GET_CURRENT_CONTEXT(ctx);
+    GET_PIPELINE(ppl);
+    std::vector<Pixel>& pixel_tasks = ppl->pixel_tasks;
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+    int len = pixel_tasks.size();
+    glProgram shader = ctx->shader;
+#pragma omp parallel for private(shader)
+    for (int i = 0; i < len; ++i) {
+        if (pixel_tasks[i].write) {
+            shader.diffuse_Color = pixel_tasks[i].vertexColor;
+            shader.texcoord = pixel_tasks[i].texcoord;
+            shader.normal = pixel_tasks[i].normal;
+            shader.default_fragment_shader();
+            frame_buf[i].R = shader.frag_Color.x * 255;
+            frame_buf[i].G = shader.frag_Color.y * 255;
+            frame_buf[i].B = shader.frag_Color.z * 255;
+            pixel_tasks[i].write = false;
         }
     }
 }

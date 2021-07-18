@@ -24,8 +24,8 @@ void rasterize_with_shading();
 
 // openmp version of multi-threading
 void process_geometry_ebo_openmp();
-void process_pixel_openmp();
 void rasterize_with_shading_openmp();
+void process_pixel_openmp();
 
 // interface multi-thread version
 void terminate_all_threads();

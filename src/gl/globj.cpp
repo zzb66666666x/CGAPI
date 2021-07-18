@@ -190,7 +190,7 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
 
     // for sponza
     model = glm::translate(model, glm::vec3(0.0f, -30.0f, -80.0f));
-    model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
     // model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
 
@@ -227,6 +227,7 @@ glPipeline::glPipeline(){
 
     exec.emplace_back(process_geometry_ebo_openmp);
     exec.emplace_back(rasterize_with_shading_openmp);
+    // exec.emplace_back(process_pixel_openmp);
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
     ebo_config.ebo_ptr = nullptr;

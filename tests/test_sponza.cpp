@@ -40,6 +40,6 @@ static void testSponza(benchmark::State& state)
 
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-BENCHMARK(testSponza)->Iterations(1000);
+BENCHMARK(testSponza)->Iterations(100);
 // Run the benchmark
 BENCHMARK_MAIN();
