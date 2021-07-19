@@ -325,6 +325,8 @@ class glPipeline{
         // multi-thread pixel processing version of code (manually calling pthread API)
         // list is better for parallel computing
         std::vector<Triangle*> triangle_list;
+        // list of programmable triangles
+        std::vector<ProgrammableTriangle*> prog_triangle_list;
         // the triangles are from view frustum culling
         std::vector<Triangle*> tri_culling_list;
         omp_lock_t tri_culling_lock;
