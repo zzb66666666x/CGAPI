@@ -257,12 +257,20 @@ class glProgrammableShader{
     Shader* get_shader(GLenum shader_type);
 };
 
+typedef struct{
+    Shader shader;
+    GLenum type;
+}shader_cache_t;
+
 class glShaderManager {
     public:
     std::map<int, glProgrammableShader> shader_map;
+    std::map<int, shader_cache_t> shader_cache_map;
     IdManager idmgr;
-
-    void create_program();
+    IdManager cache_idmgr;
+    int create_program();
+    int create_shader(GLenum shader_type);
+    int attach(int prog, int shader_cache_id);
 };
 
 class glRenderPayload{

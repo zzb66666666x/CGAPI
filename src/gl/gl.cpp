@@ -645,7 +645,11 @@ void glReadPixels(int x, int y, int width, int height, GLenum format, GLenum typ
 
 /////////////////////////// shader API ///////////////////////////
 unsigned int glCreateShader(GLenum shaderType){
-    return 0;
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    return C->glsl_shaders.create_shader(shaderType);
 }
 
 
@@ -654,20 +658,47 @@ void glShaderSource(unsigned int shader, int count, char** string, int* length){
 }
 
 void glCompileShader(unsigned int shader){
-
+    // compile a shader in the shader cache
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    auto it = C->glsl_shaders.shader_cache_map.find(shader);
+    if (it == C->glsl_shaders.shader_cache_map.end())
+        return;
+    shader_cache_t& cache = it->second;
+    Shader& shader_obj = cache.shader;
+    shader_obj.compile();
+    shader_obj.load_shader();
 }
 
 unsigned int glCreateProgram(){
-    return 0;
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    return (unsigned)C->glsl_shaders.create_program();
 }
 
 
 void glAttachShader(unsigned int shaderProgram, unsigned int shader){
-
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    C->glsl_shaders.attach(shaderProgram, shader);
 }
 
 void glLinkProgram(unsigned int shaderProgram){
-
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    auto it = C->glsl_shaders.shader_map.find(shaderProgram);
+    if (it != C->glsl_shaders.shader_map.end()){
+        glProgrammableShader& program = it->second;
+        program.link_programs();
+    }
 }
 
 void glUseProgram(unsigned int shaderProgram){
