@@ -228,6 +228,29 @@ void glProgrammableShader::link_programs(){
     }else{
         throw std::runtime_error("link error: missing fragment shader");
     }
+    // merge the uniform variables
+    int uniform_id = 0;
+    int shader_id = 0;
+    for (auto it = shaders.begin(); it != shaders.end(); it++){
+        for (auto it2 = it->second.uniform_map.begin(); it2 != it->second.uniform_map.end(); it2++){
+            if (merged_uniform_maps.find(it2->first) != merged_uniform_maps.end()){
+                // already has item inside
+                merged_uniform_maps[it2->first].ftable_idx[shader_id] = it2->second;
+            }else{
+                // insert item
+                uniform_varaible_t uvar;
+                uvar.ftable_idx[0] = -1;
+                uvar.ftable_idx[1] = -1;
+                uvar.uniform_id = uniform_id;
+                uvar.ftable_idx[shader_id] = it2->second;
+                uvar.shader_ptr = &(it->second);
+                merged_uniform_maps.emplace(it2->first, uvar);
+                id_to_name.emplace(uniform_id, it2->first);
+                uniform_id++;
+            }   
+        }
+        shader_id++;
+    }
 }
 
 Shader* glProgrammableShader::get_shader(GLenum shader_type){
