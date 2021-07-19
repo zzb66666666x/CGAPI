@@ -28,6 +28,7 @@ typedef data_t (*shader_output_uniform_dispatch)(int idx);
 
 class Shader{
     public:
+    Shader(){}
     Shader(const char* glsl_path){
         std::ifstream glsl_file;
         glsl_file.open(glsl_path);
@@ -38,33 +39,14 @@ class Shader{
         glsl_file.close();
         // convert stream into string
         glsl_code = glsl_string_stream.str();
-        char* output_code_buffer;
-        int output_code_buffer_size;
-        parse_string(glsl_code.c_str(), &output_code_buffer, &output_code_buffer_size);
-        std::string parser_out_string = output_code_buffer;
-        // std::cout<<"////////// PARSER RAW OUTPUT //////////"<<std::endl;
-        // std::cout<<"code buffer size: "<<output_code_buffer_size<<std::endl;
-        // std::cout<<"code:"<<std::endl;
-        std::cout<<parser_out_string<<std::endl;
-        // std::cout<<"////////// END OF RAW PARSED CODE //////////"<<std::endl;
-        free(output_code_buffer);
-        io_profile = *((std::map<std::string, io_attrib>*)get_profile());
-        uniform_map = *((std::map<std::string, int>*)get_uniform_map());
-        clear_profile();
-        clear_uniform_map();
-        cpp_code_generate(parser_out_string, cpp_code);
-        // std::cout<<"////////// FINAL CPP CODE //////////"<<std::endl;
-        // std::cout<<cpp_code;
-        // std::cout<<"////////// END OF CPP CODE //////////"<<std::endl;
-        // std::cout<<"////////// UNIFORM MAP //////////"<<std::endl;
-        // for (auto it = uniform_map.begin(); it != uniform_map.end(); it++){
-        //     std::cout<<it->first<<"    "<<it->second<<std::endl;
-        // }
-        // std::cout<<"////////// END OF UNIFORM MAP //////////"<<std::endl;
     }
 
     ~Shader(){
         FreeLibrary(hDLL);
+    }
+
+    inline void set_glsl_code(std::string code){
+        glsl_code = code;
     }
 
     inline void load_shader(){   
@@ -85,6 +67,30 @@ class Shader{
     shader_output_uniform_dispatch output_uniform_dispatch;
 
     inline void compile(){
+        char* output_code_buffer;
+        int output_code_buffer_size;
+        parse_string(glsl_code.c_str(), &output_code_buffer, &output_code_buffer_size);
+        std::string parser_out_string = output_code_buffer;
+        // std::cout<<"////////// PARSER RAW OUTPUT //////////"<<std::endl;
+        // std::cout<<"code buffer size: "<<output_code_buffer_size<<std::endl;
+        // std::cout<<"code:"<<std::endl;
+        std::cout<<parser_out_string<<std::endl;
+        // std::cout<<"////////// END OF RAW PARSED CODE //////////"<<std::endl;
+        free(output_code_buffer);
+        io_profile = *((std::map<std::string, io_attrib>*)get_profile());
+        uniform_map = *((std::map<std::string, int>*)get_uniform_map());
+        get_layouts();
+        clear_profile();
+        clear_uniform_map();
+        cpp_code_generate(parser_out_string, cpp_code);
+        // std::cout<<"////////// FINAL CPP CODE //////////"<<std::endl;
+        // std::cout<<cpp_code;
+        // std::cout<<"////////// END OF CPP CODE //////////"<<std::endl;
+        // std::cout<<"////////// UNIFORM MAP //////////"<<std::endl;
+        // for (auto it = uniform_map.begin(); it != uniform_map.end(); it++){
+        //     std::cout<<it->first<<"    "<<it->second<<std::endl;
+        // }
+        // std::cout<<"////////// END OF UNIFORM MAP //////////"<<std::endl;
         FILE *proc = popen("g++ -fPIC -shared -o test.dll -x c++ -", "w");
         if(!proc) {
             perror("popen g++");
@@ -100,10 +106,20 @@ class Shader{
 
     std::map<std::string, io_attrib> io_profile;
     std::map<std::string, int> uniform_map;
+    std::map<std::string, io_attrib*> layouts;
 
     private:
-        std::string glsl_code;
-        std::string cpp_code;
-        // windows dll object
-        HINSTANCE hDLL;
+    inline void get_layouts(){
+        layouts.clear();
+        for (auto it = io_profile.begin(); it!= io_profile.end(); it++){
+            if (it->second.layout>=0){
+                layouts.emplace(it->first, &(it->second));
+            }
+        }
+    }
+
+    std::string glsl_code;
+    std::string cpp_code;
+    // windows dll object
+    HINSTANCE hDLL;
 };

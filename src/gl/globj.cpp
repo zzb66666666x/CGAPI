@@ -212,6 +212,22 @@ void glProgram::set_diffuse_texture(GLenum unit){
     diffuse_texture.filter = filter_type::NEAREST;
 }
 
+void glProgrammableShader::link_programs(){
+    // init the call chain
+}
+
+Shader* glProgrammableShader::get_shader(GLenum shader_type){
+    auto it = shaders.find(shader_type);
+    if (it != shaders.end())
+        return &(it->second);
+    return nullptr;
+}
+
+void glShaderManager::create_program(){
+    int id = idmgr.AllocateId();
+    shader_map.emplace(id, glProgrammableShader());
+}
+
 
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();

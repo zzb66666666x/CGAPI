@@ -1264,3 +1264,12 @@ void* _thr_rasterize(void* thread_id)
     }
     return nullptr;
 }
+
+///////////////////////////// PROGRAMMABLE VERSION WITH OPENMP ////////////////////////////
+void programmable_process_geometry_openmp(){
+    
+}
+
+void programmable_rasterize_with_shading_openmp(){
+
+}

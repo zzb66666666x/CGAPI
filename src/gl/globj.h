@@ -254,7 +254,15 @@ class glProgrammableShader{
     std::vector<Shader*> call_chain;
 
     void link_programs();
-    Shader& get_shader(GLenum shader_type);
+    Shader* get_shader(GLenum shader_type);
+};
+
+class glShaderManager {
+    public:
+    std::map<int, glProgrammableShader> shader_map;
+    IdManager idmgr;
+
+    void create_program();
 };
 
 class glRenderPayload{

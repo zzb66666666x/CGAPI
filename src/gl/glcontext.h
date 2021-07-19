@@ -34,7 +34,7 @@ class gl_context{
     }cull_face;
     // shader
     glProgram               shader;
-    glProgrammableShader    glsl_shader;
+    glShaderManager         glsl_shaders;
     // redering pipeline requirement
     glRenderPayload         payload;
     // pipeline of function pointers and their data 

@@ -5,11 +5,11 @@
 #include "configs.h"
 #include <array>
 #include <assert.h>
-#include <glm/glm.hpp>
 #include <map>
 #include <math.h>
 #include <queue>
 #include <stdio.h>
+#include "glsl/vec_math.h"
 
 class Vertex {
 public:
@@ -155,6 +155,17 @@ public:
     std::map<int, std::queue<glm::vec3>> data_float_vec3;
     std::map<int, std::queue<glm::vec4>> data_float_vec4;
     crawler_config_t config;
+};
+
+class ProgrammableTriangle{
+    public:
+    glm::vec4 screen_pos[3];
+    std::map<std::string, data_t> vertex_attribs[3];
+
+    bool culling = false;
+
+    bool inside(float x, float y);
+    glm::vec3 computeBarycentric2D(float x, float y);
 };
 
 #endif

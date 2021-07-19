@@ -34,4 +34,8 @@ void binning_threadmain();
 void rasterize_threadmain();
 // void process_pixel_threadmain();
 
+// programmable version of code
+void programmable_process_geometry_openmp();
+void programmable_rasterize_with_shading_openmp();
+
 #endif
