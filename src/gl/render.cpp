@@ -1369,7 +1369,6 @@ void programmable_process_geometry_openmp(){
         return;
     }
     Shader* vert_shader = program_it->second.call_chain[0];
-
     std::vector<ProgrammableTriangle*>& tri_culling_list = ppl->prog_tri_culling_list;
     // begin parallel block
     std::map<std::string, data_t> vs_input;
@@ -1378,61 +1377,13 @@ void programmable_process_geometry_openmp(){
     unsigned char* buf;
     int i, j;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(input_ptr) private(buf) private(vs_output) private(i) private(j)
+#pragma omp parallel for private(input_ptr) private(buf) private(vs_output) \
+    private(i) private(j) private(vs_input) private(vs_output)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
         for (i = 0; i < 3; ++i) {
-            // for (j = 0; j < shader.layout_cnt; ++j) {
-            //     switch (shader.layouts[j]) {
-            //         case LAYOUT_POSITION:
-            //             input_ptr = &(shader.input_Pos);
-            //             break;
-            //         case LAYOUT_COLOR:
-            //             input_ptr = &(shader.vert_Color);
-            //             break;
-            //         case LAYOUT_TEXCOORD:
-            //             input_ptr = &(shader.iTexcoord);
-            //             break;
-            //         case LAYOUT_NORMAL:
-            //             input_ptr = &(shader.vert_Normal);
-            //             break;
-            //         case LAYOUT_INVALID:
-            //         default:
-            //             input_ptr = nullptr;
-            //             break;
-            //     }
-            //     if (input_ptr == nullptr) {
-            //         continue;
-            //     }
-                // vertex_attrib_t& config = vattrib_data[shader.layouts[j]];
-                // buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
-            //     switch (config.type) {
-            //     case GL_FLOAT:
-            //         switch (config.size) {
-            //         case 2: {
-            //             glm::vec2* vec2 = (glm::vec2*)input_ptr;
-            //             vec2->x = *(float*)(buf + 0);
-            //             vec2->y = *(float*)(buf + sizeof(float) * 1);
-            //             break;
-            //         }
-            //         case 3: {
-            //             glm::vec3* vec3 = (glm::vec3*)input_ptr;
-            //             vec3->x = *(float*)(buf + 0);
-            //             vec3->y = *(float*)(buf + sizeof(float) * 1);
-            //             vec3->z = *(float*)(buf + sizeof(float) * 2);
-            //             break;
-            //         }
-            //         default:
-            //             throw std::runtime_error("not supported size\n");
-            //         }
-            //         break;
-            //     default:
-            //         throw std::runtime_error("not supported type\n");
-            //     }
-            // }
-            
             // parse VAO
             for (auto it = vert_shader->io_profile.begin(); it != vert_shader->io_profile.end(); ++it) {
                 if (it->second.io == INPUT_VAR) {
@@ -1443,19 +1394,24 @@ void programmable_process_geometry_openmp(){
                             case TYPE_VEC2:
                                 vs_input.emplace(it->first, (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) });
                                 break;
-                            case TYPE_VEC3:
-                                vs_input.emplace(it->first, (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) });
+                            case TYPE_VEC3:{
+                                data_t var;
+                                var.vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2));
+                                vs_input.emplace(it->first, var);
+                                // vs_input.emplace(it->first, (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) });
                                 break;
+                            }
                             default: break;
                         }
                     }
                 }
             }
-            vert_shader->input_port(vs_input);
+            ftable_t ftable = vert_shader->get_shader_utils(omp_get_thread_num());
+            ftable.input(vs_input);
 
             // execute vertex shading
-            vert_shader->glsl_main();
-            vert_shader->output_port(vs_output);
+            ftable.main();
+            ftable.output(vs_output);
 
             // assemble triangle
             triangle_list[tri_ind]->screen_pos[i] = vs_output["gl_Position"].vec4_var;
@@ -1463,32 +1419,33 @@ void programmable_process_geometry_openmp(){
         }
 
         // view frustum culling list
-        // std::vector<Triangle*> vfc_list;
-        // view_frustum_culling(*triangle_list[tri_ind], vfc_list);
-        // if (vfc_list.size() != 0) {
-        //     if (ctx->cull_face.open) {
-        //         omp_set_lock(&ppl->tri_culling_lock);
-        //         for (int tind = 0, tlen = vfc_list.size(); tind < tlen; ++tind) {
-        //             backface_culling(*vfc_list[tind]);
-        //             if (vfc_list[tind]->culling) {
-        //                 delete vfc_list[tind];
-        //             } else {
-        //                 tri_culling_list.push_back(vfc_list[tind]);
-        //             }
-        //         }
-        //         omp_unset_lock(&ppl->tri_culling_lock);
-        //     } else {
-        //         omp_set_lock(&ppl->tri_culling_lock);
-        //         tri_culling_list.insert(tri_culling_list.end(), vfc_list.begin(), vfc_list.end());
-        //         omp_unset_lock(&ppl->tri_culling_lock);
-        //     }
-        // } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
-        //     backface_culling(*triangle_list[tri_ind]);
-        // }
+        std::vector<ProgrammableTriangle*> vfc_list;
+        triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);
+        if (vfc_list.size() != 0) {
+            if (ctx->cull_face.open) {
+                omp_set_lock(&ppl->tri_culling_lock);
+                for (int tind = 0, tlen = vfc_list.size(); tind < tlen; ++tind) {
+                    // backface_culling(*vfc_list[tind]);
+                    if (vfc_list[tind]->culling) {
+                        delete vfc_list[tind];
+                    } else {
+                        tri_culling_list.push_back(vfc_list[tind]);
+                    }
+                }
+                omp_unset_lock(&ppl->tri_culling_lock);
+            } else {
+                omp_set_lock(&ppl->tri_culling_lock);
+                tri_culling_list.insert(tri_culling_list.end(), vfc_list.begin(), vfc_list.end());
+                omp_unset_lock(&ppl->tri_culling_lock);
+            }
+        } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
+            // backface_culling(*triangle_list[tri_ind]);
+        }
 
-        // if (triangle_list[tri_ind]->culling) {
-        //     continue;
-        // }
+        if (triangle_list[tri_ind]->culling) {
+            continue;
+        }
+
         for (i = 0; i < 3; ++i) {
             triangle_list[tri_ind]->screen_pos[i].x /= triangle_list[tri_ind]->screen_pos[i].w;
             triangle_list[tri_ind]->screen_pos[i].y /= triangle_list[tri_ind]->screen_pos[i].w;
@@ -1504,24 +1461,24 @@ void programmable_process_geometry_openmp(){
     }
 
     // merge triangle_list and tri_culling_list
-    // int ind = triangle_list.size();
-    // triangle_list.resize(triangle_list.size() + tri_culling_list.size());
-    // for (int tri_ind = 0, len = tri_culling_list.size(); tri_ind < len; ++tri_ind) {
-    //     for (i = 0; i < 3; ++i) {
-    //         tri_culling_list[tri_ind]->screen_pos[i].x /= tri_culling_list[tri_ind]->screen_pos[i].w;
-    //         tri_culling_list[tri_ind]->screen_pos[i].y /= tri_culling_list[tri_ind]->screen_pos[i].w;
-    //         tri_culling_list[tri_ind]->screen_pos[i].z /= tri_culling_list[tri_ind]->screen_pos[i].w;
+    int ind = triangle_list.size();
+    triangle_list.resize(triangle_list.size() + tri_culling_list.size());
+    for (int tri_ind = 0, len = tri_culling_list.size(); tri_ind < len; ++tri_ind) {
+        for (i = 0; i < 3; ++i) {
+            tri_culling_list[tri_ind]->screen_pos[i].x /= tri_culling_list[tri_ind]->screen_pos[i].w;
+            tri_culling_list[tri_ind]->screen_pos[i].y /= tri_culling_list[tri_ind]->screen_pos[i].w;
+            tri_culling_list[tri_ind]->screen_pos[i].z /= tri_culling_list[tri_ind]->screen_pos[i].w;
 
-    //         // view port transformation
-    //         tri_culling_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
-    //         tri_culling_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
+            // view port transformation
+            tri_culling_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
+            tri_culling_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
 
-    //         // [-1,1] to [0,1]
-    //         tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
-    //     }
-    //     triangle_list[ind + tri_ind] = tri_culling_list[tri_ind];
-    // }
-    // ppl->tri_culling_list.clear();
+            // [-1,1] to [0,1]
+            tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
+        }
+        triangle_list[ind + tri_ind] = tri_culling_list[tri_ind];
+    }
+    ppl->tri_culling_list.clear();
 }
 
 void programmable_rasterize_with_shading_openmp(){

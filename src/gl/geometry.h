@@ -157,8 +157,24 @@ public:
     crawler_config_t config;
 };
 
+class ProgrammableVertex {
+public:
+    glm::vec4 screen_pos;
+    std::map<std::string, data_t> vertex_attrib;
+
+    inline static ProgrammableVertex lerp(ProgrammableVertex &v1, ProgrammableVertex &v2, float weight)
+    {
+        ProgrammableVertex res;
+        res.screen_pos = v1.screen_pos + (v2.screen_pos - v1.screen_pos) * weight;
+        // for(auto it = v1.vertex_attrib.begin(); it != v1.vertex_attrib.end(); ++it){
+        //     res.vertex_attrib[it->first] = it->second + (v2.vertex_attrib[it->first] - it->second) * weight;
+        // }
+        return res;
+    }
+};
+
 class ProgrammableTriangle{
-    public:
+public:
     glm::vec4 screen_pos[3];
     std::map<std::string, data_t> vertex_attribs[3];
 
@@ -166,6 +182,19 @@ class ProgrammableTriangle{
 
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
+    void view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res);
+
+    inline void setVertex(int index, ProgrammableVertex& v)
+    {
+        screen_pos[index] = v.screen_pos;
+        vertex_attribs[index] = v.vertex_attrib;
+    }
+
+private:
+    bool outside_clip_space();
+    bool all_inside_clip_space();
+    bool inside_plane(const glm::vec4& plane, glm::vec4& pos);
+    ProgrammableVertex intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane);
 };
 
 #endif

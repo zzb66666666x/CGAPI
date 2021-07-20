@@ -144,3 +144,89 @@ glm::vec3 ProgrammableTriangle::computeBarycentric2D(float x, float y){
     float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
     return {c1, c2, c3};
 }
+
+bool ProgrammableTriangle::outside_clip_space()
+{
+    for (int i = 0; i < 3; ++i) {
+        if ((screen_pos[0][i] > screen_pos[0].w && screen_pos[1][i] > screen_pos[1].w && screen_pos[2][i] > screen_pos[2].w)
+            || (screen_pos[0][i] < -screen_pos[0].w && screen_pos[1][i] < -screen_pos[1].w && screen_pos[2][i] < -screen_pos[2].w)) {
+            return true;
+        }
+    }
+    return false;
+}
+bool ProgrammableTriangle::all_inside_clip_space()
+{
+    for (int i = 0; i < 3; ++i) {
+        if (!(screen_pos[i].x < screen_pos[i].w && screen_pos[i].x > -screen_pos[i].w
+                && screen_pos[i].y < screen_pos[i].w && screen_pos[i].y > -screen_pos[i].w
+                && screen_pos[i].z < screen_pos[i].w && screen_pos[i].z > -screen_pos[i].w)) {
+            return false;
+        }
+    }
+    return true;
+}
+bool ProgrammableTriangle::inside_plane(const glm::vec4& plane, glm::vec4& pos)
+{
+    return glm::dot(pos, plane) <= 0;
+}
+ProgrammableVertex ProgrammableTriangle::intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane)
+{
+    float d1 = glm::dot(v1.screen_pos, plane);
+    float d2 = glm::dot(v2.screen_pos, plane);
+    float weight = d1 / (d1 - d2);
+    return ProgrammableVertex::lerp(v1, v2, weight);
+}
+
+void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res)
+{
+    // if all vertices are outside or inside, it will return directly.
+    if ((this->culling = outside_clip_space()) || all_inside_clip_space()) {
+        return;
+    }
+    // for loop
+    int i, j, len, jlen;
+    // current triangle will be culling.
+    this->culling = true;
+
+    std::vector<ProgrammableVertex> vertex_list(3);
+    for (int i = 0; i < 3; ++i) {
+        // vertex_list[i] = t.getVertex(i);
+        vertex_list[i].screen_pos = this->screen_pos[i];
+        vertex_list[i].vertex_attrib = this->vertex_attribs[i];
+    }
+
+    for (i = 0, len = planes.size(); i < len; ++i) {
+        std::vector<ProgrammableVertex> input(vertex_list);
+        vertex_list.clear();
+        for (j = 0, jlen = input.size(); j < jlen; ++j) {
+            ProgrammableVertex& current = input[j];
+            ProgrammableVertex& last = input[(j + jlen - 1) % jlen];
+            if (inside_plane(planes[i], current.screen_pos)) {
+                if (!inside_plane(planes[i], last.screen_pos)) {
+                    ProgrammableVertex intersecting = this->intersect(last, current, planes[i]);
+                    vertex_list.push_back(intersecting);
+                }
+                vertex_list.push_back(current);
+            } else if (inside_plane(planes[i], last.screen_pos)) {
+                ProgrammableVertex intersecting = this->intersect(last, current, planes[i]);
+                vertex_list.push_back(intersecting);
+            }
+        }
+    }
+    // printf("vertex_list size: %d\n", vertex_list.size());
+    if (vertex_list.size() < 3) {
+        return;
+    }
+
+    ProgrammableTriangle* tri = nullptr;
+    res.resize(vertex_list.size() - 3 + 1);
+    int next = 1;
+    for (i = 0, len = res.size(); i < len; ++i) {
+        tri = new ProgrammableTriangle();
+        tri->setVertex(0, vertex_list[0]);
+        tri->setVertex(1, vertex_list[next]);
+        tri->setVertex(2, vertex_list[++next]);
+        res[i] = tri;
+    }
+}
