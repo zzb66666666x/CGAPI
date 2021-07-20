@@ -420,12 +420,13 @@ void process_geometry_ebo_openmp()
 
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
 
-    std::vector<int> indices;
+    std::vector<int> *indices;
     int triangle_size = 0;
     if (ppl->use_indices) {
         int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
-        ppl->indexCache.getCacheData(vaoId, indices);
-        if (!(ppl->ebo_config.ebo_ptr->usage == GL_STATIC_DRAW && ppl->vbo_ptr->usage == GL_STATIC_DRAW && indices.size() != 0)) {
+        int ret = ppl->indexCache.getCacheData(vaoId, &indices);
+        if (ppl->ebo_config.ebo_ptr->usage == GL_STATIC_DRAW && ppl->vbo_ptr->usage == GL_STATIC_DRAW && ret == GL_FALSE) {
+            std::vector<int> innerIndices;
             // first ebo data index
             const void* first_indices = (const void*)ppl->ebo_config.first_indices;
             switch (ppl->ebo_config.indices_type) {
@@ -437,47 +438,49 @@ void process_geometry_ebo_openmp()
                     // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
                     ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
                     // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
-                    indices.resize(ebuf_size - first_index);
+                    innerIndices.resize(ebuf_size - first_index);
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for
 #endif
                     for (int i = first_index; i < ebuf_size; ++i) {
-                        indices[i] = ebuf_data[i];
+                        innerIndices[i] = ebuf_data[i];
                     }
                     triangle_size = (ebuf_size - first_index) / 3;
                 } break;
                 default:
                     break;
             }
-            ppl->indexCache.addCacheData(vaoId, indices);
+            ppl->indexCache.addCacheData(vaoId, innerIndices);
+            ppl->indexCache.getCacheData(vaoId, &indices);
         } else {
-            triangle_size = indices.size() / 3;
+            triangle_size = indices->size() / 3;
         }
 
     } else {
         int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
-        ppl->indexCache.getCacheData(vaoId, indices);
-        if (!(ppl->vbo_ptr->usage == GL_STATIC_DRAW && indices.size() != 0)) {
-
+        int ret = ppl->indexCache.getCacheData(vaoId, &indices);
+        if (ppl->vbo_ptr->usage == GL_STATIC_DRAW && ret == GL_FALSE) {
+            std::vector<int> innerIndices;
             int first_vertex_ind = ppl->first_vertex;
             int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
 
             // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
             vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
-            indices.resize(vertex_num - first_vertex_ind);
+            innerIndices.resize(vertex_num - first_vertex_ind);
 
             int len = vertex_num - first_vertex_ind;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for
 #endif
             for (int i = 0; i < len; ++i) {
-                indices[i] = first_vertex_ind + i;
+                innerIndices[i] = first_vertex_ind + i;
                 // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
             }
             triangle_size = (vertex_num - first_vertex_ind) / 3;
-            ppl->indexCache.addCacheData(vaoId, indices);
+            ppl->indexCache.addCacheData(vaoId, innerIndices);
+            ppl->indexCache.getCacheData(vaoId, &indices);
         } else {
-            triangle_size = indices.size() / 3;
+            triangle_size = indices->size() / 3;
         }
     }
 
@@ -499,7 +502,7 @@ void process_geometry_ebo_openmp()
         triangle_list.resize(triangle_size);
     }
 
-    // angle = angle + 1.0f;
+    angle = angle + 1.0f;
 
     std::vector<Triangle*>& tri_culling_list = ppl->tri_culling_list;
 
@@ -538,7 +541,7 @@ void process_geometry_ebo_openmp()
                     continue;
                 }
                 vertex_attrib_t& config = vattrib_data[shader.layouts[j]];
-                buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+                buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
                 switch (config.type) {
                     case GL_FLOAT:
                         switch (config.size) {
@@ -1267,7 +1270,258 @@ void* _thr_rasterize(void* thread_id)
 
 ///////////////////////////// PROGRAMMABLE VERSION WITH OPENMP ////////////////////////////
 void programmable_process_geometry_openmp(){
+    /**
+     * input assembly
+     */
+    GET_PIPELINE(ppl);
+    GET_CURRENT_CONTEXT(ctx);
 
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
+
+    // parse indices BEGIN
+    std::vector<int>* indices;
+    int triangle_size = 0;
+    if (ppl->use_indices) {
+        int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+        int ret = ppl->indexCache.getCacheData(vaoId, &indices);
+        if (ppl->ebo_config.ebo_ptr->usage == GL_STATIC_DRAW && ppl->vbo_ptr->usage == GL_STATIC_DRAW && ret == GL_FALSE) {
+            std::vector<int> innerIndices;
+            // first ebo data index
+            const void* first_indices = (const void*)ppl->ebo_config.first_indices;
+            switch (ppl->ebo_config.indices_type) {
+            case GL_UNSIGNED_INT: {
+                // ebo data array
+                unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
+                int first_index = (size_t)first_indices / sizeof(unsigned int);
+                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
+                // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
+                ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
+                // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+                innerIndices.resize(ebuf_size - first_index);
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for
+#endif
+                for (int i = first_index; i < ebuf_size; ++i) {
+                    innerIndices[i] = ebuf_data[i];
+                }
+                triangle_size = (ebuf_size - first_index) / 3;
+            } break;
+            default:
+                break;
+            }
+            ppl->indexCache.addCacheData(vaoId, innerIndices);
+            ppl->indexCache.getCacheData(vaoId, &indices);
+        } else {
+            triangle_size = indices->size() / 3;
+        }
+
+    } else {
+        int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
+        int ret = ppl->indexCache.getCacheData(vaoId, &indices);
+        if (ppl->vbo_ptr->usage == GL_STATIC_DRAW && ret == GL_FALSE) {
+            std::vector<int> innerIndices;
+            int first_vertex_ind = ppl->first_vertex;
+            int vertex_num = MIN(ppl->vertex_num, ppl->vbo_ptr->getSize() / vattrib_data[0].stride);
+
+            // case: ((38 - 33) / 3) * 3 + 33 == 36, first_vertex_ind == 33
+            vertex_num = ((vertex_num - first_vertex_ind) / 3) * 3 + first_vertex_ind;
+            innerIndices.resize(vertex_num - first_vertex_ind);
+
+            int len = vertex_num - first_vertex_ind;
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for
+#endif
+            for (int i = 0; i < len; ++i) {
+                innerIndices[i] = first_vertex_ind + i;
+                // printf("i=%d. Hello! threadID=%d  thraed number:%d\n", i, omp_get_thread_num(), omp_get_num_threads());
+            }
+            triangle_size = (vertex_num - first_vertex_ind) / 3;
+            ppl->indexCache.addCacheData(vaoId, innerIndices);
+            ppl->indexCache.getCacheData(vaoId, &indices);
+        } else {
+            triangle_size = indices->size() / 3;
+        }
+    }
+    // parse indices END
+
+    unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
+
+    std::vector<ProgrammableTriangle*>& triangle_list = ppl->prog_triangle_list;
+
+    // triangle list management
+    if (triangle_list.size() < triangle_size) {
+        int tsize = triangle_list.size();
+        triangle_list.resize(triangle_size);
+        for (int i = tsize, len = triangle_size; i < len; ++i) {
+            triangle_list[i] = new ProgrammableTriangle();
+        }
+    } else if (triangle_list.size() > triangle_size) {
+        for (int i = triangle_size, len = triangle_list.size(); i < len; ++i) {
+            delete triangle_list[i];
+        }
+        triangle_list.resize(triangle_size);
+    }
+
+    int program_id = ctx->payload.renderMap[GL_BIND_PROGRAM];
+    auto program_it = ctx->glsl_shaders.shader_map.find(program_id);
+    if(program_it == ctx->glsl_shaders.shader_map.end()
+        || program_it->second.call_chain.size() == 0){
+        return;
+    }
+    Shader* vert_shader = program_it->second.call_chain[0];
+
+    std::vector<ProgrammableTriangle*>& tri_culling_list = ppl->prog_tri_culling_list;
+    // begin parallel block
+    std::map<std::string, data_t> vs_input;
+    std::map<std::string, data_t> vs_output;
+    void* input_ptr;
+    unsigned char* buf;
+    int i, j;
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for private(input_ptr) private(buf) private(vs_output) private(i) private(j)
+#endif
+    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
+        // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
+        // parse data
+        for (i = 0; i < 3; ++i) {
+            // for (j = 0; j < shader.layout_cnt; ++j) {
+            //     switch (shader.layouts[j]) {
+            //         case LAYOUT_POSITION:
+            //             input_ptr = &(shader.input_Pos);
+            //             break;
+            //         case LAYOUT_COLOR:
+            //             input_ptr = &(shader.vert_Color);
+            //             break;
+            //         case LAYOUT_TEXCOORD:
+            //             input_ptr = &(shader.iTexcoord);
+            //             break;
+            //         case LAYOUT_NORMAL:
+            //             input_ptr = &(shader.vert_Normal);
+            //             break;
+            //         case LAYOUT_INVALID:
+            //         default:
+            //             input_ptr = nullptr;
+            //             break;
+            //     }
+            //     if (input_ptr == nullptr) {
+            //         continue;
+            //     }
+                // vertex_attrib_t& config = vattrib_data[shader.layouts[j]];
+                // buf = vbuf_data + (size_t)(indices[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+            //     switch (config.type) {
+            //     case GL_FLOAT:
+            //         switch (config.size) {
+            //         case 2: {
+            //             glm::vec2* vec2 = (glm::vec2*)input_ptr;
+            //             vec2->x = *(float*)(buf + 0);
+            //             vec2->y = *(float*)(buf + sizeof(float) * 1);
+            //             break;
+            //         }
+            //         case 3: {
+            //             glm::vec3* vec3 = (glm::vec3*)input_ptr;
+            //             vec3->x = *(float*)(buf + 0);
+            //             vec3->y = *(float*)(buf + sizeof(float) * 1);
+            //             vec3->z = *(float*)(buf + sizeof(float) * 2);
+            //             break;
+            //         }
+            //         default:
+            //             throw std::runtime_error("not supported size\n");
+            //         }
+            //         break;
+            //     default:
+            //         throw std::runtime_error("not supported type\n");
+            //     }
+            // }
+            
+            // parse VAO
+            for (auto it = vert_shader->io_profile.begin(); it != vert_shader->io_profile.end(); ++it) {
+                if (it->second.io == INPUT_VAR) {
+                    vertex_attrib_t& config = vattrib_data[it->second.layout];
+                    buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+                    if(config.type == GL_FLOAT){
+                        switch(it->second.dtype){
+                            case TYPE_VEC2:
+                                vs_input.emplace(it->first, (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) });
+                                break;
+                            case TYPE_VEC3:
+                                vs_input.emplace(it->first, (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) });
+                                break;
+                            default: break;
+                        }
+                    }
+                }
+            }
+            vert_shader->input_port(vs_input);
+
+            // execute vertex shading
+            vert_shader->glsl_main();
+            vert_shader->output_port(vs_output);
+
+            // assemble triangle
+            triangle_list[tri_ind]->screen_pos[i] = vs_output["gl_Position"].vec4_var;
+            triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
+        }
+
+        // view frustum culling list
+        // std::vector<Triangle*> vfc_list;
+        // view_frustum_culling(*triangle_list[tri_ind], vfc_list);
+        // if (vfc_list.size() != 0) {
+        //     if (ctx->cull_face.open) {
+        //         omp_set_lock(&ppl->tri_culling_lock);
+        //         for (int tind = 0, tlen = vfc_list.size(); tind < tlen; ++tind) {
+        //             backface_culling(*vfc_list[tind]);
+        //             if (vfc_list[tind]->culling) {
+        //                 delete vfc_list[tind];
+        //             } else {
+        //                 tri_culling_list.push_back(vfc_list[tind]);
+        //             }
+        //         }
+        //         omp_unset_lock(&ppl->tri_culling_lock);
+        //     } else {
+        //         omp_set_lock(&ppl->tri_culling_lock);
+        //         tri_culling_list.insert(tri_culling_list.end(), vfc_list.begin(), vfc_list.end());
+        //         omp_unset_lock(&ppl->tri_culling_lock);
+        //     }
+        // } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
+        //     backface_culling(*triangle_list[tri_ind]);
+        // }
+
+        // if (triangle_list[tri_ind]->culling) {
+        //     continue;
+        // }
+        for (i = 0; i < 3; ++i) {
+            triangle_list[tri_ind]->screen_pos[i].x /= triangle_list[tri_ind]->screen_pos[i].w;
+            triangle_list[tri_ind]->screen_pos[i].y /= triangle_list[tri_ind]->screen_pos[i].w;
+            triangle_list[tri_ind]->screen_pos[i].z /= triangle_list[tri_ind]->screen_pos[i].w;
+
+            // view port transformation
+            triangle_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0);
+            triangle_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (triangle_list[tri_ind]->screen_pos[i].y + 1.0);
+
+            // [-1,1] to [0,1]
+            triangle_list[tri_ind]->screen_pos[i].z = triangle_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
+        }
+    }
+
+    // merge triangle_list and tri_culling_list
+    // int ind = triangle_list.size();
+    // triangle_list.resize(triangle_list.size() + tri_culling_list.size());
+    // for (int tri_ind = 0, len = tri_culling_list.size(); tri_ind < len; ++tri_ind) {
+    //     for (i = 0; i < 3; ++i) {
+    //         tri_culling_list[tri_ind]->screen_pos[i].x /= tri_culling_list[tri_ind]->screen_pos[i].w;
+    //         tri_culling_list[tri_ind]->screen_pos[i].y /= tri_culling_list[tri_ind]->screen_pos[i].w;
+    //         tri_culling_list[tri_ind]->screen_pos[i].z /= tri_culling_list[tri_ind]->screen_pos[i].w;
+
+    //         // view port transformation
+    //         tri_culling_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
+    //         tri_culling_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
+
+    //         // [-1,1] to [0,1]
+    //         tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
+    //     }
+    //     triangle_list[ind + tri_ind] = tri_culling_list[tri_ind];
+    // }
+    // ppl->tri_culling_list.clear();
 }
 
 void programmable_rasterize_with_shading_openmp(){

@@ -293,13 +293,13 @@ public:
         return ret == 0 ? GL_FALSE : GL_TRUE;
     }
 
-    int getCacheData(unsigned int VAO, std::vector<int>& indices)
+    int getCacheData(unsigned int VAO, std::vector<int> **indices)
     {
         auto it = indexCache.find(VAO);
         if (it == indexCache.end()) {
             return GL_FALSE;
         }
-        indices = it->second;
+        *indices = &it->second;
         return GL_TRUE;
     }
 
@@ -327,6 +327,8 @@ class glPipeline{
         std::vector<Triangle*> triangle_list;
         // list of programmable triangles
         std::vector<ProgrammableTriangle*> prog_triangle_list;
+        // list of programmable triangles
+        std::vector<ProgrammableTriangle*> prog_tri_culling_list;
         // the triangles are from view frustum culling
         std::vector<Triangle*> tri_culling_list;
         omp_lock_t tri_culling_lock;

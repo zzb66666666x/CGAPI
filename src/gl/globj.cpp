@@ -89,7 +89,8 @@ glRenderPayload::glRenderPayload(){
     renderMap.emplace(GL_ELEMENT_ARRAY_BUFFER, -1);
     renderMap.emplace(GL_FRAMEBUFFER, -1);
     renderMap.emplace(GL_TEXTURE_2D, -1);
-    
+    renderMap.emplace(GL_BIND_PROGRAM, -1);
+
     // GL_TEXTURE0 is default open to be set (activated)
     tex_units.emplace(GL_TEXTURE0, TEXTURE_UNIT_TBD);
     for(int i = 1;i < GL_MAX_TEXTURE_UNITS;++i){
@@ -177,9 +178,9 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
 
     // for bunny
-    // model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
-    // model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    // model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
+    model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.9f, 0.9f, 0.9f));
     // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
     // model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
 
@@ -189,9 +190,9 @@ void glProgram::set_transform_matrices(int width, int height, float znear, float
     // model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
 
     // for sponza
-    model = glm::translate(model, glm::vec3(0.0f, -30.0f, -80.0f));
-    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+    // model = glm::translate(model, glm::vec3(0.0f, -30.0f, -80.0f));
+    // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    // model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
     // model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
 
     model_inv_trans = glm::transpose(glm::inverse(model));
