@@ -658,7 +658,7 @@ unsigned int glCreateShader(GLenum shaderType){
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     }
-    return C->glsl_shaders.create_shader(shaderType);
+    return C->glsl_shaders.create_shader(shaderType, C->pipeline.cpu_num);
 }
 
 
@@ -754,12 +754,6 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
     }
     if (count != 1)
         throw std::runtime_error("the glsl cannot support uniform varaible array now\n");
-    glm::mat4 mat = glm::make_mat4(value);
-    if (transpose){
-        mat = glm::transpose(mat);
-    }
-    data_t data;
-    data.mat4_var = mat;
     // fetch current program id
     auto it_prog = C->glsl_shaders.shader_map.find(C->payload.shader_program_in_use);
     if(it_prog == C->glsl_shaders.shader_map.end())
@@ -769,12 +763,18 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
     if (it_id == program.id_to_name.end())
         return;
     uniform_varaible_t& uniform_var_info = program.merged_uniform_maps[it_id->second];
+    data_t& data = uniform_var_info.data;
+    glm::mat4 mat = glm::make_mat4(value);
+    if (transpose){
+        mat = glm::transpose(mat);
+    }
+    data.mat4_var = mat;
     for (int i=0; i<uniform_var_info.ftable_idx.size(); i++){
         if (uniform_var_info.ftable_idx[i]<0)
             continue;
         int idx = uniform_var_info.ftable_idx[i];
         Shader* shader_ptr = uniform_var_info.shader_ptr;
-        shader_ptr->input_uniform_dispatch(idx, data);
+        shader_ptr->set_uniform(idx, data);
     }
 }
 

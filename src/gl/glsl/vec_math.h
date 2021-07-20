@@ -14,7 +14,7 @@ typedef union{
     glm::mat4 mat4_var;
 }data_t;
 
-typedef void (*set_uniform)(data_t);
-typedef data_t (*get_uniform)();
+typedef void (*set_uniform)(data_t& var);
+typedef data_t (*get_uniform)(void);
 
 #endif

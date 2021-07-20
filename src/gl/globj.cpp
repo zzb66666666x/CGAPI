@@ -266,9 +266,9 @@ int glShaderManager::create_program(){
     return id;
 }
 
-int glShaderManager::create_shader(GLenum shader_type){
+int glShaderManager::create_shader(GLenum shader_type, int cpu_num){
     int id = cache_idmgr.AllocateId();
-    shader_cache_map.emplace(id, (shader_cache_t){Shader(), shader_type});
+    shader_cache_map.emplace(id, (shader_cache_t){Shader(cpu_num), shader_type});
     return id;
 }
 

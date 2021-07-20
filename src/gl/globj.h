@@ -249,6 +249,7 @@ class glProgram{
 };
 
 typedef struct{
+    data_t data;
     Shader* shader_ptr;
     int uniform_id;                 // unique id for uniform variables in one shder program
     std::array<int, 2> ftable_idx;  // 0 for vertex shader, 1 for fragment shader, others are reserved
@@ -276,7 +277,7 @@ class glShaderManager {
     IdManager idmgr;
     IdManager cache_idmgr;
     int create_program();
-    int create_shader(GLenum shader_type);
+    int create_shader(GLenum shader_type, int cpu_num);
     int attach(int prog, int shader_cache_id);
 };
 
@@ -367,8 +368,6 @@ class glPipeline{
         PrimitiveCache indexCache;
         // binning data
         ScreenBins* bins;
-        // to enable multi-threaded programmable pipeline
-        std::vector<glProgrammableShader> shader_programs_copies;
 };
 
 #endif
