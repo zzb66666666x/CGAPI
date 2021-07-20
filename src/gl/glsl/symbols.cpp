@@ -33,11 +33,11 @@ static const char* input_port_proto = "\nvoid input_port(std::map<std::string, d
 
 static const char* output_port_proto = "\nvoid output_port(std::map<std::string, data_t>& outdata){\n";
 
-static const char* input_uniform_dispatch = "\nvoid input_uniform_dispatch(int idx, data_t data){\n    input_uniform_fmap[idx](data);\n}\n";
+static const char* input_uniform_dispatch = "\nvoid input_uniform_dispatch(int idx, data_t& data){\n    input_uniform_fmap[idx](data);\n}\n";
 
 static const char* output_uniform_dispatch = "\ndata_t output_uniform_dispatch(int idx){\n    return output_uniform_fmap[idx]();\n}\n";
 
-static const char* input_uniform_dispatch_empty = "\nvoid input_uniform_dispatch(int idx, data_t data){}\n";
+static const char* input_uniform_dispatch_empty = "\nvoid input_uniform_dispatch(int idx, data_t& data){}\n";
 
 static const char* output_uniform_dispatch_empty = "\ndata_t output_uniform_dispatch(int idx){\n    data_t ret; return ret;\n}\n";
 
@@ -61,7 +61,7 @@ static void fetch_output_value(string& code, const char* name, int dtype){
 static string uniform_var_input_port(const char* name, int dtype){
     string var_name = name;
     string type_name = type_string_map[dtype];    
-    return string("\nvoid set_uniform_") + var_name + string("(data_t data){\n    ") + 
+    return string("\nvoid set_uniform_") + var_name + string("(data_t& data){\n    ") + 
            var_name + string(" = data.") + type_name + string("_var;\n}\n");
 }
 

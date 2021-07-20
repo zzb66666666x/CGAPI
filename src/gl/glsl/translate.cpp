@@ -14,7 +14,7 @@ static string prefix = \
 "__declspec(dllexport) void glsl_main(); \n"
 "__declspec(dllexport) void input_port(std::map<std::string, data_t>& indata); \n"
 "__declspec(dllexport) void output_port(std::map<std::string, data_t>& outdata); \n"
-"__declspec(dllexport) void input_uniform_dispatch(int idx, data_t data); \n"
+"__declspec(dllexport) void input_uniform_dispatch(int idx, data_t& data); \n"
 "__declspec(dllexport) data_t output_uniform_dispatch(int idx); \n"
 "vec4 gl_Position;\n"
 ;

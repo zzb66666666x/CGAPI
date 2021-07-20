@@ -215,6 +215,43 @@ void glProgram::set_diffuse_texture(GLenum unit){
 
 void glProgrammableShader::link_programs(){
     // init the call chain
+    // default call chain: vertex shader, then fragment shader
+    // ignore geometry shader
+    auto it1 = shaders.find(GL_VERTEX_SHADER);
+    if (it1 != shaders.end()){
+        call_chain.push_back(&(it1->second));
+    }else{
+        throw std::runtime_error("link error: missing vertex shader\n");
+    }
+    auto it2 = shaders.find(GL_FRAGMENT_SHADER);
+    if (it2 != shaders.end()){
+        call_chain.push_back(&(it2->second));
+    }else{
+        throw std::runtime_error("link error: missing fragment shader");
+    }
+    // merge the uniform variables
+    int uniform_id = 0;
+    int shader_id = 0;
+    for (auto it = shaders.begin(); it != shaders.end(); it++){
+        for (auto it2 = it->second.uniform_map.begin(); it2 != it->second.uniform_map.end(); it2++){
+            if (merged_uniform_maps.find(it2->first) != merged_uniform_maps.end()){
+                // already has item inside
+                merged_uniform_maps[it2->first].ftable_idx[shader_id] = it2->second;
+            }else{
+                // insert item
+                uniform_varaible_t uvar;
+                uvar.ftable_idx[0] = -1;
+                uvar.ftable_idx[1] = -1;
+                uvar.uniform_id = uniform_id;
+                uvar.ftable_idx[shader_id] = it2->second;
+                uvar.shader_ptr = &(it->second);
+                merged_uniform_maps.emplace(it2->first, uvar);
+                id_to_name.emplace(uniform_id, it2->first);
+                uniform_id++;
+            }   
+        }
+        shader_id++;
+    }
 }
 
 Shader* glProgrammableShader::get_shader(GLenum shader_type){
@@ -224,11 +261,35 @@ Shader* glProgrammableShader::get_shader(GLenum shader_type){
     return nullptr;
 }
 
-void glShaderManager::create_program(){
+int glShaderManager::create_program(){
     int id = idmgr.AllocateId();
     shader_map.emplace(id, glProgrammableShader());
+    return id;
 }
 
+int glShaderManager::create_shader(GLenum shader_type, int cpu_num){
+    int id = cache_idmgr.AllocateId();
+    shader_cache_map.emplace(id, (shader_cache_t){Shader(cpu_num), shader_type});
+    return id;
+}
+
+int glShaderManager::attach(int prog, int shader_cache_id){
+    // sanity check
+    auto it_prog = shader_map.find(prog);
+    auto it_shader = shader_cache_map.find(shader_cache_id);
+    if (it_prog == shader_map.end() || it_shader == shader_cache_map.end()){
+        return GL_FAILURE;
+    }
+    glProgrammableShader& shader_prog = it_prog->second;
+    shader_cache_t& cache = it_shader->second;
+    if (shader_prog.shaders.find(cache.type) != shader_prog.shaders.end()){
+        // replace the old shader
+        shader_prog.shaders[cache.type] = cache.shader;
+    }else{
+        shader_prog.shaders.emplace(cache.type, cache.shader);
+    }
+    return GL_SUCCESS;
+}
 
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();

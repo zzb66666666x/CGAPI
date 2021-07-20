@@ -5,8 +5,9 @@
 #include <iostream>
 #include <assert.h>
 #include <map>
+#include <vector>
 // windows API
-#include<wtypes.h>   
+#include <wtypes.h>   
 #include <winbase.h>   
 // parser
 #include "parse.h"
@@ -17,19 +18,32 @@
 __declspec(dllimport) void glsl_main();
 __declspec(dllimport) void input_port(std::map<std::string, data_t>& indata); 
 __declspec(dllimport) void output_port(std::map<std::string, data_t>& outdata); 
-__declspec(dllimport) void input_uniform_dispatch(int idx, data_t data); 
+__declspec(dllimport) void input_uniform_dispatch(int idx, data_t& data); 
 __declspec(dllimport) data_t output_uniform_dispatch(int idx); 
 
 typedef void (*shader_main)(void);
 typedef void (*shader_input_port)(std::map<std::string, data_t>& indata);
 typedef void (*shader_output_port)(std::map<std::string, data_t>& outdata);
-typedef void (*shader_input_uniform_dispatch)(int idx, data_t data); 
+typedef void (*shader_input_uniform_dispatch)(int idx, data_t& data); 
 typedef data_t (*shader_output_uniform_dispatch)(int idx); 
+
+typedef struct{
+    shader_main main;
+    shader_input_port input;
+    shader_output_port output;
+}ftable_t;
 
 class Shader{
     public:
-    Shader(){}
-    Shader(const char* glsl_path){
+    Shader(int cpu_num){
+        hDLL_list.resize(cpu_num);
+        glsl_main_list.resize(cpu_num);
+        input_port_list.resize(cpu_num);
+        output_port_list.resize(cpu_num);
+        input_uniform_dispatch_list.resize(cpu_num);
+        output_uniform_dispatch_list.resize(cpu_num);
+    }
+    Shader(const char* glsl_path, int cpu_num){
         std::ifstream glsl_file;
         glsl_file.open(glsl_path);
         std::stringstream glsl_string_stream;
@@ -39,10 +53,18 @@ class Shader{
         glsl_file.close();
         // convert stream into string
         glsl_code = glsl_string_stream.str();
+        hDLL_list.resize(cpu_num);
+        glsl_main_list.resize(cpu_num);
+        input_port_list.resize(cpu_num);
+        output_port_list.resize(cpu_num);
+        input_uniform_dispatch_list.resize(cpu_num);
+        output_uniform_dispatch_list.resize(cpu_num);
     }
 
     ~Shader(){
-        FreeLibrary(hDLL);
+        for (int i=0; i<hDLL_list.size(); i++){
+            FreeLibrary(hDLL_list[i]);
+        }
     }
 
     inline void set_glsl_code(std::string code){
@@ -50,21 +72,17 @@ class Shader{
     }
 
     inline void load_shader(){   
-        hDLL = LoadLibrary(TEXT("test.dll")); 
-        if(hDLL == NULL)
-            std::cout<<"Error!!!\n";  
-        glsl_main = (shader_main)GetProcAddress(hDLL,"glsl_main"); 
-        input_port = (shader_input_port)GetProcAddress(hDLL,"input_port");
-        output_port = (shader_output_port)GetProcAddress(hDLL,"output_port");
-        input_uniform_dispatch = (shader_input_uniform_dispatch)GetProcAddress(hDLL,"input_uniform_dispatch");
-        output_uniform_dispatch = (shader_output_uniform_dispatch)GetProcAddress(hDLL,"output_uniform_dispatch");
+        for (int i=0; i<hDLL_list.size(); i++){
+            hDLL_list[i] = LoadLibrary(TEXT("test.dll")); 
+            if(hDLL_list[i] == NULL)
+                std::cout<<"Error!!!\n";  
+            glsl_main_list[i] = (shader_main)GetProcAddress(hDLL_list[i],"glsl_main"); 
+            input_port_list[i] = (shader_input_port)GetProcAddress(hDLL_list[i],"input_port");
+            output_port_list[i] = (shader_output_port)GetProcAddress(hDLL_list[i],"output_port");
+            input_uniform_dispatch_list[i] = (shader_input_uniform_dispatch)GetProcAddress(hDLL_list[i],"input_uniform_dispatch");
+            output_uniform_dispatch_list[i] = (shader_output_uniform_dispatch)GetProcAddress(hDLL_list[i],"output_uniform_dispatch");
+        }
     }
-    
-    shader_main glsl_main;
-    shader_input_port input_port;
-    shader_output_port output_port;
-    shader_input_uniform_dispatch input_uniform_dispatch;
-    shader_output_uniform_dispatch output_uniform_dispatch;
 
     inline void compile(){
         char* output_code_buffer;
@@ -104,6 +122,24 @@ class Shader{
         }
     }
 
+    inline ftable_t get_shader_utils(int idx){
+        ftable_t ret;
+        ret.input = input_port_list[idx];
+        ret.output = output_port_list[idx];
+        ret.main = glsl_main_list[idx];
+        return ret;
+    }
+
+    inline data_t fetch_uniform(int thread_id, int idx){
+        return output_uniform_dispatch_list[thread_id](idx);
+    }
+
+    inline void set_uniform(int idx, data_t& data){
+        for (int thread_id = 0; thread_id<hDLL_list.size(); thread_id++){
+            input_uniform_dispatch_list[thread_id](idx, data);
+        }
+    }
+
     std::map<std::string, io_attrib> io_profile;
     std::map<std::string, int> uniform_map;
     std::map<std::string, io_attrib*> layouts;
@@ -121,5 +157,11 @@ class Shader{
     std::string glsl_code;
     std::string cpp_code;
     // windows dll object
-    HINSTANCE hDLL;
+    std::vector<HINSTANCE> hDLL_list;
+    // interface functions
+    std::vector<shader_main> glsl_main_list;
+    std::vector<shader_input_port> input_port_list;
+    std::vector<shader_output_port> output_port_list;
+    std::vector<shader_input_uniform_dispatch> input_uniform_dispatch_list;
+    std::vector<shader_output_uniform_dispatch> output_uniform_dispatch_list;
 };

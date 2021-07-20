@@ -248,21 +248,37 @@ class glProgram{
     void initialize_layouts();
 };
 
+typedef struct{
+    data_t data;
+    Shader* shader_ptr;
+    int uniform_id;                 // unique id for uniform variables in one shder program
+    std::array<int, 2> ftable_idx;  // 0 for vertex shader, 1 for fragment shader, others are reserved
+}uniform_varaible_t;
+
 class glProgrammableShader{
     public:
     std::map<GLenum, Shader> shaders;
     std::vector<Shader*> call_chain;
-
+    std::map<std::string, uniform_varaible_t> merged_uniform_maps;
+    std::map<int, std::string> id_to_name;
     void link_programs();
     Shader* get_shader(GLenum shader_type);
 };
 
+typedef struct{
+    Shader shader;
+    GLenum type;
+}shader_cache_t;
+
 class glShaderManager {
     public:
     std::map<int, glProgrammableShader> shader_map;
+    std::map<int, shader_cache_t> shader_cache_map;
     IdManager idmgr;
-
-    void create_program();
+    IdManager cache_idmgr;
+    int create_program();
+    int create_shader(GLenum shader_type, int cpu_num);
+    int attach(int prog, int shader_cache_id);
 };
 
 class glRenderPayload{
@@ -272,6 +288,8 @@ class glRenderPayload{
     std::map<GLenum, int> renderMap;
     // texture paths
     std::map<GLenum, int> tex_units;
+    int shader_program_in_use;
+    glProgrammableShader* cur_shader_program_ptr;
 };
 
 struct Pixel{
