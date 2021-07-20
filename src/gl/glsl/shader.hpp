@@ -14,23 +14,31 @@
 #include "symbols.h"
 #include "vec_math.h"
 #include "translate.h"
+#include "inner_variable.h"
 
 __declspec(dllimport) void glsl_main();
 __declspec(dllimport) void input_port(std::map<std::string, data_t>& indata); 
 __declspec(dllimport) void output_port(std::map<std::string, data_t>& outdata); 
 __declspec(dllimport) void input_uniform_dispatch(int idx, data_t& data); 
 __declspec(dllimport) data_t output_uniform_dispatch(int idx); 
+__declspec(dllimport) void set_inner_variable(int variable, data_t& data);
+__declspec(dllimport) void get_inner_variable(int variable, data_t& data);
 
 typedef void (*shader_main)(void);
 typedef void (*shader_input_port)(std::map<std::string, data_t>& indata);
 typedef void (*shader_output_port)(std::map<std::string, data_t>& outdata);
 typedef void (*shader_input_uniform_dispatch)(int idx, data_t& data); 
 typedef data_t (*shader_output_uniform_dispatch)(int idx); 
+typedef void (*shader_set_inner_variable)(int variable, data_t& data);
+typedef void (*shader_get_inner_variable)(int variable, data_t& data);
+
 
 typedef struct{
     shader_main main;
     shader_input_port input;
     shader_output_port output;
+    shader_set_inner_variable set_inner;
+    shader_get_inner_variable get_inner;
 }ftable_t;
 
 class Shader{
@@ -42,6 +50,8 @@ class Shader{
         output_port_list.resize(cpu_num);
         input_uniform_dispatch_list.resize(cpu_num);
         output_uniform_dispatch_list.resize(cpu_num);
+        set_inner_variable_list.resize(cpu_num);
+        get_inner_variable_list.resize(cpu_num);
     }
     Shader(const char* glsl_path, int cpu_num){
         std::ifstream glsl_file;
@@ -59,6 +69,8 @@ class Shader{
         output_port_list.resize(cpu_num);
         input_uniform_dispatch_list.resize(cpu_num);
         output_uniform_dispatch_list.resize(cpu_num);
+        set_inner_variable_list.resize(cpu_num);
+        get_inner_variable_list.resize(cpu_num);
     }
 
     ~Shader(){
@@ -81,6 +93,8 @@ class Shader{
             output_port_list[i] = (shader_output_port)GetProcAddress(hDLL_list[i],"output_port");
             input_uniform_dispatch_list[i] = (shader_input_uniform_dispatch)GetProcAddress(hDLL_list[i],"input_uniform_dispatch");
             output_uniform_dispatch_list[i] = (shader_output_uniform_dispatch)GetProcAddress(hDLL_list[i],"output_uniform_dispatch");
+            set_inner_variable_list[i] = (shader_set_inner_variable)GetProcAddress(hDLL_list[i],"set_inner_variable");
+            get_inner_variable_list[i] = (shader_get_inner_variable)GetProcAddress(hDLL_list[i],"get_inner_variable");       
         }
     }
 
@@ -127,6 +141,8 @@ class Shader{
         ret.input = input_port_list[idx];
         ret.output = output_port_list[idx];
         ret.main = glsl_main_list[idx];
+        ret.set_inner = set_inner_variable_list[idx];
+        ret.get_inner = get_inner_variable_list[idx];
         return ret;
     }
 
@@ -164,4 +180,6 @@ class Shader{
     std::vector<shader_output_port> output_port_list;
     std::vector<shader_input_uniform_dispatch> input_uniform_dispatch_list;
     std::vector<shader_output_uniform_dispatch> output_uniform_dispatch_list;
+    std::vector<shader_set_inner_variable> set_inner_variable_list;
+    std::vector<shader_get_inner_variable> get_inner_variable_list;
 };

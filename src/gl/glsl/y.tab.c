@@ -516,11 +516,11 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,    89,    89,    94,    97,   102,   109,   117,   122,   137,
-     145,   151,   163,   179,   183,   194,   203,   215,   220,   221,
-     224,   229,   234,   239,   244,   249,   254,   259,   264,   269,
-     274,   281,   282,   285,   286,   289,   293,   297,   303,   309,
-     315,   321
+       0,    89,    89,    96,    99,   104,   111,   119,   124,   139,
+     147,   153,   165,   181,   185,   196,   205,   217,   222,   223,
+     226,   231,   236,   241,   246,   251,   256,   261,   266,   271,
+     276,   283,   284,   287,   288,   291,   295,   299,   305,   311,
+     317,   323
 };
 #endif
 
@@ -1464,7 +1464,9 @@ yyreduce:
 /* Line 1455 of yacc.c  */
 #line 89 "grammar.y"
     {
-	emplace_profile("gl_Position", OUTPUT_VAR, TYPE_VEC4, LAYOUT_UNDEF);
+	// interset a few inner variables
+	emplace_profile("gl_Position", INNER_VAR, TYPE_VEC4, LAYOUT_UNDEF);
+	emplace_profile("gl_FragColor", INNER_VAR, TYPE_VEC4, LAYOUT_UNDEF);
 	// printf("////////// TRANSLATION_UNIT_PARSED //////////\n");
 }
     break;
@@ -1472,7 +1474,7 @@ yyreduce:
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 94 "grammar.y"
+#line 96 "grammar.y"
     {
 					// printf("\n");
 				}
@@ -1481,7 +1483,7 @@ yyreduce:
   case 4:
 
 /* Line 1455 of yacc.c  */
-#line 97 "grammar.y"
+#line 99 "grammar.y"
     {
 					// printf("\n");
 				}
@@ -1490,7 +1492,7 @@ yyreduce:
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 102 "grammar.y"
+#line 104 "grammar.y"
     {
 			/* translate glsl code and append to output code buffer */ 
 			register_code(&parser_out, (yyvsp[(1) - (1)].buf)->data);
@@ -1503,7 +1505,7 @@ yyreduce:
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 109 "grammar.y"
+#line 111 "grammar.y"
     {
 			register_code(&parser_out, (yyvsp[(1) - (1)].buf)->data);
 			free_buffer((yyvsp[(1) - (1)].buf));
@@ -1515,7 +1517,7 @@ yyreduce:
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 117 "grammar.y"
+#line 119 "grammar.y"
     {
 					buffer_t * tmp_buf = (yyvsp[(1) - (2)].buf);
 					register_code(tmp_buf, ";\n");
@@ -1526,7 +1528,7 @@ yyreduce:
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 122 "grammar.y"
+#line 124 "grammar.y"
     {
 					/* variable decl in shader */
 				   	buffer_t * tmp_buf = (buffer_t*)malloc(sizeof(buffer_t));
@@ -1545,7 +1547,7 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 137 "grammar.y"
+#line 139 "grammar.y"
     {
 				buffer_t * tmp_buf = (yyvsp[(1) - (2)].buf);
 				register_code(tmp_buf, (yyvsp[(2) - (2)].str));
@@ -1557,7 +1559,7 @@ yyreduce:
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 145 "grammar.y"
+#line 147 "grammar.y"
     {
 						buffer_t* tmp_buf = (yyvsp[(1) - (2)].buf);
 						register_code(tmp_buf, ")");
@@ -1569,7 +1571,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 151 "grammar.y"
+#line 153 "grammar.y"
     {
 					  	// printf("\nend functional with params\n");
 						buffer_t * tmp_buf1 = (yyvsp[(1) - (3)].buf);
@@ -1585,7 +1587,7 @@ yyreduce:
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 163 "grammar.y"
+#line 165 "grammar.y"
     {
 					// printf("begin functional: \n    ");
 					buffer_t* tmp_buf = (buffer_t*)malloc(sizeof(buffer_t));
@@ -1606,7 +1608,7 @@ yyreduce:
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 179 "grammar.y"
+#line 181 "grammar.y"
     {
 				/* pass it directly */
 				(yyval.buf) = (yyvsp[(1) - (1)].buf); 
@@ -1616,7 +1618,7 @@ yyreduce:
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 183 "grammar.y"
+#line 185 "grammar.y"
     {
 				buffer_t* tmp_buf1 = (yyvsp[(1) - (3)].buf);
 				buffer_t* tmp_buf2 = (yyvsp[(3) - (3)].buf);
@@ -1631,7 +1633,7 @@ yyreduce:
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 194 "grammar.y"
+#line 196 "grammar.y"
     {
 							buffer_t* tmp_buf = (buffer_t*)malloc(sizeof(buffer_t));
 							init_buffer(tmp_buf, 300);
@@ -1646,7 +1648,7 @@ yyreduce:
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 203 "grammar.y"
+#line 205 "grammar.y"
     {
 						 	buffer_t* tmp_buf = (buffer_t*)malloc(sizeof(buffer_t));
 							init_buffer(tmp_buf, 300);
@@ -1658,7 +1660,7 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 215 "grammar.y"
+#line 217 "grammar.y"
     {
 						// printf("%s", $1); 
 						(yyval.str) = (yyvsp[(1) - (1)].str);
@@ -1668,21 +1670,21 @@ yyreduce:
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 220 "grammar.y"
+#line 222 "grammar.y"
     {(yyval.str) = (yyvsp[(1) - (1)].str);}
     break;
 
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 221 "grammar.y"
+#line 223 "grammar.y"
     {(yyval.str) = (yyvsp[(2) - (2)].str);}
     break;
 
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 224 "grammar.y"
+#line 226 "grammar.y"
     {
 							// printf("void \t"); 
 							(yyval.str) = " void "; 
@@ -1693,7 +1695,7 @@ yyreduce:
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 229 "grammar.y"
+#line 231 "grammar.y"
     {
 				  			// printf("float \t"); 
 							(yyval.str) = " float "; 
@@ -1704,7 +1706,7 @@ yyreduce:
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 234 "grammar.y"
+#line 236 "grammar.y"
     {
 				  			// printf("double \t"); 
 							(yyval.str) = " double "; 
@@ -1715,7 +1717,7 @@ yyreduce:
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 239 "grammar.y"
+#line 241 "grammar.y"
     {
 				  			// printf("int \t"); 
 							(yyval.str) = " int "; 
@@ -1726,7 +1728,7 @@ yyreduce:
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 244 "grammar.y"
+#line 246 "grammar.y"
     {
 				  			// printf("bool \t"); 
 							(yyval.str) = " bool "; 
@@ -1737,7 +1739,7 @@ yyreduce:
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 249 "grammar.y"
+#line 251 "grammar.y"
     {
 				  			// printf("mat4 \t"); 
 							(yyval.str) = " mat4 "; 
@@ -1748,7 +1750,7 @@ yyreduce:
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 254 "grammar.y"
+#line 256 "grammar.y"
     {
 				  			// printf("mat3 \t"); 
 							(yyval.str) = " mat3 "; 
@@ -1759,7 +1761,7 @@ yyreduce:
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 259 "grammar.y"
+#line 261 "grammar.y"
     {
 				  			printf("mat2 \t"); 
 							(yyval.str) = " mat2 "; 
@@ -1770,7 +1772,7 @@ yyreduce:
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 264 "grammar.y"
+#line 266 "grammar.y"
     {
 				  			// printf("vec4 \t"); 
 							(yyval.str) = " vec4 "; 
@@ -1781,7 +1783,7 @@ yyreduce:
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 269 "grammar.y"
+#line 271 "grammar.y"
     {
 				  			// printf("vec3 \t"); 
 							(yyval.str) = " vec3 "; 
@@ -1792,7 +1794,7 @@ yyreduce:
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 274 "grammar.y"
+#line 276 "grammar.y"
     {
 							// printf("vec2 \t"); 
 							(yyval.str) = " vec2 "; 
@@ -1803,7 +1805,7 @@ yyreduce:
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 289 "grammar.y"
+#line 291 "grammar.y"
     {
 			io_status = INPUT_VAR;
 			// printf("input var\t");
@@ -1813,7 +1815,7 @@ yyreduce:
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 293 "grammar.y"
+#line 295 "grammar.y"
     {
 		   	io_status = OUTPUT_VAR;
 		   	// printf("output var\t");
@@ -1823,7 +1825,7 @@ yyreduce:
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 297 "grammar.y"
+#line 299 "grammar.y"
     {
 		   	io_status = UNIFORM_VAR;
 		   	// printf("uniform var\t");
@@ -1833,7 +1835,7 @@ yyreduce:
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 303 "grammar.y"
+#line 305 "grammar.y"
     {
 				// printf("layout num %d\t", $5);
 				layout_status = (yyvsp[(5) - (6)].intval);
@@ -1843,7 +1845,7 @@ yyreduce:
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 310 "grammar.y"
+#line 312 "grammar.y"
     {
 							(yyval.str) = (yyvsp[(1) - (1)].str); 
 							// printf("var name %s\t", $1);
@@ -1853,7 +1855,7 @@ yyreduce:
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 316 "grammar.y"
+#line 318 "grammar.y"
     {
 							(yyval.str) = (yyvsp[(1) - (1)].str); 
 							// printf("func name %s\t", $1);
@@ -1863,14 +1865,14 @@ yyreduce:
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 321 "grammar.y"
+#line 323 "grammar.y"
     {(yyval.intval) = (yyvsp[(1) - (1)].intval);}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 1874 "y.tab.c"
+#line 1876 "y.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2082,7 +2084,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 324 "grammar.y"
+#line 326 "grammar.y"
 
 
 void yyerror(char *str){

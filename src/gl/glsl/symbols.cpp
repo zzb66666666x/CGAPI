@@ -26,7 +26,8 @@ static string io_string_map[] = {
     "normal",
     "in",
     "out",
-    "uniform"
+    "uniform",
+    "inner"
 };
 
 static const char* input_port_proto = "\nvoid input_port(std::map<std::string, data_t>& indata){\n";

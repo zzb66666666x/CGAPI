@@ -293,7 +293,7 @@ int glShaderManager::attach(int prog, int shader_cache_id){
 
 glPipeline::glPipeline(){
     cpu_num = std::thread::hardware_concurrency();
-    // omp_set_num_threads(cpu_num);
+    omp_set_num_threads(cpu_num);
     omp_init_lock(&tri_culling_lock);
 
     vertex_num = 0;

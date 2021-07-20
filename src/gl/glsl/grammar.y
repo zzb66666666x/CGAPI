@@ -87,7 +87,9 @@ void reset_status_flags(){
 %%
 
 root: translation_unit{
-	emplace_profile("gl_Position", OUTPUT_VAR, TYPE_VEC4, LAYOUT_UNDEF);
+	// interset a few inner variables
+	emplace_profile("gl_Position", INNER_VAR, TYPE_VEC4, LAYOUT_UNDEF);
+	emplace_profile("gl_FragColor", INNER_VAR, TYPE_VEC4, LAYOUT_UNDEF);
 	// printf("////////// TRANSLATION_UNIT_PARSED //////////\n");
 }	
 

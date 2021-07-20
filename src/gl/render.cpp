@@ -31,6 +31,8 @@ inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::v
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
 
+#define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3)/weight)
+
 /////////////////////////////////////// face culling function //////////////////////////////////
 inline static void backface_culling(Triangle& t)
 {
@@ -1269,6 +1271,27 @@ void* _thr_rasterize(void* thread_id)
 }
 
 ///////////////////////////// PROGRAMMABLE VERSION WITH OPENMP ////////////////////////////
+static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, std::map<std::string, data_t>& target){
+    for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); it++){
+        int dtype = shader_ptr->io_profile[it->first].dtype;
+        data_t interp_data;
+        switch(dtype){
+            case TYPE_VEC2:
+                interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var, 1.0f);
+                break;
+            case TYPE_VEC3:
+                interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var, 1.0f);
+                break;
+            case TYPE_VEC4:
+                interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var, 1.0f);
+                break;
+            default:
+                throw std::runtime_error("don't interp on these types now\n");
+        }
+        target.emplace(it->first, interp_data);
+    }
+}
+
 void programmable_process_geometry_openmp(){
     /**
      * input assembly
@@ -1482,5 +1505,88 @@ void programmable_process_geometry_openmp(){
 }
 
 void programmable_rasterize_with_shading_openmp(){
+    GET_CURRENT_CONTEXT(ctx);
+    std::vector<ProgrammableTriangle*>& prog_triangle_list = ctx->pipeline.prog_triangle_list;
+    int width = ctx->width, height = ctx->height;
 
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+
+    ProgrammableTriangle* t = nullptr;
+    int len = prog_triangle_list.size();
+    float* zbuf = (float*)ctx->zbuf->getDataPtr();
+    Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
+    std::vector<ftable_t> ft;
+    ft.resize(ctx->pipeline.cpu_num);
+    for (int i=0; i<ctx->pipeline.cpu_num; i++){
+        ft[i] = fragment_shader->get_shader_utils(i);
+    }
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for private(t)
+#endif
+    for (int i = 0; i < len; ++i) {
+        t = prog_triangle_list[i];
+        int thread_id = omp_get_thread_num();
+        ftable_t& functions = ft[thread_id];
+
+        if (t->culling) {
+            t->culling = false;
+            continue;
+        }
+
+        glm::vec4* screen_pos = t->screen_pos;
+        int minx, maxx, miny, maxy, x, y;
+        minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
+        miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
+        maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
+        maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
+
+#if 1
+        // view shrinking in rasterization
+        minx = minx < 0 ? 0 : minx;
+        miny = miny < 0 ? 0 : miny;
+        maxx = maxx >= width ? width - 1 : maxx;
+        maxy = maxy >= height ? height - 1 : maxy;
+#endif
+
+        // AABB algorithm
+        for (y = miny; y <= maxy; ++y) {
+            for (x = minx; x <= maxx; ++x) {
+                int index = GET_INDEX(x, y, width, height);
+                if (!t->inside(x + 0.5f, y + 0.5f))
+                    continue;
+
+                // alpha beta gamma
+                glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+                // perspective correction
+                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
+                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
+                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
+                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+                
+                if (!ctx->use_z_test) {
+                    throw std::runtime_error("please open the z depth test\n");
+                } else {
+                    // zp: z value after interpolation
+                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    if (zp < zbuf[index]) {
+                        zbuf[index] = zp;
+                        omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        std::map<std::string, data_t> frag_shader_in, frag_shader_out;
+                        programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
+                        functions.input(frag_shader_in);
+                        functions.main();
+                        functions.output(frag_shader_out);
+                        data_t frag_color_union;
+                        functions.get_inner(INNER_GL_FRAGCOLOR, frag_color_union);
+                        omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
+                        frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
+                        frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                    }
+                    omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                }
+            }
+        }
+    }    
 }
