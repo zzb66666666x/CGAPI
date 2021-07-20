@@ -6,4 +6,6 @@
 #define GLM_FORCE_AVX2
 #define GLM_FORCE_INLINE 
 
+#define ENABLE_PROGRAMMABLE_PIPELINE    1
+
 #endif

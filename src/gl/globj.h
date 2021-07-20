@@ -288,6 +288,7 @@ class glRenderPayload{
     // texture paths
     std::map<GLenum, int> tex_units;
     int shader_program_in_use;
+    glProgrammableShader* cur_shader_program_ptr;
 };
 
 struct Pixel{
@@ -366,6 +367,8 @@ class glPipeline{
         PrimitiveCache indexCache;
         // binning data
         ScreenBins* bins;
+        // to enable multi-threaded programmable pipeline
+        std::vector<glProgrammableShader> shader_programs_copies;
 };
 
 #endif

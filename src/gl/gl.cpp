@@ -456,8 +456,7 @@ void glDrawArrays(GLenum mode, int first, int count){
     if (vb_data == nullptr || vbo_ptr->getSize()<=0)
         return;
 
-    // sanity check for texture resources
-    // check active textures, tell pipeline what are the useful textures
+    // sanity check for texture and layout (the method depends on whether we use programmable shaders)
     int cnt = 0;
     for (auto& it:C->payload.tex_units){
         if(it.second > 0){
@@ -466,21 +465,25 @@ void glDrawArrays(GLenum mode, int first, int count){
             if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr()==nullptr)
                 return;
             C->pipeline.textures[cnt] = tex_ptr;
+
+            #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
             C->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0+cnt));
+            #endif
         }
         else{
             C->pipeline.textures[cnt] = nullptr;
         }
         cnt++;
     }
+    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
+    check_set_layouts();
+    #endif
     // prepare pipeline environment
     C->pipeline.vao_ptr = vao_ptr;
     C->pipeline.vbo_ptr = vbo_ptr;
     C->pipeline.first_vertex = first;
     C->pipeline.vertex_num = count;
     C->pipeline.use_indices = false;
-
-    check_set_layouts();
 
     // draw
     // std::cout<<"drawing one frame"<<std::endl;
@@ -540,8 +543,7 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         || ebo_ptr->getSize() <= 0) {
         return;
     }
-    // sanity check for texture resources
-    // check active textures, tell pipeline what are the useful textures
+    // sanity check for texture and layout (the method depends on whether we use programmable shaders)
     int cnt = 0;
     for (auto& it : ctx->payload.tex_units) {
         if (it.second > 0) {
@@ -550,12 +552,18 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
             if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr() == nullptr)
                 return;
             ctx->pipeline.textures[cnt] = tex_ptr;
+
+            #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
             ctx->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0 + cnt));
+            #endif
         } else {
             ctx->pipeline.textures[cnt] = nullptr;
         }
         ++cnt; 
     }
+    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
+    check_set_layouts();
+    #endif
     // prepare pipeline environment
     ctx->pipeline.vao_ptr = vao_ptr;
     ctx->pipeline.vbo_ptr = vbo_ptr;
@@ -564,8 +572,6 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
     ctx->pipeline.ebo_config.first_indices = indices;
     ctx->pipeline.ebo_config.indices_type = type;
     ctx->pipeline.use_indices = true;
-
-    check_set_layouts();
 
     // draw
     std::list<render_fp>& exec_list = ctx->pipeline.exec;
@@ -735,6 +741,7 @@ void glUseProgram(unsigned int shaderProgram){
     if(it == C->glsl_shaders.shader_map.end())
         return;
     C->payload.shader_program_in_use = shaderProgram;    
+    C->payload.cur_shader_program_ptr = &(it->second);
 }
 
 // uniform variable location has 32 bits
