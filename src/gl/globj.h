@@ -368,6 +368,8 @@ class glPipeline{
         PrimitiveCache indexCache;
         // binning data
         ScreenBins* bins;
+        // multi-thread shader function jump tables
+        std::vector<ftable_t> shader_utils;
 };
 
 #endif

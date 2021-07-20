@@ -3,6 +3,7 @@
 using namespace std;
 
 static string prefix = \
+"#define GLSL_CODE"
 "#include \"vec_math.h\" \n"
 "#include <stdio.h> \n"
 "#include <map> \n"
@@ -16,7 +17,9 @@ static string prefix = \
 "__declspec(dllexport) void output_port(std::map<std::string, data_t>& outdata); \n"
 "__declspec(dllexport) void input_uniform_dispatch(int idx, data_t& data); \n"
 "__declspec(dllexport) data_t output_uniform_dispatch(int idx); \n"
-"vec4 gl_Position;\n"
+"#include \"inner_variable.h\" \n"
+"vec4 gl_Position; \n"
+"vec4 gl_FragColor; \n"
 ;
 
 static string postfix = \

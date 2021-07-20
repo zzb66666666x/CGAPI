@@ -18,6 +18,7 @@ int parse_file(const char* filename, char** output_buffer, int* buf_size);
 #define INPUT_VAR		1
 #define OUTPUT_VAR		2
 #define UNIFORM_VAR		3
+#define INNER_VAR		4
 #define TYPE_VOID		0
 #define TYPE_VEC2		1
 #define TYPE_VEC3		2

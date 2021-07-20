@@ -14,6 +14,7 @@ typedef union{
     glm::mat4 mat4_var;
 }data_t;
 
+// function pointers 
 typedef void (*set_uniform)(data_t& var);
 typedef data_t (*get_uniform)(void);
 
