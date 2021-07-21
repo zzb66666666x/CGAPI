@@ -1393,6 +1393,11 @@ void programmable_process_geometry_openmp(){
     }
     Shader* vert_shader = program_it->second.call_chain[0];
     std::vector<ProgrammableTriangle*>& tri_culling_list = ppl->prog_tri_culling_list;
+    std::vector<ftable_t> ft;
+    ft.resize(ctx->pipeline.cpu_num);
+    for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
+        ft[i] = vert_shader->get_shader_utils(i);
+    }
     // begin parallel block
     std::map<std::string, data_t> vs_input;
     std::map<std::string, data_t> vs_output;
@@ -1429,12 +1434,12 @@ void programmable_process_geometry_openmp(){
                     }
                 }
             }
-            ftable_t ftable = vert_shader->get_shader_utils(omp_get_thread_num());
-            ftable.input(vs_input);
+            int thread_id = omp_get_thread_num();
+            ft[thread_id].input(vs_input);
 
             // execute vertex shading
-            ftable.main();
-            ftable.output(vs_output);
+            ft[thread_id].main();
+            ft[thread_id].output(vs_output);
 
             // assemble triangle
             triangle_list[tri_ind]->screen_pos[i] = vs_output["gl_Position"].vec4_var;
