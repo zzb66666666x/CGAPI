@@ -3,6 +3,7 @@
 
 #include "../../include/gl/common.h"
 #include "glsl/parse.h"
+#include "glsl/shader.hpp"
 #include "configs.h"
 #include <array>
 #include <assert.h>

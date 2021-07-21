@@ -1,3 +1,5 @@
+#ifndef _SHADER_HPP_
+#define _SHADER_HPP_
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -183,3 +185,5 @@ class Shader{
     std::vector<shader_set_inner_variable> set_inner_variable_list;
     std::vector<shader_get_inner_variable> get_inner_variable_list;
 };
+
+#endif

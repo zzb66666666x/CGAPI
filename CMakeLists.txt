@@ -3,10 +3,10 @@ set(CMAKE_CXX_STANDARD 11)
 project(glite LANGUAGES CXX C)
 
 # vcpkg dir settings
-# set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
-#   CACHE STRING "Vcpkg toolchain file")
-set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
+set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
   CACHE STRING "Vcpkg toolchain file")
+# set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
+#   CACHE STRING "Vcpkg toolchain file")
 
 # flags
 # set(CMAKE_CXX_FLAGS "-g -O0")
@@ -49,6 +49,19 @@ set(GL_SOURCES
 	src/gl/binning.cpp
 )
 
+set(GL_PARSER
+	src/gl/glsl/lex.yy.c
+	src/gl/glsl/y.tab.h
+	src/gl/glsl/y.tab.c
+
+	src/gl/glsl/symbols.h
+	src/gl/glsl/symbols.cpp
+	src/gl/glsl/translate.h
+	src/gl/glsl/translate.cpp
+	src/gl/glsl/parse.h
+	src/gl/glsl/parse.c
+)
+
 set(GLV_SOURCES
 	src/glv/glv.cpp
 )
@@ -61,22 +74,22 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
-# set(Boost_USE_STATIC_LIBS ON)
-# set(Boost_USE_STATIC_RUNTIME ON)
-# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-# include_directories(${Boost_INCLUDE_DIR})
-# find_package(Boost REQUIRED)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
+set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+include_directories(${Boost_INCLUDE_DIR})
+find_package(Boost REQUIRED)
 
-# set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
-# find_package(glm REQUIRED)
+set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+find_package(glm REQUIRED)
 
-# set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
-set(OpenCV_DIR D:/CodingLibs/opencv/mingw_build)
+set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
+# set(OpenCV_DIR D:/CodingLibs/opencv/mingw_build)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-# set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
-set(benchmark_DIR D:/CodingLibs/vcpkg/installed/x64-mingw-static/share/benchmark)
+set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
+# set(benchmark_DIR D:/CodingLibs/vcpkg/installed/x64-mingw-static/share/benchmark)
 find_package(benchmark REQUIRED)
 
 ################################################
@@ -85,6 +98,7 @@ find_package(benchmark REQUIRED)
 add_library(glite SHARED
 	${GLV_SOURCES}
 	${GL_SOURCES}
+	${GL_PARSER}
 	${UTILS_SOURCES}
 	${GLV_HEADERS}
 	${GL_HEADERS}
@@ -92,8 +106,8 @@ add_library(glite SHARED
 )
 target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
-# target_link_libraries(glite ${Boost_LIBRARIES})
-# target_link_libraries(glite glm::glm)
+target_link_libraries(glite ${Boost_LIBRARIES})
+target_link_libraries(glite glm::glm)
 target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 
 ################################################
@@ -134,3 +148,6 @@ target_link_libraries(test_benchmark glite)
 
 add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
 target_link_libraries(test_sponza glite)
+
+add_executable(test_prog_ppl tests/test_programmable_ppl.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
+target_link_libraries(test_prog_ppl glite)

@@ -1405,7 +1405,7 @@ void programmable_process_geometry_openmp(){
     unsigned char* buf;
     int i, j;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(input_ptr) private(buf) private(vs_output) \
+#pragma omp parallel for private(input_ptr) private(buf) \
     private(i) private(j) private(vs_input) private(vs_output)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
