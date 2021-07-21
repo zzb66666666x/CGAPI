@@ -175,7 +175,7 @@ ProgrammableVertex ProgrammableTriangle::intersect(ProgrammableVertex& v1, Progr
     float d1 = glm::dot(v1.screen_pos, plane);
     float d2 = glm::dot(v2.screen_pos, plane);
     float weight = d1 / (d1 - d2);
-    return ProgrammableVertex::lerp(v1, v2, weight);
+    return ProgrammableVertex::lerp(cur_shader, v1, v2, weight);
 }
 
 void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res)

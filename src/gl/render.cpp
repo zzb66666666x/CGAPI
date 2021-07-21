@@ -1385,7 +1385,7 @@ void programmable_process_geometry_openmp(){
         triangle_list.resize(triangle_size);
     }
 
-    int program_id = ctx->payload.renderMap[GL_BIND_PROGRAM];
+    int program_id = ctx->payload.shader_program_in_use;
     auto program_it = ctx->glsl_shaders.shader_map.find(program_id);
     if(program_it == ctx->glsl_shaders.shader_map.end()
         || program_it->second.call_chain.size() == 0){
@@ -1441,6 +1441,7 @@ void programmable_process_geometry_openmp(){
             triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
         }
 
+        triangle_list[tri_ind]->cur_shader = vert_shader;
         // view frustum culling list
         std::vector<ProgrammableTriangle*> vfc_list;
         triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);

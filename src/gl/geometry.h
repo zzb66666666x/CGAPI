@@ -2,6 +2,7 @@
 #define _GEOMETRY_H
 
 #include "../../include/gl/common.h"
+#include "glsl/parse.h"
 #include "configs.h"
 #include <array>
 #include <assert.h>
@@ -162,13 +163,28 @@ public:
     glm::vec4 screen_pos;
     std::map<std::string, data_t> vertex_attrib;
 
-    inline static ProgrammableVertex lerp(ProgrammableVertex &v1, ProgrammableVertex &v2, float weight)
+    inline static ProgrammableVertex lerp(Shader* shader_ptr, ProgrammableVertex &v1, ProgrammableVertex &v2, float weight)
     {
         ProgrammableVertex res;
         res.screen_pos = v1.screen_pos + (v2.screen_pos - v1.screen_pos) * weight;
         // for(auto it = v1.vertex_attrib.begin(); it != v1.vertex_attrib.end(); ++it){
         //     res.vertex_attrib[it->first] = it->second + (v2.vertex_attrib[it->first] - it->second) * weight;
         // }
+        for (auto it = v1.vertex_attrib.begin(); it != v1.vertex_attrib.end(); ++it) {
+            int dtype = shader_ptr->io_profile[it->first].dtype;
+            data_t interp_data;
+            switch (dtype) {
+                case TYPE_VEC2:
+                    interp_data.vec2_var = it->second.vec2_var + (v2.vertex_attrib[it->first].vec2_var - it->second.vec2_var) * weight;
+                    break;
+                case TYPE_VEC3:
+                    interp_data.vec3_var = it->second.vec3_var + (v2.vertex_attrib[it->first].vec3_var - it->second.vec3_var) * weight;
+                    break;
+                default:
+                    throw std::runtime_error("don't interp on these types now\n");
+            }
+            res.vertex_attrib.emplace(it->first, interp_data);
+        }
         return res;
     }
 };
@@ -179,6 +195,8 @@ public:
     std::map<std::string, data_t> vertex_attribs[3];
 
     bool culling = false;
+
+    Shader* cur_shader;
 
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
