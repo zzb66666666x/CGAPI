@@ -45,6 +45,7 @@ class sampler2D{
     filter_type filter;
 };
 
+// 2D texture
 glm::vec4 texture2D(sampler2D &texture, glm::vec2 &texcoord);
 
 #endif

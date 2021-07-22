@@ -61,6 +61,22 @@ set(UTILS_SOURCES
 	src/utils/id.cpp
 )
 
+set(GL_PARSER
+	src/gl/glsl/lex.yy.c
+	src/gl/glsl/y.tab.h
+	src/gl/glsl/y.tab.c
+	src/gl/glsl/symbols.h
+	src/gl/glsl/symbols.cpp
+	src/gl/glsl/translate.h
+	src/gl/glsl/translate.cpp
+	src/gl/glsl/parse.h
+	src/gl/glsl/parse.c
+	src/gl/glsl/shader.hpp
+	src/gl/glsl/inner_variable.h
+	src/gl/glsl/inner_support.h
+	src/gl/glsl/vec_math.h
+)
+
 # set(Boost_USE_STATIC_LIBS ON)
 # set(Boost_USE_STATIC_RUNTIME ON)
 # set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
@@ -99,17 +115,13 @@ target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 ################################################
 ################# utest make ###################
 ################################################
-add_executable(
-	test_globjs 
-	src/utests/test_globjs.cpp
-	${GL_SOURCES}
-	${UTILS_SOURCES}
-)
-target_link_libraries(test_globjs pthread)
+add_executable(test_globjs src/utests/test_globjs.cpp ${GL_SOURCES} ${UTILS_SOURCES})
 
 add_executable(test_pipeline src/utests/test_pipeline.cpp)
 target_link_libraries(test_pipeline glite)
 
+
+add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
 
 ################################################
 ################## test make ###################

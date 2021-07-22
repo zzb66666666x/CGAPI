@@ -34,17 +34,17 @@ static const char* input_port_proto = "\nvoid input_port(std::map<std::string, d
 
 static const char* output_port_proto = "\nvoid output_port(std::map<std::string, data_t>& outdata){\n";
 
-static const char* input_uniform_dispatch = "\nvoid input_uniform_dispatch(int idx, data_t& data){\n    input_uniform_fmap[idx](data);\n}\n";
+static const char* input_uniform_dispatch = "\nvoid input_uniform_dispatch(int idx, data_t& data){\n    (this->*this->input_uniform_fmap[idx])(data);\n}\n";
 
-static const char* output_uniform_dispatch = "\ndata_t output_uniform_dispatch(int idx){\n    return output_uniform_fmap[idx]();\n}\n";
+static const char* output_uniform_dispatch = "\ndata_t output_uniform_dispatch(int idx){\n    return (this->*this->output_uniform_fmap[idx])();\n}\n";
 
 static const char* input_uniform_dispatch_empty = "\nvoid input_uniform_dispatch(int idx, data_t& data){}\n";
 
 static const char* output_uniform_dispatch_empty = "\ndata_t output_uniform_dispatch(int idx){\n    data_t ret; return ret;\n}\n";
 
-static const char* input_uniform_fmap = "\nset_uniform input_uniform_fmap[] = {";
+static const char* input_uniform_fmap = "\nset_uniform input_uniform_fmap[";
 
-static const char*  output_uniform_fmap = "\nget_uniform output_uniform_fmap[] = {";
+static const char*  output_uniform_fmap = "\nget_uniform output_uniform_fmap[";
 
 
 static void assign_input_value(string& code, const char* name, int dtype){
@@ -114,21 +114,27 @@ buffer_t code_for_uniform(){
     int cnt = 0;
     string uni_in_fmap = input_uniform_fmap;
     string uni_out_fmap = output_uniform_fmap;
-    bool has_uniform = false;
     for (auto it = io_profile.begin(); it != io_profile.end(); it++){
         if (it->second.io == UNIFORM_VAR){
-            has_uniform  = true;
-            string s1 = uniform_var_input_port(it->first.c_str(), it->second.dtype);
-            string s2 = uniform_var_output_port(it->first.c_str(), it->second.dtype);
-            register_code(&uniform_port, s1.c_str());
-            register_code(&uniform_port, s2.c_str());
-            uniform_map.emplace(it->first, cnt);
-            uni_in_fmap += (string("set_uniform_") + it->first + string(","));
-            uni_out_fmap += (string("get_uniform_") + it->first + string(","));
             cnt++;
         }
     }
-    if (has_uniform){
+    if (cnt > 0){
+        uni_in_fmap += (to_string(cnt) + string("] = {"));
+        uni_out_fmap += (to_string(cnt) + string("] = {"));
+        cnt = 0;
+        for (auto it = io_profile.begin(); it != io_profile.end(); it++){
+            if (it->second.io == UNIFORM_VAR){
+                string s1 = uniform_var_input_port(it->first.c_str(), it->second.dtype);
+                string s2 = uniform_var_output_port(it->first.c_str(), it->second.dtype);
+                register_code(&uniform_port, s1.c_str());
+                register_code(&uniform_port, s2.c_str());
+                uniform_map.emplace(it->first, cnt);
+                uni_in_fmap += (string("set_uniform_") + it->first + string(","));
+                uni_out_fmap += (string("get_uniform_") + it->first + string(","));
+                cnt++;
+            }
+        }
         uni_in_fmap[uni_in_fmap.size()-1] = '}';
         uni_out_fmap[uni_out_fmap.size()-1] = '}';    
         uni_in_fmap += string(";\n");
