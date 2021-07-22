@@ -250,30 +250,24 @@ class glProgram{
 
 typedef struct{
     data_t data;
-    Shader* shader_ptr;
-    int uniform_id;                 // unique id for uniform variables in one shder program
-    std::array<int, 2> ftable_idx;  // 0 for vertex shader, 1 for fragment shader, others are reserved
+    int uniform_id;     // unique id for uniform variables in one shder program
+    std::map<GLenum, int> uniform_ftable_idx;
 }uniform_varaible_t;
 
 class glProgrammableShader{
     public:
-    std::map<GLenum, Shader> shaders;
-    std::vector<Shader*> call_chain;
+    std::map<GLenum, Shader*> shaders;
     std::map<std::string, uniform_varaible_t> merged_uniform_maps;
-    std::map<int, std::string> id_to_name;
+    std::map<int, std::string> uniform_id_to_name;
     void link_programs();
     Shader* get_shader(GLenum shader_type);
 };
 
-typedef struct{
-    Shader shader;
-    GLenum type;
-}shader_cache_t;
-
-class glShaderManager {
+class glProgramManager {
     public:
-    std::map<int, glProgrammableShader> shader_map;
-    std::map<int, shader_cache_t> shader_cache_map;
+    ~glProgramManager();
+    std::map<int, glProgrammableShader> shader_program_map;
+    std::map<int, Shader*> shader_cache_map;
     IdManager idmgr;
     IdManager cache_idmgr;
     int create_program();

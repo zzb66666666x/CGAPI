@@ -670,8 +670,7 @@ void glShaderSource(unsigned int shader, int count, char** string, int* length){
     auto it = C->glsl_shaders.shader_cache_map.find(shader);
     if (it == C->glsl_shaders.shader_cache_map.end())
         return;
-    shader_cache_t& cache = it->second;
-    Shader& shader_obj = cache.shader;
+    Shader* shader_ptr = it->second;
     buffer_t code_buf;
     init_buffer(&code_buf, 1000);
     for (int i=0; i<count; i++){
@@ -683,7 +682,7 @@ void glShaderSource(unsigned int shader, int count, char** string, int* length){
         register_code(&code_buf, space);
         delete[] space;
     }
-    shader_obj.set_glsl_code(std::string(code_buf.data));
+    shader_ptr->set_glsl_code(std::string(code_buf.data));
     free_buffer(&code_buf);
 }
 
@@ -696,10 +695,20 @@ void glCompileShader(unsigned int shader){
     auto it = C->glsl_shaders.shader_cache_map.find(shader);
     if (it == C->glsl_shaders.shader_cache_map.end())
         return;
-    shader_cache_t& cache = it->second;
-    Shader& shader_obj = cache.shader;
-    shader_obj.compile();
-    shader_obj.load_shader();
+    Shader* shader_ptr = it->second;
+    std::string output_fname;
+    switch(shader_ptr->shader_type){
+        case GL_VERTEX_SHADER:
+            output_fname = "vshader.dll";
+            break;
+        case GL_FRAGMENT_SHADER:
+            output_fname = "fshader.dll";
+            break;
+        default:
+            throw std::runtime_error("not supported shader\n");
+    }
+    shader_ptr->compile(output_fname);
+    shader_ptr->load_shader();
 }
 
 unsigned int glCreateProgram(){
@@ -724,8 +733,8 @@ void glLinkProgram(unsigned int shaderProgram){
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     }
-    auto it = C->glsl_shaders.shader_map.find(shaderProgram);
-    if (it != C->glsl_shaders.shader_map.end()){
+    auto it = C->glsl_shaders.shader_program_map.find(shaderProgram);
+    if (it != C->glsl_shaders.shader_program_map.end()){
         glProgrammableShader& program = it->second;
         program.link_programs();
     }
@@ -737,8 +746,8 @@ void glUseProgram(unsigned int shaderProgram){
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     }
-    auto it = C->glsl_shaders.shader_map.find(shaderProgram);
-    if(it == C->glsl_shaders.shader_map.end())
+    auto it = C->glsl_shaders.shader_program_map.find(shaderProgram);
+    if(it == C->glsl_shaders.shader_program_map.end())
         return;
     C->payload.shader_program_in_use = shaderProgram;    
     C->payload.cur_shader_program_ptr = &(it->second);
@@ -755,12 +764,12 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
     if (count != 1)
         throw std::runtime_error("the glsl cannot support uniform varaible array now\n");
     // fetch current program id
-    auto it_prog = C->glsl_shaders.shader_map.find(C->payload.shader_program_in_use);
-    if(it_prog == C->glsl_shaders.shader_map.end())
+    auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
+    if(it_prog == C->glsl_shaders.shader_program_map.end())
         throw std::runtime_error("using invalid shader program\n");
     glProgrammableShader& program = it_prog->second;
-    auto it_id = program.id_to_name.find(location);
-    if (it_id == program.id_to_name.end())
+    auto it_id = program.uniform_id_to_name.find(location);
+    if (it_id == program.uniform_id_to_name.end())
         return;
     uniform_varaible_t& uniform_var_info = program.merged_uniform_maps[it_id->second];
     data_t& data = uniform_var_info.data;
@@ -769,12 +778,11 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
         mat = glm::transpose(mat);
     }
     data.mat4_var = mat;
-    for (int i=0; i<uniform_var_info.ftable_idx.size(); i++){
-        if (uniform_var_info.ftable_idx[i]<0)
-            continue;
-        int idx = uniform_var_info.ftable_idx[i];
-        Shader* shader_ptr = uniform_var_info.shader_ptr;
-        shader_ptr->set_uniform(idx, data);
+    for (auto uniform_ftable_pair : uniform_var_info.uniform_ftable_idx){
+        GLenum shader_type = uniform_ftable_pair.first;
+        int ftable_idx = uniform_ftable_pair.second;
+        Shader* shader_ptr = program.shaders[shader_type];
+        shader_ptr->set_uniform_variables(ftable_idx, data);
     }
 }
 
@@ -783,12 +791,12 @@ int glGetUniformLocation(unsigned int program, const char* name){
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     }
-    auto it = C->glsl_shaders.shader_map.find(program);
-    if (it != C->glsl_shaders.shader_map.end()){
+    auto it = C->glsl_shaders.shader_program_map.find(program);
+    if (it != C->glsl_shaders.shader_program_map.end()){
         glProgrammableShader& program = it->second;
-        auto it = program.merged_uniform_maps.find(std::string(name));
-        if(it != program.merged_uniform_maps.end()){
-            return it->second.uniform_id;
+        auto it_uniform_var = program.merged_uniform_maps.find(std::string(name));
+        if(it_uniform_var != program.merged_uniform_maps.end()){
+            return it_uniform_var->second.uniform_id;
         }else{
             return GL_FAILURE;
         }

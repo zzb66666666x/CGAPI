@@ -15,6 +15,8 @@
 #include "translate.h"
 #include "inner_variable.h"
 #include "inner_support.h"
+// OpenGL consts
+#include "../../../include/gl/common.h"
 
 __declspec(dllimport) ShaderInterface* create_shader_inst();
 __declspec(dllimport) void destroy_shader_inst(ShaderInterface* inst);
@@ -24,12 +26,16 @@ typedef void (*func_destroy_shader_inst)(ShaderInterface*);
 
 class Shader{
     public:
-    Shader(int cpu_num){
+    Shader(GLenum type, int cpu_num){
         glsl_shader_insts.resize(cpu_num);
+        shader_type = type;
         inst_num = cpu_num;
+        compiled = false;
         loaded_inst = false;
+        has_source = false;
     }
-    Shader(const char* glsl_path, int cpu_num){
+    Shader(GLenum type, const char* glsl_path, int cpu_num){
+        shader_type = type;
         std::ifstream glsl_file;
         glsl_file.open(glsl_path);
         std::stringstream glsl_string_stream;
@@ -42,6 +48,8 @@ class Shader{
         glsl_shader_insts.resize(cpu_num);
         inst_num = cpu_num;
         loaded_inst = false;
+        compiled = false;
+        has_source = true;
     }
 
     ~Shader(){
@@ -55,9 +63,12 @@ class Shader{
 
     inline void set_glsl_code(std::string code){
         glsl_code = code;
+        has_source = true;
     }
 
     inline void load_shader(){   
+        if (compiled == false)
+            return;
         hDLL = LoadLibrary(TEXT(output_name.c_str())); 
         if(hDLL == NULL)
             std::cout<<"Error!!!\n";  
@@ -70,6 +81,8 @@ class Shader{
     }
 
     inline void compile(std::string out){
+        if (has_source == false)
+            return;
         char* output_code_buffer;
         int output_code_buffer_size;
         parse_string(glsl_code.c_str(), &output_code_buffer, &output_code_buffer_size);
@@ -110,6 +123,7 @@ class Shader{
             perror("pclose g++");
         }
         output_name = out;
+        compiled = true;
     }
 
     inline ShaderInterface* get_shader_utils(int thread_id){
@@ -124,6 +138,7 @@ class Shader{
         }
     }
 
+    GLenum shader_type;
     std::map<std::string, io_attrib> io_profile;
     std::map<std::string, int> uniform_map;
     std::map<std::string, io_attrib*> layouts;
@@ -147,5 +162,7 @@ class Shader{
     HINSTANCE hDLL;
     int inst_num;
     bool loaded_inst;
+    bool compiled;
+    bool has_source;
     std::vector<ShaderInterface*> glsl_shader_insts;
 };

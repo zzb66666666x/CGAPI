@@ -4,7 +4,7 @@
 using namespace std;
 
 int main(){
-    Shader myshader("code.glsl", 1);
+    Shader myshader(GL_VERTEX_SHADER, "code.glsl", 1);
     myshader.compile("unit_test_glsl.dll");
     myshader.load_shader();
     ShaderInterface* intf = myshader.get_shader_utils(0);
