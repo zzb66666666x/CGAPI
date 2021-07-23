@@ -9,10 +9,10 @@ set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
 #   CACHE STRING "Vcpkg toolchain file")
 
 # flags
-# set(CMAKE_CXX_FLAGS "-g -O0")
+set(CMAKE_CXX_FLAGS "-g -O0")
 # set(CMAKE_CXX_FLAGS "-mavx")
 # set(CMAKE_CXX_FLAGS "-save-temps")
-set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG")
+# set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS "-fopenmp")
 
 # dir settings
@@ -147,6 +147,9 @@ target_link_libraries(test_benchmark glite)
 
 add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
 target_link_libraries(test_sponza glite)
+
+add_executable(test_basic_prog_ppl tests/test_programmable_basics.cpp tests/shared_data.cpp tests/shared_data.h)
+target_link_libraries(test_basic_prog_ppl glite)
 
 add_executable(test_prog_ppl tests/test_programmable_ppl.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
 target_link_libraries(test_prog_ppl glite)
