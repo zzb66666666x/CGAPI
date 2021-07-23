@@ -44,7 +44,7 @@ extern void glFrontFace(unsigned int mode);
 extern void glReadPixels(int x, int y, int width, int height, GLenum format, GLenum type, void* data);
 // shader API
 extern unsigned int glCreateShader(GLenum shaderType);
-extern void glShaderSource(unsigned int shader, int count,const char** string, int* length);
+extern void glShaderSource(unsigned int shader, int count, const char* const* string, const int* length);
 extern void glCompileShader(unsigned int shader);
 extern unsigned int glCreateProgram();
 extern void glAttachShader(unsigned int shaderProgram, unsigned int shader);

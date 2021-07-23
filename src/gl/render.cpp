@@ -1,7 +1,7 @@
+#include "configs.h"
 #include "render.h"
 #include "../../include/gl/common.h"
 #include "binning.h"
-#include "configs.h"
 #include "glcontext.h"
 #include <assert.h>
 #include <glm/glm.hpp>

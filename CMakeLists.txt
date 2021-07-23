@@ -3,10 +3,10 @@ set(CMAKE_CXX_STANDARD 17)
 project(glite LANGUAGES CXX C)
 
 # vcpkg dir settings
-# set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
-#   CACHE STRING "Vcpkg toolchain file")
-set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
+set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
   CACHE STRING "Vcpkg toolchain file")
+# set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
+#   CACHE STRING "Vcpkg toolchain file")
 
 # flags
 # set(CMAKE_CXX_FLAGS "-g -O0")
@@ -101,6 +101,7 @@ find_package(benchmark REQUIRED)
 add_library(glite SHARED
 	${GLV_SOURCES}
 	${GL_SOURCES}
+	${GL_PARSER}
 	${UTILS_SOURCES}
 	${GLV_HEADERS}
 	${GL_HEADERS}
@@ -108,9 +109,9 @@ add_library(glite SHARED
 )
 target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
+target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 # target_link_libraries(glite ${Boost_LIBRARIES})
 # target_link_libraries(glite glm::glm)
-target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 
 ################################################
 ################# utest make ###################
@@ -146,3 +147,6 @@ target_link_libraries(test_benchmark glite)
 
 add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
 target_link_libraries(test_sponza glite)
+
+add_executable(test_prog_ppl tests/test_programmable_ppl.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
+target_link_libraries(test_prog_ppl glite)

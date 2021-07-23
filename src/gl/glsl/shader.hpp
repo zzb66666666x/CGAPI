@@ -1,3 +1,5 @@
+#ifndef _SHADER_HPP_
+#define _SHADER_HPP_
 #include <string>
 #include <fstream>
 #include <sstream>

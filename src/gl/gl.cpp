@@ -662,7 +662,7 @@ unsigned int glCreateShader(GLenum shaderType){
 }
 
 
-void glShaderSource(unsigned int shader, int count, char** string, int* length){
+void glShaderSource(unsigned int shader, int count, const char* const* string, const int* length){
     GET_CURRENT_CONTEXT(C);
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -674,7 +674,7 @@ void glShaderSource(unsigned int shader, int count, char** string, int* length){
     buffer_t code_buf;
     init_buffer(&code_buf, 1000);
     for (int i=0; i<count; i++){
-        char* str = string[i];
+        const char* str = string[i];
         int len = length[i];
         char* space = new char[len+1];
         memcpy(space, str, len);

@@ -1,7 +1,6 @@
 #ifndef MODEL_H_
 #define MODEL_H_
 #include "../OBJ_Loader.h"
-#include "../../src/gl/render.h"
 #include "mesh.h"
 #include <string>
 #include <vector>
