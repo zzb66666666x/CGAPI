@@ -1436,6 +1436,7 @@ void programmable_process_geometry_openmp(){
             triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
             triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
         }
+        
 
         triangle_list[tri_ind]->cur_shader = vert_shader;
         // view frustum culling list

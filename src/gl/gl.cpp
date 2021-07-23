@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 #include "../../include/gl/gl.h"
 #include "../../include/gl/common.h"
 #include "glcontext.h"
@@ -675,10 +676,13 @@ void glShaderSource(unsigned int shader, int count, const char* const* string, c
     init_buffer(&code_buf, 1000);
     for (int i=0; i<count; i++){
         const char* str = string[i];
-        int len = length == NULL ? strlen(string[i]) : length[i];
-        char* space = new char[len+1];
-        memcpy(space, str, len);
-        space[len] = '\0';
+        int str_len = strlen(str);
+        if (length != NULL){
+            str_len = (str_len < length[i])? str_len : length[i]; 
+        }
+        char* space = new char[str_len+1];
+        memcpy(space, str, str_len);
+        space[str_len] = '\0';
         register_code(&code_buf, space);
         delete[] space;
     }
