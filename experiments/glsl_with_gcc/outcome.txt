@@ -1,0 +1,215 @@
+2021.7.16
+code.glsl:
+layout (location = 0) in vec3 aPos;     
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoord;  
+   
+out vec2 TexCoord;
+out vec3 Normal;
+out vec3 FragPos;
+
+uniform mat4 projection;    
+uniform mat4 view;   
+uniform mat4 model;     
+
+void main()
+{
+    FragPos = vec3(model*vec4(aPos, 1.0));
+    gl_Position =  view * vec4(aPos,1.0);
+    Normal = vec3(projection * vec4(aNormal, 1.0));
+    TexCoord = vec2(666*aTexCoord.x, 666*aTexCoord.y);
+}
+
+terminal print: 
+$ ./test
+////////// TRANSLATION_UNIT_BEGIN //////////
+layout num 0    input var       vec3    var name aPos
+layout num 1    input var       vec3    var name aNormal        
+layout num 2    input var       vec2    var name aTexCoord      
+output var      vec2    var name TexCoord
+output var      vec3    var name Normal
+output var      vec3    var name FragPos
+uniform var     mat4    var name projection
+uniform var     mat4    var name view
+uniform var     mat4    var name model
+void    func name main  begin functional:
+
+end functional without params
+{
+    FragPos = vec3(model*vec4(aPos, 1.0));
+    gl_Position =  view * vec4(aPos,1.0);
+    Normal = vec3(projection * vec4(aNormal, 1.0));
+    TexCoord = vec2(666*aTexCoord.x, 666*aTexCoord.y);
+}
+////////// TRANSLATION_UNIT_PARSED //////////
+////////// SHOWING IO PROFILE //////////
+FragPos: vec3   out     layout = -1
+Normal: vec3    out     layout = -1
+TexCoord: vec2  out     layout = -1
+aNormal: vec3   in      layout = 1
+aPos: vec3      in      layout = 0
+aTexCoord: vec2 in      layout = 2
+gl_Position: vec4       out     layout = -1
+model: mat4     uniform layout = -1
+projection: mat4        uniform layout = -1
+view: mat4      uniform layout = -1
+////////// END OF IO PROFILE //////////
+////////// PARSER RAW OUTPUT //////////
+code buffer size: 2000
+code:
+ vec3 aPos ;
+ vec3 aNormal ;
+ vec2 aTexCoord ;
+ vec2 TexCoord ;
+ vec3 Normal ;
+ vec3 FragPos ;
+ mat4 projection ;
+ mat4 view ;
+ mat4 model ;
+ void  glsl_main ( ){
+    FragPos = vec3(model*vec4(aPos, 1.0));
+    gl_Position =  view * vec4(aPos,1.0);
+    Normal = vec3(projection * vec4(aNormal, 1.0));
+    TexCoord = vec2(666*aTexCoord.x, 666*aTexCoord.y);
+}
+void input_port(std::map<std::string, data_t>& indata){
+    aNormal = indata["aNormal"].vec3_var;
+    aPos = indata["aPos"].vec3_var;
+    aTexCoord = indata["aTexCoord"].vec2_var;
+}
+
+void output_port(std::map<std::string, data_t>& outdata){
+    outdata.emplace("FragPos", (data_t){.vec3_var = FragPos});
+    outdata.emplace("Normal", (data_t){.vec3_var = Normal});
+    outdata.emplace("TexCoord", (data_t){.vec2_var = TexCoord});
+    outdata.emplace("gl_Position", (data_t){.vec4_var = gl_Position});
+}
+
+void set_uniform_model(data_t data){
+    model = data.mat4_var;
+}
+
+data_t get_uniform_model(){
+    return (data_t){.mat4_var = model};
+}
+
+void set_uniform_projection(data_t data){
+    projection = data.mat4_var;
+}
+
+data_t get_uniform_projection(){
+    return (data_t){.mat4_var = projection};
+}
+
+void set_uniform_view(data_t data){
+    view = data.mat4_var;
+}
+
+data_t get_uniform_view(){
+    return (data_t){.mat4_var = view};
+}
+
+set_uniform input_uniform_fmap[] = {set_uniform_model,set_uniform_projection,set_uniform_view};
+
+get_uniform output_uniform_fmap[] = {get_uniform_model,get_uniform_projection,get_uniform_view};
+
+void input_uniform_dispatch(int idx, data_t data){
+    input_uniform_fmap[idx](data);
+}
+
+data_t output_uniform_dispatch(int idx){
+    return output_uniform_fmap[idx]();
+}
+
+////////// END OF RAW PARSED CODE //////////
+////////// FINAL CPP CODE //////////
+#include "vec_math.h"
+#include <stdio.h>
+#include <map>
+#include <string>
+using namespace glm;
+#ifdef __cplusplus
+extern "C" {
+#endif
+__declspec(dllexport) void glsl_main();
+__declspec(dllexport) void input_port(std::map<std::string, data_t>& indata);
+__declspec(dllexport) void output_port(std::map<std::string, data_t>& outdata);
+__declspec(dllexport) void input_uniform_dispatch(int idx, data_t data);
+__declspec(dllexport) data_t output_uniform_dispatch(int idx);
+vec4 gl_Position;
+ vec3 aPos ;
+ vec3 aNormal ;
+ vec2 aTexCoord ;
+ vec2 TexCoord ;
+ vec3 Normal ;
+ vec3 FragPos ;
+ mat4 projection ;
+ mat4 view ;
+ mat4 model ;
+ void  glsl_main ( ){
+    FragPos = vec3(model*vec4(aPos, 1.0));
+    gl_Position =  view * vec4(aPos,1.0);
+    Normal = vec3(projection * vec4(aNormal, 1.0));
+    TexCoord = vec2(666*aTexCoord.x, 666*aTexCoord.y);
+}
+void input_port(std::map<std::string, data_t>& indata){
+    aNormal = indata["aNormal"].vec3_var;
+    aPos = indata["aPos"].vec3_var;
+    aTexCoord = indata["aTexCoord"].vec2_var;
+}
+
+void output_port(std::map<std::string, data_t>& outdata){
+    outdata.emplace("FragPos", (data_t){.vec3_var = FragPos});
+    outdata.emplace("Normal", (data_t){.vec3_var = Normal});
+    outdata.emplace("TexCoord", (data_t){.vec2_var = TexCoord});
+    outdata.emplace("gl_Position", (data_t){.vec4_var = gl_Position});
+}
+
+void set_uniform_model(data_t data){
+    model = data.mat4_var;
+}
+
+data_t get_uniform_model(){
+    return (data_t){.mat4_var = model};
+}
+
+void set_uniform_projection(data_t data){
+    projection = data.mat4_var;
+}
+
+data_t get_uniform_projection(){
+    return (data_t){.mat4_var = projection};
+}
+
+void set_uniform_view(data_t data){
+    view = data.mat4_var;
+}
+
+data_t get_uniform_view(){
+    return (data_t){.mat4_var = view};
+}
+
+set_uniform input_uniform_fmap[] = {set_uniform_model,set_uniform_projection,set_uniform_view};
+
+get_uniform output_uniform_fmap[] = {get_uniform_model,get_uniform_projection,get_uniform_view};
+
+void input_uniform_dispatch(int idx, data_t data){
+    input_uniform_fmap[idx](data);
+}
+
+data_t output_uniform_dispatch(int idx){
+    return output_uniform_fmap[idx]();
+}
+#ifdef __cplusplus
+}
+#endif
+////////// END OF CPP CODE //////////
+////////// UNIFORM MAP //////////
+model    0
+projection    1
+view    2
+////////// END OF UNIFORM MAP //////////
+FragPos: 1 , 1 , 1
+Normal: 6 , 6 , 6
+TexCoord: 1998 , 1998
+gl_Position: 2 , 2 , 2 , 2

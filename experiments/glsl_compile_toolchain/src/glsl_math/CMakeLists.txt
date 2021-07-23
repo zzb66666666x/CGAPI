@@ -1,1 +1,0 @@
-add_library(glsl_math STATIC glsl_math.cpp ${PROJECT_SOURCE_DIR}/include/glsl_math.h)
