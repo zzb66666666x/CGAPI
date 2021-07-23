@@ -1,8 +1,8 @@
 #include "configs.h"
 #include "render.h"
+#include "glcontext.h"
 #include "../../include/gl/common.h"
 #include "binning.h"
-#include "glcontext.h"
 #include <assert.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
