@@ -137,7 +137,15 @@ class Shader{
     inline void set_uniform_variables(int uniform_id, data_t data){
         for (int thread_id = 0; thread_id<glsl_shader_insts.size(); thread_id++){
             glsl_shader_insts[thread_id]->input_uniform_dispatch(uniform_id, data);
+            // glm::mat4 inmat = data.mat4_var;
+            // glm::mat4 outmat = glsl_shader_insts[thread_id]->output_uniform_dispatch(uniform_id).mat4_var;
+            // glm::mat4 diff = inmat - outmat;
+            // std::cout<<"finish passing in one uniform data"<<std::endl;
         }
+    }
+
+    inline void print_cpp_code(){
+        std::cout<<cpp_code<<std::endl;
     }
 
     GLenum shader_type;

@@ -1386,6 +1386,7 @@ void programmable_process_geometry_openmp(){
     }
 
     Shader* vert_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_VERTEX_SHADER);
+    // vert_shader->print_cpp_code();
     std::vector<ProgrammableTriangle*>& tri_culling_list = ppl->prog_tri_culling_list;
     std::vector<ShaderInterface*> shader_interfaces;
     shader_interfaces.resize(ppl->cpu_num);
@@ -1400,30 +1401,26 @@ void programmable_process_geometry_openmp(){
 #pragma omp parallel for private(input_ptr) private(buf) private(i)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
-        std::map<std::string, data_t> vs_input;
-        std::map<std::string, data_t> vs_output;
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
         for (i = 0; i < 3; ++i) {
             // parse VAO
-            for (auto it = vert_shader->io_profile.begin(); it != vert_shader->io_profile.end(); ++it) {
-                if (it->second.io == INPUT_VAR) {
-                    vertex_attrib_t& config = vattrib_data[it->second.layout];
-                    buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
-                    if(config.type == GL_FLOAT){
-                        switch(it->second.dtype){
-                            case TYPE_VEC2:
-                                vs_input.emplace(it->first, (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) });
-                                break;
-                            case TYPE_VEC3:{
-                                data_t var;
-                                var.vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2));
-                                vs_input.emplace(it->first, var);
-                                // vs_input.emplace(it->first, (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) });
-                                break;
-                            }
-                            default: break;
-                        }
+            std::map<std::string, data_t> vs_input;
+            std::map<std::string, data_t> vs_output;
+            for (auto it = vert_shader->layouts.begin(); it != vert_shader->layouts.end(); ++it) {
+                if (it->second->io != INPUT_VAR)
+                    throw std::runtime_error("you should only define layout for input variable\n");
+                vertex_attrib_t& config = vattrib_data[it->second->layout];
+                buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+                if(config.type == GL_FLOAT){
+                    switch(it->second->dtype){
+                        case TYPE_VEC2:
+                            vs_input.emplace(it->first, (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) });
+                            break;
+                        case TYPE_VEC3:
+                            vs_input.emplace(it->first, (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) });
+                            break;
+                        default: break;
                     }
                 }
             }
