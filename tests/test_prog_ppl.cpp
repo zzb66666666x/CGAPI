@@ -38,11 +38,11 @@ static void testProgPipeline(benchmark::State& state)
     projectionMatrix = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, NEAR, FAR);
 
     Model model("../resources/sponza/models/sponza.obj");
-    
-    Shader shader("../shader/vert.glsl", "../shader/frag.glsl");
+
+    Shader shader("../shader/sponza_vert.glsl", "../shader/sponza_frag.glsl");
     shader.setMat4("modelView", modelMatrix * modelMatrix);
     shader.setMat4("projection", projectionMatrix);
-    shader.setMat4("model_inv", glm::transpose(glm::inverse(modelMatrix)));
+    shader.setMat4("inv_model", glm::transpose(glm::inverse(modelMatrix)));
     // Perform setup here
     for (auto _ : state) {
 

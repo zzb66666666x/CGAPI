@@ -675,7 +675,7 @@ void glShaderSource(unsigned int shader, int count, const char* const* string, c
     init_buffer(&code_buf, 1000);
     for (int i=0; i<count; i++){
         const char* str = string[i];
-        int len = length[i];
+        int len = length == NULL ? strlen(string[i]) : length[i];
         char* space = new char[len+1];
         memcpy(space, str, len);
         space[len] = '\0';
