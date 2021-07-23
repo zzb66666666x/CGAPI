@@ -1385,30 +1385,23 @@ void programmable_process_geometry_openmp(){
         triangle_list.resize(triangle_size);
     }
 
-    int program_id = ctx->payload.shader_program_in_use;
-    auto program_it = ctx->glsl_shaders.shader_map.find(program_id);
-    if(program_it == ctx->glsl_shaders.shader_map.end()
-        || program_it->second.call_chain.size() == 0){
-        return;
-    }
-    Shader* vert_shader = program_it->second.call_chain[0];
+    Shader* vert_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_VERTEX_SHADER);
     std::vector<ProgrammableTriangle*>& tri_culling_list = ppl->prog_tri_culling_list;
-    std::vector<ftable_t> ft;
-    ft.resize(ctx->pipeline.cpu_num);
-    for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
-        ft[i] = vert_shader->get_shader_utils(i);
+    std::vector<ShaderInterface*> shader_interfaces;
+    shader_interfaces.resize(ppl->cpu_num);
+    for (int i=0; i<ppl->cpu_num; i++){
+        shader_interfaces[i] = vert_shader->get_shader_utils(i);
     }
     // begin parallel block
-    std::map<std::string, data_t> vs_input;
-    std::map<std::string, data_t> vs_output;
     void* input_ptr;
     unsigned char* buf;
-    int i, j;
+    int i;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(input_ptr) private(buf) private(vs_output) \
-    private(i) private(j) private(vs_input) private(vs_output)
+#pragma omp parallel for private(input_ptr) private(buf) private(i)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
+        std::map<std::string, data_t> vs_input;
+        std::map<std::string, data_t> vs_output;
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
         for (i = 0; i < 3; ++i) {
@@ -1435,14 +1428,16 @@ void programmable_process_geometry_openmp(){
                 }
             }
             int thread_id = omp_get_thread_num();
-            ft[thread_id].input(vs_input);
+            shader_interfaces[thread_id]->input_port(vs_input);
 
             // execute vertex shading
-            ft[thread_id].main();
-            ft[thread_id].output(vs_output);
+            shader_interfaces[thread_id]->glsl_main();
+            shader_interfaces[thread_id]->output_port(vs_output);
 
             // assemble triangle
-            triangle_list[tri_ind]->screen_pos[i] = vs_output["gl_Position"].vec4_var;
+            data_t gl_pos_inner;
+            shader_interfaces[thread_id]->get_inner_variable(INNER_GL_POSITION, gl_pos_inner);
+            triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
             triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
         }
 
@@ -1521,10 +1516,10 @@ void programmable_rasterize_with_shading_openmp(){
     int len = prog_triangle_list.size();
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
-    std::vector<ftable_t> ft;
-    ft.resize(ctx->pipeline.cpu_num);
+    std::vector<ShaderInterface*> shader_interfaces;
+    shader_interfaces.resize(ctx->pipeline.cpu_num);
     for (int i=0; i<ctx->pipeline.cpu_num; i++){
-        ft[i] = fragment_shader->get_shader_utils(i);
+        shader_interfaces[i] = fragment_shader->get_shader_utils(i);
     }
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(t)
@@ -1532,7 +1527,7 @@ void programmable_rasterize_with_shading_openmp(){
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
         int thread_id = omp_get_thread_num();
-        ftable_t& functions = ft[thread_id];
+        ShaderInterface* functions = shader_interfaces[thread_id];
 
         if (t->culling) {
             t->culling = false;
@@ -1580,11 +1575,11 @@ void programmable_rasterize_with_shading_openmp(){
                         omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         std::map<std::string, data_t> frag_shader_in, frag_shader_out;
                         programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
-                        functions.input(frag_shader_in);
-                        functions.main();
-                        functions.output(frag_shader_out);
+                        functions->input_port(frag_shader_in);
+                        functions->glsl_main();
+                        functions->output_port(frag_shader_out);
                         data_t frag_color_union;
-                        functions.get_inner(INNER_GL_FRAGCOLOR, frag_color_union);
+                        functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
                         omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
                         frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
