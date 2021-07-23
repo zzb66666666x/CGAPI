@@ -1,0 +1,51 @@
+prase the layout informatin, in/out/uniform
+provide API, instead of using a main function
+generate useful cpp code
+define general interface for input and output 
+
+suppose: 
+    in vec3 aPos;
+    in vec3 aNormal;
+    in vec2 aTexCoord;
+
+    out vec2 TexCoord;
+    out vec3 Normal;
+    out vec3 FragPos;
+
+typedef struct{
+    int io;
+    int type;
+    int layout;
+}io_attrib;
+
+map<string, io_attrib> profile;
+profile.emplace("aPos", (io_attrib){IN, VEC3, UNDEF});
+
+typedef union{
+    vec2 vec2_var;
+    vec3 vec3_var;
+    vec4 vec4_var;
+    mat2 mat2_var;
+    mat3 mat3_var;
+    mat4 mat4_var;
+}data_t;
+
+void register_input_code(const char* name, int type){
+    // pattern: name = indata["name"].type_var
+}
+
+void input_port(map<string, data_t> indata){
+    aPos = indata["aPos"].vec3_var;
+    aNormal = indata["aNormal"].vec3_var;
+    aTexCoord = indata["aNormal"].vec2_var;
+}
+
+void register_output_code(const char* name, int type){
+    // pattern: outdata.emplace("name", (data_t){.type_var = name})
+}
+
+void output_port(map<string, data_t>& outdata){
+    outdata.emplace("TexCoord", (data_t){.vec2_var = TexCoord});
+    outdata.emplace("Normal", (data_t){.vec3_var = Normal});
+    outdata.emplace("FragPos", (data_t){.vec3_var = FragPos});
+}

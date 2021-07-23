@@ -1,0 +1,297 @@
+Grammar
+
+    0 $accept: line_list $end
+
+    1 line_list: line
+    2          | line_list line
+
+    3 line: define CR
+
+    4 define: DEF_INT VAR END
+    5       | DEF_DOUBLE VAR END
+    6       | DEF_CHAR VAR END
+    7       | DEF_INT VAR EQ INT END
+    8       | DEF_INT VAR EQ CHAR END
+    9       | DEF_DOUBLE VAR EQ DOUBLE END
+   10       | DEF_DOUBLE VAR EQ INT END
+   11       | DEF_CHAR VAR EQ CHAR END
+   12       | DEF_CHAR VAR EQ INT END
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256)
+DEF_INT (258) 4 7 8
+DEF_DOUBLE (259) 5 9 10
+DEF_CHAR (260) 6 11 12
+INT (261) 7 10 12
+DOUBLE (262) 9
+CHAR (263) 8 11
+VAR (264) 4 5 6 7 8 9 10 11 12
+EQ (265) 7 8 9 10 11 12
+END (266) 4 5 6 7 8 9 10 11 12
+CR (267) 3
+
+
+Nonterminals, with rules where they appear
+
+$accept (13)
+    on left: 0
+line_list (14)
+    on left: 1 2, on right: 0 2
+line (15)
+    on left: 3, on right: 1 2
+define (16)
+    on left: 4 5 6 7 8 9 10 11 12, on right: 3
+
+
+state 0
+
+    0 $accept: . line_list $end
+
+    DEF_INT     shift, and go to state 1
+    DEF_DOUBLE  shift, and go to state 2
+    DEF_CHAR    shift, and go to state 3
+
+    line_list  go to state 4
+    line       go to state 5
+    define     go to state 6
+
+
+state 1
+
+    4 define: DEF_INT . VAR END
+    7       | DEF_INT . VAR EQ INT END
+    8       | DEF_INT . VAR EQ CHAR END
+
+    VAR  shift, and go to state 7
+
+
+state 2
+
+    5 define: DEF_DOUBLE . VAR END
+    9       | DEF_DOUBLE . VAR EQ DOUBLE END
+   10       | DEF_DOUBLE . VAR EQ INT END
+
+    VAR  shift, and go to state 8
+
+
+state 3
+
+    6 define: DEF_CHAR . VAR END
+   11       | DEF_CHAR . VAR EQ CHAR END
+   12       | DEF_CHAR . VAR EQ INT END
+
+    VAR  shift, and go to state 9
+
+
+state 4
+
+    0 $accept: line_list . $end
+    2 line_list: line_list . line
+
+    $end        shift, and go to state 10
+    DEF_INT     shift, and go to state 1
+    DEF_DOUBLE  shift, and go to state 2
+    DEF_CHAR    shift, and go to state 3
+
+    line    go to state 11
+    define  go to state 6
+
+
+state 5
+
+    1 line_list: line .
+
+    $default  reduce using rule 1 (line_list)
+
+
+state 6
+
+    3 line: define . CR
+
+    CR  shift, and go to state 12
+
+
+state 7
+
+    4 define: DEF_INT VAR . END
+    7       | DEF_INT VAR . EQ INT END
+    8       | DEF_INT VAR . EQ CHAR END
+
+    EQ   shift, and go to state 13
+    END  shift, and go to state 14
+
+
+state 8
+
+    5 define: DEF_DOUBLE VAR . END
+    9       | DEF_DOUBLE VAR . EQ DOUBLE END
+   10       | DEF_DOUBLE VAR . EQ INT END
+
+    EQ   shift, and go to state 15
+    END  shift, and go to state 16
+
+
+state 9
+
+    6 define: DEF_CHAR VAR . END
+   11       | DEF_CHAR VAR . EQ CHAR END
+   12       | DEF_CHAR VAR . EQ INT END
+
+    EQ   shift, and go to state 17
+    END  shift, and go to state 18
+
+
+state 10
+
+    0 $accept: line_list $end .
+
+    $default  accept
+
+
+state 11
+
+    2 line_list: line_list line .
+
+    $default  reduce using rule 2 (line_list)
+
+
+state 12
+
+    3 line: define CR .
+
+    $default  reduce using rule 3 (line)
+
+
+state 13
+
+    7 define: DEF_INT VAR EQ . INT END
+    8       | DEF_INT VAR EQ . CHAR END
+
+    INT   shift, and go to state 19
+    CHAR  shift, and go to state 20
+
+
+state 14
+
+    4 define: DEF_INT VAR END .
+
+    $default  reduce using rule 4 (define)
+
+
+state 15
+
+    9 define: DEF_DOUBLE VAR EQ . DOUBLE END
+   10       | DEF_DOUBLE VAR EQ . INT END
+
+    INT     shift, and go to state 21
+    DOUBLE  shift, and go to state 22
+
+
+state 16
+
+    5 define: DEF_DOUBLE VAR END .
+
+    $default  reduce using rule 5 (define)
+
+
+state 17
+
+   11 define: DEF_CHAR VAR EQ . CHAR END
+   12       | DEF_CHAR VAR EQ . INT END
+
+    INT   shift, and go to state 23
+    CHAR  shift, and go to state 24
+
+
+state 18
+
+    6 define: DEF_CHAR VAR END .
+
+    $default  reduce using rule 6 (define)
+
+
+state 19
+
+    7 define: DEF_INT VAR EQ INT . END
+
+    END  shift, and go to state 25
+
+
+state 20
+
+    8 define: DEF_INT VAR EQ CHAR . END
+
+    END  shift, and go to state 26
+
+
+state 21
+
+   10 define: DEF_DOUBLE VAR EQ INT . END
+
+    END  shift, and go to state 27
+
+
+state 22
+
+    9 define: DEF_DOUBLE VAR EQ DOUBLE . END
+
+    END  shift, and go to state 28
+
+
+state 23
+
+   12 define: DEF_CHAR VAR EQ INT . END
+
+    END  shift, and go to state 29
+
+
+state 24
+
+   11 define: DEF_CHAR VAR EQ CHAR . END
+
+    END  shift, and go to state 30
+
+
+state 25
+
+    7 define: DEF_INT VAR EQ INT END .
+
+    $default  reduce using rule 7 (define)
+
+
+state 26
+
+    8 define: DEF_INT VAR EQ CHAR END .
+
+    $default  reduce using rule 8 (define)
+
+
+state 27
+
+   10 define: DEF_DOUBLE VAR EQ INT END .
+
+    $default  reduce using rule 10 (define)
+
+
+state 28
+
+    9 define: DEF_DOUBLE VAR EQ DOUBLE END .
+
+    $default  reduce using rule 9 (define)
+
+
+state 29
+
+   12 define: DEF_CHAR VAR EQ INT END .
+
+    $default  reduce using rule 12 (define)
+
+
+state 30
+
+   11 define: DEF_CHAR VAR EQ CHAR END .
+
+    $default  reduce using rule 11 (define)
