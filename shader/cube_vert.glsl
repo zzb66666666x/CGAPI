@@ -4,7 +4,6 @@ layout(location = 2) in vec2 aTexCoord;
 
 out vec3 color;
 
-uniform mat4 inv_model;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
@@ -12,5 +11,5 @@ uniform mat4 projection;
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 
-    color = inv_model * aNormal;
+    color = aNormal; 
 }

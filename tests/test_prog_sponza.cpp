@@ -15,7 +15,7 @@
 const int WIDTH = 800, HEIGHT = 600;
 const float NEAR = 0.1f, FAR = 500.0f;
 
-static void testProgPipeline(benchmark::State& state)
+static void testProgSponza(benchmark::State& state)
 {
     if (!glvInit()) {
         std::cout << "glv Init failed\n";
@@ -40,7 +40,9 @@ static void testProgPipeline(benchmark::State& state)
     Model model("../resources/sponza/models/sponza.obj");
 
     Shader shader("../shader/sponza_vert.glsl", "../shader/sponza_frag.glsl");
-    shader.setMat4("modelView", modelMatrix * modelMatrix);
+    shader.use();
+    shader.setMat4("model", modelMatrix);
+    shader.setMat4("view", viewMatrix);
     shader.setMat4("projection", projectionMatrix);
     shader.setMat4("inv_model", glm::transpose(glm::inverse(modelMatrix)));
     // Perform setup here
@@ -61,6 +63,6 @@ static void testProgPipeline(benchmark::State& state)
 
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-BENCHMARK(testProgPipeline)->Iterations(100);
+BENCHMARK(testProgSponza)->Iterations(100);
 // Run the benchmark
 BENCHMARK_MAIN();

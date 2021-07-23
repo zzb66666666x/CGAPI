@@ -1406,27 +1406,23 @@ void programmable_process_geometry_openmp(){
         // parse data
         for (i = 0; i < 3; ++i) {
             // parse VAO
-            for (auto it = vert_shader->io_profile.begin(); it != vert_shader->io_profile.end(); ++it) {
-                if (it->second.io == INPUT_VAR) {
-                    vertex_attrib_t& config = vattrib_data[it->second.layout];
-                    buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
-                    if(config.type == GL_FLOAT){
-                        switch(it->second.dtype){
-                            case TYPE_VEC2:
-                                vs_input.emplace(it->first, (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) });
-                                break;
-                            case TYPE_VEC3:{
-                                data_t var;
-                                var.vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2));
-                                vs_input.emplace(it->first, var);
-                                // vs_input.emplace(it->first, (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) });
-                                break;
-                            }
-                            default: break;
-                        }
+            for (auto it = vert_shader->layouts.begin(); it != vert_shader->layouts.end(); ++it) {
+                vertex_attrib_t& config = vattrib_data[it->second->layout];
+                buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+                if (config.type == GL_FLOAT) {
+                    switch (it->second->dtype) {
+                        case TYPE_VEC2: 
+                            vs_input[it->first] = (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) };
+                            break;
+                        case TYPE_VEC3: 
+                            vs_input[it->first] = (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) };
+                            break;
+                    default:
+                        break;
                     }
                 }
             }
+
             int thread_id = omp_get_thread_num();
             shader_interfaces[thread_id]->input_port(vs_input);
 
