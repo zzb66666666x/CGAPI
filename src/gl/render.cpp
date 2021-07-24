@@ -1393,19 +1393,21 @@ void programmable_process_geometry_openmp(){
         shader_interfaces[i] = vert_shader->get_shader_utils(i);
     }
     // begin parallel block
+    std::map<std::string, data_t> vs_input,vs_output;
     void* input_ptr;
     unsigned char* buf;
     int i;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(input_ptr) private(buf) private(i)
+#pragma omp parallel for private(input_ptr) private(buf) private(i) private(vs_input) private(vs_output)
 #endif
-    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
-        std::map<std::string, data_t> vs_input;
-        std::map<std::string, data_t> vs_output;
+    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {        
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
+        triangle_list[tri_ind]->cur_shader = vert_shader;
         for (i = 0; i < 3; ++i) {
             // parse VAO
+            vs_input.clear();
+            vs_output.clear();
             for (auto it = vert_shader->layouts.begin(); it != vert_shader->layouts.end(); ++it) {
                 vertex_attrib_t& config = vattrib_data[it->second->layout];
                 buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
@@ -1436,9 +1438,7 @@ void programmable_process_geometry_openmp(){
             triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
             triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
         }
-        
 
-        triangle_list[tri_ind]->cur_shader = vert_shader;
         // view frustum culling list
         std::vector<ProgrammableTriangle*> vfc_list;
         triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);
@@ -1473,11 +1473,11 @@ void programmable_process_geometry_openmp(){
             triangle_list[tri_ind]->screen_pos[i].z /= triangle_list[tri_ind]->screen_pos[i].w;
 
             // view port transformation
-            triangle_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0);
-            triangle_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (triangle_list[tri_ind]->screen_pos[i].y + 1.0);
+            triangle_list[tri_ind]->screen_pos[i].x = 0.5f * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0f);
+            triangle_list[tri_ind]->screen_pos[i].y = 0.5f * ctx->height * (triangle_list[tri_ind]->screen_pos[i].y + 1.0f);
 
             // [-1,1] to [0,1]
-            triangle_list[tri_ind]->screen_pos[i].z = triangle_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
+            triangle_list[tri_ind]->screen_pos[i].z = triangle_list[tri_ind]->screen_pos[i].z * 0.5f + 0.5f;
         }
     }
 
@@ -1491,11 +1491,11 @@ void programmable_process_geometry_openmp(){
             tri_culling_list[tri_ind]->screen_pos[i].z /= tri_culling_list[tri_ind]->screen_pos[i].w;
 
             // view port transformation
-            tri_culling_list[tri_ind]->screen_pos[i].x = 0.5 * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
-            tri_culling_list[tri_ind]->screen_pos[i].y = 0.5 * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
+            tri_culling_list[tri_ind]->screen_pos[i].x = 0.5f * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
+            tri_culling_list[tri_ind]->screen_pos[i].y = 0.5f * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
 
             // [-1,1] to [0,1]
-            tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5 + 0.5;
+            tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5f + 0.5f;
         }
         triangle_list[ind + tri_ind] = tri_culling_list[tri_ind];
     }
@@ -1542,13 +1542,13 @@ void programmable_rasterize_with_shading_openmp(){
         // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
-        maxx = maxx >= width ? width - 1 : maxx;
-        maxy = maxy >= height ? height - 1 : maxy;
+        maxx = maxx > width ? width : maxx;
+        maxy = maxy > height ? height : maxy;
 #endif
 
         // AABB algorithm
-        for (y = miny; y <= maxy; ++y) {
-            for (x = minx; x <= maxx; ++x) {
+        for (y = miny; y < maxy; ++y) {
+            for (x = minx; x < maxx; ++x) {
                 int index = GET_INDEX(x, y, width, height);
                 if (!t->inside(x + 0.5f, y + 0.5f))
                     continue;
