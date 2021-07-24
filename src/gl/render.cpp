@@ -10,7 +10,7 @@
 #include <omp.h>
 #include <pthread.h>
 #include <set>
-#include <stdio.h>
+#include <iostream>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -1272,7 +1272,7 @@ void* _thr_rasterize(void* thread_id)
 
 ///////////////////////////// PROGRAMMABLE VERSION WITH OPENMP ////////////////////////////
 static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, std::map<std::string, data_t>& target){
-    for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); it++){
+    for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); ++it){
         int dtype = shader_ptr->io_profile[it->first].dtype;
         data_t interp_data;
         switch(dtype){
@@ -1499,7 +1499,7 @@ void programmable_process_geometry_openmp(){
         }
         triangle_list[ind + tri_ind] = tri_culling_list[tri_ind];
     }
-    ppl->tri_culling_list.clear();
+    tri_culling_list.clear();
 }
 
 void programmable_rasterize_with_shading_openmp(){

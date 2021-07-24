@@ -168,9 +168,6 @@ public:
     {
         ProgrammableVertex res;
         res.screen_pos = v1.screen_pos + (v2.screen_pos - v1.screen_pos) * weight;
-        // for(auto it = v1.vertex_attrib.begin(); it != v1.vertex_attrib.end(); ++it){
-        //     res.vertex_attrib[it->first] = it->second + (v2.vertex_attrib[it->first] - it->second) * weight;
-        // }
         for (auto it = v1.vertex_attrib.begin(); it != v1.vertex_attrib.end(); ++it) {
             int dtype = shader_ptr->io_profile[it->first].dtype;
             data_t interp_data;

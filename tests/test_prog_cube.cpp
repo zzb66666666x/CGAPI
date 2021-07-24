@@ -28,12 +28,14 @@ static void testProgCube(benchmark::State& state)
     glm::mat4 modelMatrix(1.0f);
     glm::mat4 viewMatrix(1.0f);
     glm::mat4 projectionMatrix(1.0f);
-    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(45.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-    // modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
     glm::vec3 eyepos(0.0f, 0.0f, 5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0f);
+
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(0.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
+
     viewMatrix = glm::lookAt(eyepos, eyepos + front, up);
     projectionMatrix = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, NEAR, FAR);
 
@@ -44,12 +46,21 @@ static void testProgCube(benchmark::State& state)
     shader.setMat4("model", modelMatrix);
     shader.setMat4("view", viewMatrix);
     shader.setMat4("projection", projectionMatrix);
+    float angle = 0.0f;
     // Perform setup here
     for (auto _ : state) {
+
+        modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(angle++), glm::vec3(1.0f, 1.0f, 0.0f));
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f, 0.5f, 0.5f));
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shader.use();
+        shader.setMat4("model", modelMatrix);
+        shader.setMat4("view", viewMatrix);
+        shader.setMat4("projection", projectionMatrix);
         model.draw();
         // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         // glDrawArrays(GL_TRIANGLES, 0, vertices.size());
