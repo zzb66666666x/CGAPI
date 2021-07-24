@@ -58,36 +58,16 @@ private:
                 vertices[j].position.y = curMesh.Vertices[j].Position.Y;
                 vertices[j].position.z = curMesh.Vertices[j].Position.Z;
 
-                vertices[j].texcoord.x = curMesh.Vertices[j].TextureCoordinate.X;
-                vertices[j].texcoord.y = curMesh.Vertices[j].TextureCoordinate.Y;
-
                 vertices[j].normal.x = curMesh.Vertices[j].Normal.X;
                 vertices[j].normal.y = curMesh.Vertices[j].Normal.Y;
                 vertices[j].normal.z = curMesh.Vertices[j].Normal.Z;
-                // vertices.push_back(curMesh.Vertices[j].Position.X);
-                // vertices.push_back(curMesh.Vertices[j].Position.Y);
-                // vertices.push_back(curMesh.Vertices[j].Position.Z);
 
-                // vertices.push_back(curMesh.Vertices[j].TextureCoordinate.X);
-                // vertices.push_back(curMesh.Vertices[j].TextureCoordinate.Y);
+                vertices[j].texcoord.x = curMesh.Vertices[j].TextureCoordinate.X;
+                vertices[j].texcoord.y = curMesh.Vertices[j].TextureCoordinate.Y;
 
-                // vertices.push_back(curMesh.Vertices[j].Normal.X);
-                // vertices.push_back(curMesh.Vertices[j].Normal.Y);
-                // vertices.push_back(curMesh.Vertices[j].Normal.Z);
             }
-
-            // Go through every 3rd index and print the
-            //	triangle that these indices represent
-            // for (int j = 0; j < curMesh.Indices.size(); j += 3) {
-            //     indices[j] = curMesh.Indices[j];
-            //     indices[j + 1] = curMesh.Indices[j + 1];
-            //     indices[j + 2] = curMesh.Indices[j + 2];
-            //     // file << "T" << j / 3 << ": " << curMesh.Indices[j] << ", " << curMesh.Indices[j + 1] << ", " << curMesh.Indices[j + 2] << "\n";
-            // }
-            // printf("%u, %u\n", vertices.size(), indices.size());
             meshes.push_back(Mesh(vertices, curMesh.Indices));
         }
-        printf("end\n");
 
 
         // int offset = 0;

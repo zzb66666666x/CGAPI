@@ -148,8 +148,11 @@ target_link_libraries(test_benchmark glite)
 add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
 target_link_libraries(test_sponza glite)
 
-# add_executable(test_prog_sponza tests/test_prog_sponza.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
-# target_link_libraries(test_prog_sponza glite)
+add_executable(test_prog_sponza tests/test_prog_sponza.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
+target_link_libraries(test_prog_sponza glite)
 
 add_executable(test_prog_cube tests/test_prog_cube.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
 target_link_libraries(test_prog_cube glite)
+
+add_executable(test_programmable_basics tests/test_programmable_basics.cpp tests/shared_data.cpp)
+target_link_libraries(test_programmable_basics glite)

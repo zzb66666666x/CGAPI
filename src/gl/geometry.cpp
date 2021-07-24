@@ -122,19 +122,14 @@ int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgr
 bool ProgrammableTriangle::inside(float x, float y){
     glm::vec3 f0, f1, f2;
     glm::vec3 v[3];
-    for (int i = 0; i < 3; ++i)
-    {
-        v[i] = {screen_pos[i].x, screen_pos[i].y, 1.0};
-    }
+    v[0] = { screen_pos[0].x, screen_pos[0].y, 1.0 };
+    v[1] = { screen_pos[1].x, screen_pos[1].y, 1.0 };
+    v[2] = { screen_pos[2].x, screen_pos[2].y, 1.0 };
     f0 = glm::cross(v[1], v[0]);
     f1 = glm::cross(v[2], v[1]);
     f2 = glm::cross(v[0], v[2]);
     glm::vec3 p(x, y, 1.0f);
-    if ((glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0))
-    {
-        return true;
-    }
-    return false;
+    return (glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0);
 }
 
 glm::vec3 ProgrammableTriangle::computeBarycentric2D(float x, float y){

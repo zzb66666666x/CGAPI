@@ -15,7 +15,7 @@
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
-#define GET_INDEX(x, y, width, height) ((height - 1 - y) * width + x)
+#define GET_INDEX(x, y, width, height) ((height - 1 - (y)) * width + (x))
 
 // for test
 float angle = 0.0f;
@@ -1542,13 +1542,13 @@ void programmable_rasterize_with_shading_openmp(){
         // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
-        maxx = maxx > width ? width : maxx;
-        maxy = maxy > height ? height : maxy;
+        maxx = maxx >= width ? width - 1 : maxx;
+        maxy = maxy >= height ? height - 1 : maxy;
 #endif
 
         // AABB algorithm
-        for (y = miny; y < maxy; ++y) {
-            for (x = minx; x < maxx; ++x) {
+        for (y = miny; y <= maxy; ++y) {
+            for (x = minx; x <= maxx; ++x) {
                 int index = GET_INDEX(x, y, width, height);
                 if (!t->inside(x + 0.5f, y + 0.5f))
                     continue;
@@ -1560,7 +1560,7 @@ void programmable_rasterize_with_shading_openmp(){
                 float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
                 float beta = coef[1] * Z_viewspace / screen_pos[1].w;
                 float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
-                
+
                 if (!ctx->use_z_test) {
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
