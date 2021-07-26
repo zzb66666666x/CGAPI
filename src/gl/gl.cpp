@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <float.h>
 #include "../../include/gl/gl.h"
 #include "../../include/gl/common.h"
 #include "glcontext.h"
@@ -607,7 +608,7 @@ void glClear(unsigned int bitfields){
     // clear depth
     if((bitfields & GL_DEPTH_BUFFER_BIT) == GL_DEPTH_BUFFER_BIT){
         float* zbuf = (float *)C->zbuf->getDataPtr();
-        std::fill(zbuf ,zbuf + C->zbuf->getSize(), 1.0f);
+        std::fill(zbuf ,zbuf + C->zbuf->getSize(), FLT_MAX);
     }
     if ((bitfields & GL_COLOR_BUFFER_BIT) == GL_COLOR_BUFFER_BIT){
         if (C->framebuf == nullptr)

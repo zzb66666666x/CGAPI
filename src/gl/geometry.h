@@ -193,6 +193,7 @@ public:
     std::map<std::string, data_t> vertex_attribs[3];
 
     bool culling = false;
+    float w_inversed[3];
 
     Shader* cur_shader;
 

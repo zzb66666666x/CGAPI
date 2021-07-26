@@ -31,6 +31,7 @@ static void testProgSponza(benchmark::State& state)
     glm::mat4 viewMatrix(1.0f);
     glm::mat4 projectionMatrix(1.0f);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -30.0f, -80.0f));
+    // modelMatrix = glm::translate(modelMatrix, glm::vec3(20.0f, -30.0f, -80.0f));
     modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.1f, 0.1f, 0.1f));
     glm::vec3 eyepos(0.0f, 0.0f, 5.0f);
@@ -52,10 +53,9 @@ static void testProgSponza(benchmark::State& state)
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
         shader.use();
         model.draw();
-        // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        // glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
         glvWriteStream(window);
     }

@@ -1,16 +1,16 @@
-#include "configs.h"
 #include "render.h"
-#include "glcontext.h"
 #include "../../include/gl/common.h"
 #include "binning.h"
+#include "configs.h"
+#include "glcontext.h"
 #include <assert.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #include <omp.h>
 #include <pthread.h>
 #include <set>
-#include <iostream>
 
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
@@ -31,7 +31,7 @@ inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::v
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
 
-#define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3)/weight)
+#define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3) / weight)
 
 /////////////////////////////////////// face culling function //////////////////////////////////
 inline static void backface_culling(Triangle& t)
@@ -422,7 +422,7 @@ void process_geometry_ebo_openmp()
 
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
 
-    std::vector<int> *indices;
+    std::vector<int>* indices;
     int triangle_size = 0;
     if (ppl->use_indices) {
         int vaoId = ctx->payload.renderMap[GL_ARRAY_BUFFER];
@@ -432,25 +432,25 @@ void process_geometry_ebo_openmp()
             // first ebo data index
             const void* first_indices = (const void*)ppl->ebo_config.first_indices;
             switch (ppl->ebo_config.indices_type) {
-                case GL_UNSIGNED_INT: {
-                    // ebo data array
-                    unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
-                    int first_index = (size_t)first_indices / sizeof(unsigned int);
-                    int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
-                    // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
-                    ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
-                    // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
-                    innerIndices.resize(ebuf_size - first_index);
+            case GL_UNSIGNED_INT: {
+                // ebo data array
+                unsigned int* ebuf_data = (unsigned int*)ppl->ebo_config.ebo_ptr->getDataPtr();
+                int first_index = (size_t)first_indices / sizeof(unsigned int);
+                int ebuf_size = MIN(ppl->vertex_num, ppl->ebo_config.ebo_ptr->getSize());
+                // case: ((6 - 1) / 3) * 3 + 1 == 4 , first_index == 1
+                ebuf_size = ((ebuf_size - first_index) / 3) * 3 + first_index;
+                // vertex_num = ((vertex_num - first_vertex_ind) % 3) * 3 + first_vertex_ind;
+                innerIndices.resize(ebuf_size - first_index);
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for
 #endif
-                    for (int i = first_index; i < ebuf_size; ++i) {
-                        innerIndices[i] = ebuf_data[i];
-                    }
-                    triangle_size = (ebuf_size - first_index) / 3;
-                } break;
-                default:
-                    break;
+                for (int i = first_index; i < ebuf_size; ++i) {
+                    innerIndices[i] = ebuf_data[i];
+                }
+                triangle_size = (ebuf_size - first_index) / 3;
+            } break;
+            default:
+                break;
             }
             ppl->indexCache.addCacheData(vaoId, innerIndices);
             ppl->indexCache.getCacheData(vaoId, &indices);
@@ -522,22 +522,22 @@ void process_geometry_ebo_openmp()
         for (i = 0; i < 3; ++i) {
             for (j = 0; j < shader.layout_cnt; ++j) {
                 switch (shader.layouts[j]) {
-                    case LAYOUT_POSITION:
-                        input_ptr = &(shader.input_Pos);
-                        break;
-                    case LAYOUT_COLOR:
-                        input_ptr = &(shader.vert_Color);
-                        break;
-                    case LAYOUT_TEXCOORD:
-                        input_ptr = &(shader.iTexcoord);
-                        break;
-                    case LAYOUT_NORMAL:
-                        input_ptr = &(shader.vert_Normal);
-                        break;
-                    case LAYOUT_INVALID:
-                    default:
-                        input_ptr = nullptr;
-                        break;
+                case LAYOUT_POSITION:
+                    input_ptr = &(shader.input_Pos);
+                    break;
+                case LAYOUT_COLOR:
+                    input_ptr = &(shader.vert_Color);
+                    break;
+                case LAYOUT_TEXCOORD:
+                    input_ptr = &(shader.iTexcoord);
+                    break;
+                case LAYOUT_NORMAL:
+                    input_ptr = &(shader.vert_Normal);
+                    break;
+                case LAYOUT_INVALID:
+                default:
+                    input_ptr = nullptr;
+                    break;
                 }
                 if (input_ptr == nullptr) {
                     continue;
@@ -545,27 +545,27 @@ void process_geometry_ebo_openmp()
                 vertex_attrib_t& config = vattrib_data[shader.layouts[j]];
                 buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
                 switch (config.type) {
-                    case GL_FLOAT:
-                        switch (config.size) {
-                            case 2: {
-                                glm::vec2* vec2 = (glm::vec2*)input_ptr;
-                                vec2->x = *(float*)(buf + 0);
-                                vec2->y = *(float*)(buf + sizeof(float) * 1);
-                                break;
-                            }
-                            case 3: {
-                                glm::vec3* vec3 = (glm::vec3*)input_ptr;
-                                vec3->x = *(float*)(buf + 0);
-                                vec3->y = *(float*)(buf + sizeof(float) * 1);
-                                vec3->z = *(float*)(buf + sizeof(float) * 2);
-                                break;
-                            }
-                            default:
-                                throw std::runtime_error("not supported size\n");
-                        }
-                    break;
+                case GL_FLOAT:
+                    switch (config.size) {
+                    case 2: {
+                        glm::vec2* vec2 = (glm::vec2*)input_ptr;
+                        vec2->x = *(float*)(buf + 0);
+                        vec2->y = *(float*)(buf + sizeof(float) * 1);
+                        break;
+                    }
+                    case 3: {
+                        glm::vec3* vec3 = (glm::vec3*)input_ptr;
+                        vec3->x = *(float*)(buf + 0);
+                        vec3->y = *(float*)(buf + sizeof(float) * 1);
+                        vec3->z = *(float*)(buf + sizeof(float) * 2);
+                        break;
+                    }
                     default:
-                        throw std::runtime_error("not supported type\n");
+                        throw std::runtime_error("not supported size\n");
+                    }
+                    break;
+                default:
+                    throw std::runtime_error("not supported type\n");
                 }
             }
 
@@ -587,11 +587,11 @@ void process_geometry_ebo_openmp()
         if (vfc_list.size() != 0) {
             if (ctx->cull_face.open) {
                 omp_set_lock(&ppl->tri_culling_lock);
-                for (int tind = 0, tlen = vfc_list.size(); tind < tlen;++tind) {
+                for (int tind = 0, tlen = vfc_list.size(); tind < tlen; ++tind) {
                     backface_culling(*vfc_list[tind]);
-                    if(vfc_list[tind]->culling){
+                    if (vfc_list[tind]->culling) {
                         delete vfc_list[tind];
-                    }else{
+                    } else {
                         tri_culling_list.push_back(vfc_list[tind]);
                     }
                 }
@@ -705,7 +705,7 @@ void rasterize_with_shading_openmp()
                 float alpha = coef[0];
                 float beta = coef[1];
                 float gamma = coef[2];
-                
+
                 if (!ctx->use_z_test) {
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
@@ -738,7 +738,8 @@ void rasterize_with_shading_openmp()
     }
 }
 
-void process_pixel_openmp(){
+void process_pixel_openmp()
+{
     GET_CURRENT_CONTEXT(ctx);
     GET_PIPELINE(ppl);
     std::vector<Pixel>& pixel_tasks = ppl->pixel_tasks;
@@ -1271,11 +1272,12 @@ void* _thr_rasterize(void* thread_id)
 }
 
 ///////////////////////////// PROGRAMMABLE VERSION WITH OPENMP ////////////////////////////
-static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, std::map<std::string, data_t>& target){
-    for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); ++it){
+static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, std::map<std::string, data_t>& target)
+{
+    for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); ++it) {
         int dtype = shader_ptr->io_profile[it->first].dtype;
         data_t interp_data;
-        switch(dtype){
+        switch (dtype) {
             case TYPE_VEC2:
                 interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var, 1.0f);
                 break;
@@ -1292,7 +1294,8 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
     }
 }
 
-void programmable_process_geometry_openmp(){
+void programmable_process_geometry_openmp()
+{
     /**
      * input assembly
      */
@@ -1389,18 +1392,18 @@ void programmable_process_geometry_openmp(){
     std::vector<ProgrammableTriangle*>& tri_culling_list = ppl->prog_tri_culling_list;
     std::vector<ShaderInterface*> shader_interfaces;
     shader_interfaces.resize(ppl->cpu_num);
-    for (int i=0; i<ppl->cpu_num; i++){
+    for (int i = 0; i < ppl->cpu_num; i++) {
         shader_interfaces[i] = vert_shader->get_shader_utils(i);
     }
     // begin parallel block
-    std::map<std::string, data_t> vs_input,vs_output;
+    std::map<std::string, data_t> vs_input, vs_output;
     void* input_ptr;
     unsigned char* buf;
     int i;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(input_ptr) private(buf) private(i) private(vs_input) private(vs_output)
 #endif
-    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {        
+    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
         triangle_list[tri_ind]->cur_shader = vert_shader;
@@ -1413,14 +1416,14 @@ void programmable_process_geometry_openmp(){
                 buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
                 if (config.type == GL_FLOAT) {
                     switch (it->second->dtype) {
-                        case TYPE_VEC2: 
+                        case TYPE_VEC2:
                             vs_input[it->first] = (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) };
                             break;
-                        case TYPE_VEC3: 
+                        case TYPE_VEC3:
                             vs_input[it->first] = (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) };
                             break;
-                    default:
-                        break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -1468,9 +1471,11 @@ void programmable_process_geometry_openmp(){
         }
 
         for (i = 0; i < 3; ++i) {
-            triangle_list[tri_ind]->screen_pos[i].x /= triangle_list[tri_ind]->screen_pos[i].w;
-            triangle_list[tri_ind]->screen_pos[i].y /= triangle_list[tri_ind]->screen_pos[i].w;
-            triangle_list[tri_ind]->screen_pos[i].z /= triangle_list[tri_ind]->screen_pos[i].w;
+            triangle_list[tri_ind]->w_inversed[i] = 1.0f / triangle_list[tri_ind]->screen_pos[i].w;
+            triangle_list[tri_ind]->screen_pos[i].x *= triangle_list[tri_ind]->w_inversed[i];
+            triangle_list[tri_ind]->screen_pos[i].y *= triangle_list[tri_ind]->w_inversed[i];
+            triangle_list[tri_ind]->screen_pos[i].z *= triangle_list[tri_ind]->w_inversed[i];
+            // printf("1/w: %f, x: %f, y: %f, z: %f\n", triangle_list[tri_ind]->screen_pos[i].w, triangle_list[tri_ind]->screen_pos[i].x, triangle_list[tri_ind]->screen_pos[i].y, triangle_list[tri_ind]->screen_pos[i].z);
 
             // view port transformation
             triangle_list[tri_ind]->screen_pos[i].x = 0.5f * ctx->width * (triangle_list[tri_ind]->screen_pos[i].x + 1.0f);
@@ -1486,13 +1491,15 @@ void programmable_process_geometry_openmp(){
     triangle_list.resize(triangle_list.size() + tri_culling_list.size());
     for (int tri_ind = 0, len = tri_culling_list.size(); tri_ind < len; ++tri_ind) {
         for (i = 0; i < 3; ++i) {
-            tri_culling_list[tri_ind]->screen_pos[i].x /= tri_culling_list[tri_ind]->screen_pos[i].w;
-            tri_culling_list[tri_ind]->screen_pos[i].y /= tri_culling_list[tri_ind]->screen_pos[i].w;
-            tri_culling_list[tri_ind]->screen_pos[i].z /= tri_culling_list[tri_ind]->screen_pos[i].w;
+            tri_culling_list[tri_ind]->w_inversed[i] = 1.0f / tri_culling_list[tri_ind]->screen_pos[i].w;
+            tri_culling_list[tri_ind]->screen_pos[i].x *= tri_culling_list[tri_ind]->w_inversed[i];
+            tri_culling_list[tri_ind]->screen_pos[i].y *= tri_culling_list[tri_ind]->w_inversed[i];
+            tri_culling_list[tri_ind]->screen_pos[i].z *= tri_culling_list[tri_ind]->w_inversed[i];
+            // printf("1/w: %f, x: %f, y: %f, z: %f\n", tri_culling_list[tri_ind]->screen_pos[i].w, tri_culling_list[tri_ind]->screen_pos[i].x, tri_culling_list[tri_ind]->screen_pos[i].y, tri_culling_list[tri_ind]->screen_pos[i].z);
 
             // view port transformation
-            tri_culling_list[tri_ind]->screen_pos[i].x = 0.5f * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0);
-            tri_culling_list[tri_ind]->screen_pos[i].y = 0.5f * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0);
+            tri_culling_list[tri_ind]->screen_pos[i].x = 0.5f * ctx->width * (tri_culling_list[tri_ind]->screen_pos[i].x + 1.0f);
+            tri_culling_list[tri_ind]->screen_pos[i].y = 0.5f * ctx->height * (tri_culling_list[tri_ind]->screen_pos[i].y + 1.0f);
 
             // [-1,1] to [0,1]
             tri_culling_list[tri_ind]->screen_pos[i].z = tri_culling_list[tri_ind]->screen_pos[i].z * 0.5f + 0.5f;
@@ -1502,24 +1509,29 @@ void programmable_process_geometry_openmp(){
     tri_culling_list.clear();
 }
 
-void programmable_rasterize_with_shading_openmp(){
+void programmable_rasterize_with_shading_openmp()
+{
     GET_CURRENT_CONTEXT(ctx);
     std::vector<ProgrammableTriangle*>& prog_triangle_list = ctx->pipeline.prog_triangle_list;
     int width = ctx->width, height = ctx->height;
 
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
 
-    ProgrammableTriangle* t = nullptr;
     int len = prog_triangle_list.size();
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
     std::vector<ShaderInterface*> shader_interfaces;
     shader_interfaces.resize(ctx->pipeline.cpu_num);
-    for (int i=0; i<ctx->pipeline.cpu_num; i++){
+    for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
         shader_interfaces[i] = fragment_shader->get_shader_utils(i);
     }
+    
+    // parallel variable value
+    ProgrammableTriangle* t = nullptr;
+    glm::vec4* screen_pos = nullptr;
+    float* w_inv = nullptr;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(t)
+#pragma omp parallel for private(t) private(screen_pos) private(w_inv)
 #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
@@ -1531,7 +1543,8 @@ void programmable_rasterize_with_shading_openmp(){
             continue;
         }
 
-        glm::vec4* screen_pos = t->screen_pos;
+        screen_pos = t->screen_pos;
+        w_inv = t->w_inversed;
         int minx, maxx, miny, maxy, x, y;
         minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
         miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
@@ -1556,16 +1569,16 @@ void programmable_rasterize_with_shading_openmp(){
                 // alpha beta gamma
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
                 // perspective correction
-                float Z_viewspace = 1.0 / (coef[0] / screen_pos[0].w + coef[1] / screen_pos[1].w + coef[2] / screen_pos[2].w);
-                float alpha = coef[0] * Z_viewspace / screen_pos[0].w;
-                float beta = coef[1] * Z_viewspace / screen_pos[1].w;
-                float gamma = coef[2] * Z_viewspace / screen_pos[2].w;
+                float Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
+                float alpha = coef[0] * Z_viewspace * w_inv[0];
+                float beta = coef[1] * Z_viewspace * w_inv[1];
+                float gamma = coef[2] * Z_viewspace * w_inv[2];
 
                 if (!ctx->use_z_test) {
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    float zp = alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w;
                     omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
@@ -1586,5 +1599,5 @@ void programmable_rasterize_with_shading_openmp(){
                 }
             }
         }
-    }    
+    }
 }
