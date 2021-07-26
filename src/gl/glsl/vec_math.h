@@ -14,6 +14,7 @@ union data_t{
     glm::mat2 mat2_var;
     glm::mat3 mat3_var;
     glm::mat4 mat4_var;
+    int sampler2D_var;
 };
 
 #endif

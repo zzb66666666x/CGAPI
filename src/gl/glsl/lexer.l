@@ -41,6 +41,7 @@ float_const		{digit}+\.{digit}+
 "vec4"		return VEC4;
 "vec3"		return VEC3;
 "vec2"		return VEC2;
+"sampler2D" return SAMPLER2D;
 
 [ \t\n]+
 

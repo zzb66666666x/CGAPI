@@ -7,6 +7,3 @@ clean:
 	rm *.tab.h
 	rm *.yy.c
 	rm *.output
-	rm *.o
-	rm *.exe
-	rm *.dll

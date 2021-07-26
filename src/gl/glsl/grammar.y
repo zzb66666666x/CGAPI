@@ -39,6 +39,7 @@ void reset_status_flags(){
 %token VEC4;
 %token VEC3;
 %token VEC2;
+%token SAMPLER2D;
 %token LEFT_PAREN;
 %token RIGHT_PAREN;
 %token LEFT_BRACE;
@@ -259,7 +260,7 @@ type_specifier: VOID 	{
 							dtype = TYPE_MAT3;
 						}
 			  | MAT2 	{
-				  			printf("mat2 \t"); 
+				  			// printf("mat2 \t"); 
 							$$ = " mat2 "; 
 							dtype = TYPE_MAT2;
 						}
@@ -278,6 +279,12 @@ type_specifier: VOID 	{
 							$$ = " vec2 "; 
 							dtype = TYPE_VEC2;
 						}
+			  | SAMPLER2D
+			  			{
+							// printf("sampler2D \t"); 
+							$$ = " sampler2D ";
+							dtype = TYPE_SAMPLER2D;
+			  			}
 			  ;
 
 type_descriptors_list: type_descriptor

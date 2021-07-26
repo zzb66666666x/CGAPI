@@ -50,23 +50,24 @@
      VEC4 = 266,
      VEC3 = 267,
      VEC2 = 268,
-     LEFT_PAREN = 269,
-     RIGHT_PAREN = 270,
-     LEFT_BRACE = 271,
-     RIGHT_BRACE = 272,
-     EQ = 273,
-     SEMICOLON = 274,
-     DOT = 275,
-     COMMA = 276,
-     FLOAT = 277,
-     DOUBLE = 278,
-     INT = 279,
-     VOID = 280,
-     BOOL = 281,
-     IDENTIFIER = 282,
-     INTCONSTANT = 283,
-     FLOATCONSTANT = 284,
-     FUNCTION_CODE_BODY = 285
+     SAMPLER2D = 269,
+     LEFT_PAREN = 270,
+     RIGHT_PAREN = 271,
+     LEFT_BRACE = 272,
+     RIGHT_BRACE = 273,
+     EQ = 274,
+     SEMICOLON = 275,
+     DOT = 276,
+     COMMA = 277,
+     FLOAT = 278,
+     DOUBLE = 279,
+     INT = 280,
+     VOID = 281,
+     BOOL = 282,
+     IDENTIFIER = 283,
+     INTCONSTANT = 284,
+     FLOATCONSTANT = 285,
+     FUNCTION_CODE_BODY = 286
    };
 #endif
 /* Tokens.  */
@@ -81,23 +82,24 @@
 #define VEC4 266
 #define VEC3 267
 #define VEC2 268
-#define LEFT_PAREN 269
-#define RIGHT_PAREN 270
-#define LEFT_BRACE 271
-#define RIGHT_BRACE 272
-#define EQ 273
-#define SEMICOLON 274
-#define DOT 275
-#define COMMA 276
-#define FLOAT 277
-#define DOUBLE 278
-#define INT 279
-#define VOID 280
-#define BOOL 281
-#define IDENTIFIER 282
-#define INTCONSTANT 283
-#define FLOATCONSTANT 284
-#define FUNCTION_CODE_BODY 285
+#define SAMPLER2D 269
+#define LEFT_PAREN 270
+#define RIGHT_PAREN 271
+#define LEFT_BRACE 272
+#define RIGHT_BRACE 273
+#define EQ 274
+#define SEMICOLON 275
+#define DOT 276
+#define COMMA 277
+#define FLOAT 278
+#define DOUBLE 279
+#define INT 280
+#define VOID 281
+#define BOOL 282
+#define IDENTIFIER 283
+#define INTCONSTANT 284
+#define FLOATCONSTANT 285
+#define FUNCTION_CODE_BODY 286
 
 
 
@@ -107,7 +109,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 57 "grammar.y"
+#line 58 "grammar.y"
 
 	char* str;
 	buffer_t* buf;
@@ -119,7 +121,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 123 "y.tab.h"
+#line 125 "y.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

@@ -30,6 +30,7 @@ int parse_file(const char* filename, char** output_buffer, int* buf_size);
 #define TYPE_INT		8
 #define TYPE_DOUBLE		9
 #define TYPE_BOOL		10
+#define TYPE_SAMPLER2D	11
 
 typedef struct{
 	char* data;

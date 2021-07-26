@@ -19,6 +19,7 @@
 #include "inner_support.h"
 // OpenGL consts
 #include "../../../include/gl/common.h"
+#include "../formats.h"
 
 __declspec(dllimport) ShaderInterface* create_shader_inst();
 __declspec(dllimport) void destroy_shader_inst(ShaderInterface* inst);
@@ -102,14 +103,14 @@ class Shader{
         clear_uniform_map();
         cpp_code_generate(parser_out_string, cpp_code);
         // std::cout<<"////////// FINAL CPP CODE //////////"<<std::endl;
-        // std::cout<<cpp_code;
+        std::cout<<cpp_code;
         // std::cout<<"////////// END OF CPP CODE //////////"<<std::endl;
         // std::cout<<"////////// UNIFORM MAP //////////"<<std::endl;
         // for (auto it = uniform_map.begin(); it != uniform_map.end(); it++){
         //     std::cout<<it->first<<"    "<<it->second<<std::endl;
         // }
         // std::cout<<"////////// END OF UNIFORM MAP //////////"<<std::endl;
-        std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -o ");
+        std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -O3 -o ");
         std::string compile_cmd_2(" -x c++ -");
         std::string compile_cmd = compile_cmd_1 + out + compile_cmd_2;
         // FILE *proc = popen("g++ -fPIC -shared -o test.dll -x c++ -", "w");

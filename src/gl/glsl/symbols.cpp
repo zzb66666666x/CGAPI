@@ -19,7 +19,8 @@ static string type_string_map[] = {
     "float",
     "int",
     "double",
-    "bool"
+    "bool",
+    "sampler2D"
 };
 
 static string io_string_map[] = {
@@ -46,6 +47,15 @@ static const char* input_uniform_fmap = "\nset_uniform input_uniform_fmap[";
 
 static const char*  output_uniform_fmap = "\nget_uniform output_uniform_fmap[";
 
+static bool is_inner_type(int dtype){
+    switch(dtype){
+        case TYPE_SAMPLER2D:
+            return true;
+        default:
+            break;
+    }
+    return false;
+}
 
 static void assign_input_value(string& code, const char* name, int dtype){
     string var_name = name;
@@ -69,8 +79,13 @@ static string uniform_var_input_port(const char* name, int dtype){
 static string uniform_var_output_port(const char* name, int dtype){
     string var_name = name;
     string type_name = type_string_map[dtype];  
-    return string("\ndata_t get_uniform_") + var_name + string("(){\n    ") + 
-           string("return (data_t){.") + type_name + "_var = " + var_name + string("};\n}\n");
+    if (is_inner_type(dtype)){
+        return string("\ndata_t get_uniform_") + var_name + string("(){\n    ") + 
+               string("return (data_t){.") + type_name + "_var = " + var_name + string(".texunit_id};\n}\n");
+    }else{
+        return string("\ndata_t get_uniform_") + var_name + string("(){\n    ") + 
+               string("return (data_t){.") + type_name + "_var = " + var_name + string("};\n}\n");
+    }
 }
 
 void emplace_profile(const char* name, int io, int dtype, int layout){
