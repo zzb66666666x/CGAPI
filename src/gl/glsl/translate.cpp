@@ -16,7 +16,6 @@ static string macros = \
 
 static string prefix = \
 "using namespace glm; \n"
-"get_sampler2D_data_fptr get_sampler2D;\n "
 ;
 
 static string class_shader_code = \

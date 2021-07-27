@@ -103,7 +103,7 @@ class Shader{
         clear_uniform_map();
         cpp_code_generate(parser_out_string, cpp_code);
         // std::cout<<"////////// FINAL CPP CODE //////////"<<std::endl;
-        std::cout<<cpp_code;
+        // std::cout<<cpp_code;
         // std::cout<<"////////// END OF CPP CODE //////////"<<std::endl;
         // std::cout<<"////////// UNIFORM MAP //////////"<<std::endl;
         // for (auto it = uniform_map.begin(); it != uniform_map.end(); it++){

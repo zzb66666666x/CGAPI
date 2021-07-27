@@ -125,6 +125,7 @@ target_link_libraries(test_pipeline glite)
 add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
 
 add_executable(test_sampler2D_type ${GL_PARSER} src/utests/test_sampler2D_type.cpp)
+target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
 
 ################################################
 ################## test make ###################

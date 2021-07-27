@@ -2,6 +2,7 @@
 #define _INNER_SUPPORT_H
 
 #include <map>
+#include <stdio.h>
 
 #ifdef GLSL_CODE
 enum filter_type{
@@ -46,6 +47,8 @@ class GLSLShader;
 typedef void (GLSLShader::*set_uniform)(data_t& var);
 typedef data_t (GLSLShader::*get_uniform)(void);
 
+get_sampler2D_data_fptr get_sampler2D;
+
 class sampler2D{
     public:
     sampler2D(){}
@@ -57,35 +60,39 @@ class sampler2D{
     filter_type filter;
     sampler2D& operator=(int val){
         texunit_id = val;
+        // printf("define value for sampler2D\n");
         sampler_data_pack tmp = get_sampler2D(val);
         width = tmp.width;
         height = tmp.height;
         color_format = tmp.color_format;
         data = tmp.tex_data;
         filter = tmp.filter;
+        // printf("width: %d\n", width);
+        // printf("height: %d\n", height);
+        // printf("data: %x\n", data);
         return *this;
     }
 };
 
-glm::vec4 texture(sampler2D &texture, glm::vec2 &texcoord)
+glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
 {
     glm::vec4 res = glm::vec4(1.0f);
-    if (texture.height == 0 || texture.width == 0)
+    if (samp.height == 0 || samp.width == 0)
         throw std::runtime_error("invalid texture used in shader\n");
-    float x = texcoord.x * texture.width;
-    float y = texcoord.y * texture.height;
+    float x = texcoord.x * samp.width;
+    float y = texcoord.y * samp.height;
     int channel;
-    if (texture.filter == filter_type::NEAREST)
+    if (samp.filter == filter_type::NEAREST)
     {
         x += 0.5f;
         y += 0.5f;
-        int index = ((int)y % texture.height) * texture.width + ((int)x % texture.width);
-        switch(texture.color_format){
+        int index = ((int)y % samp.height) * samp.width + ((int)x % samp.width);
+        switch(samp.color_format){
             case FORMAT_COLOR_8UC3:
                 channel = 3;
                 for (int i = 0; i < channel; ++i)
                 {
-                    res[i] = ((float) texture.data[index * channel + i]) / 255.0f;
+                    res[i] = ((float) samp.data[index * channel + i]) / 255.0f;
                 }
                 break;
             case FORMAT_COLOR_8UC4:
@@ -96,7 +103,7 @@ glm::vec4 texture(sampler2D &texture, glm::vec2 &texcoord)
                 break;
         }
     }
-    else if (texture.filter == filter_type::BILINEAR)
+    else if (samp.filter == filter_type::BILINEAR)
     {
         // TODO
     }
