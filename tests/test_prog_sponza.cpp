@@ -50,6 +50,9 @@ static void testProgSponza(benchmark::State& state)
     shader.setMat4("inv_model", glm::transpose(glm::inverse(modelMatrix)));
     // Perform setup here
     for (auto _ : state) {
+        if (glvWindowShouldClose(window)){
+            break;
+        }
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

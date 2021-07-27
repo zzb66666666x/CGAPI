@@ -49,6 +49,9 @@ static void testProgCube(benchmark::State& state)
     float angle = 0.0f;
     // Perform setup here
     for (auto _ : state) {
+        if (glvWindowShouldClose(window)){
+            break;
+        }
 
         modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
