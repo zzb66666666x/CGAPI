@@ -130,6 +130,20 @@ target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
 ################################################
 ################## test make ###################
 ################################################
+set(TESTS_HEADER_ASSIMP
+	tests/header_assimp/configs.h
+	tests/header_assimp/mesh.h
+	tests/header_assimp/model.h
+	tests/header_assimp/shader.h
+)
+
+set(TESTS_HEADER
+	tests/header/mesh.h
+	tests/header/model.h
+	tests/header/shader.h
+)
+
+
 add_executable(basics tests/test_basics.cpp tests/shared_data.cpp tests/shared_data.h)
 target_link_libraries(basics glite)
 
@@ -151,11 +165,16 @@ target_link_libraries(test_benchmark glite)
 add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
 target_link_libraries(test_sponza glite)
 
+# programmable pipeline version of testing files
 add_executable(test_prog_sponza tests/test_prog_sponza.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
 target_link_libraries(test_prog_sponza glite)
 
 add_executable(test_prog_cube tests/test_prog_cube.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
 target_link_libraries(test_prog_cube glite)
 
-add_executable(test_programmable_basics tests/test_programmable_basics.cpp tests/shared_data.cpp)
-target_link_libraries(test_programmable_basics glite)
+add_executable(test_prog_basics tests/test_prog_basics.cpp tests/shared_data.cpp)
+target_link_libraries(test_prog_basics glite)
+
+add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
+target_link_libraries(test_prog_sponza_texture glite)
+target_link_libraries(test_prog_sponza_texture assimp)
