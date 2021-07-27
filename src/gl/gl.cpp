@@ -50,15 +50,21 @@ void glGenVertexArrays(int num, unsigned int* ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    auto& attribs = C->share.vertex_attribs;
+    // auto& attribs = C->share.vertex_attribs;
+    auto& vaos = C->share.vertex_array_objects;
     int ret;
     // use glStorage<vertex_attrib_t> 
     // different VAO ids are maintained by glManager
     // each VAO owns on set of properties, stored in one glStorage<vertex_attrib_t>
     // each property are entries to the data array of the glStorage<vertex_attrib_t>
     // within each property, the config are wrapped in struct vertex_attrib_t
+    glObject* ptr;
     for (int i=0; i<num; i++){
-        ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, GL_MAX_VERTEX_ATTRIB_NUM,  GL_BIND_VAO);
+        // ret = attribs.insertStorage(GL_VERTEX_ATTRIB_CONFIG, GL_MAX_VERTEX_ATTRIB_NUM,  GL_BIND_VAO);
+        ret = vaos.insertStorage(GL_VERTEX_ARRAY_OBJECT, 1, GL_BIND_VAO);
+        vaos.searchStorage(&ptr, ret);
+        ((vertex_array_object_t*)ptr->getDataPtr())->vertex_buffer_object_id = -1;
+        ((vertex_array_object_t*)ptr->getDataPtr())->element_buffer_object_id = -1;
         ID[i] = ret;    // if failure, then ID will be -1
     }
 }
@@ -83,9 +89,20 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
     if (ID <= 0) {
         return;
     }
+    auto& vaos = C->share.vertex_array_objects;
+    int vaoId = C->payload.renderMap[GL_BIND_VAO];
+    if(vaoId == -1){
+        return;
+    }
     auto& bufs = C->share.buffers;
     int ret;
     glObject* ptr;
+    glObject* vaoPtr;
+    ret = vaos.searchStorage(&vaoPtr, vaoId);
+    if(ret == GL_FAILURE){
+        return;
+    }
+    vertex_array_object_t *vao_data = (vertex_array_object_t *)vaoPtr->getDataPtr();
     switch(buf_type){
         case GL_ARRAY_BUFFER:
             // try search out the ID
@@ -93,6 +110,7 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
             if (ret == GL_FAILURE){
                 return;
             }
+            vao_data->vertex_buffer_object_id = ID;
             ptr->bind = GL_ARRAY_BUFFER;
             C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
             break;
@@ -101,6 +119,7 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
             if (ret == GL_FAILURE) {
                 return;
             }
+            vao_data->element_buffer_object_id = ID;
             ptr->bind = GL_ELEMENT_ARRAY_BUFFER;
             C->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER] = ID;
             break;
@@ -113,22 +132,41 @@ void glBindVertexArray(unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    auto& mgr = C->share.vertex_attribs;
+    // auto& mgr = C->share.vertex_attribs;
+    auto& vaoMgr = C->share.vertex_array_objects;
+    auto& bufMgr = C->share.buffers;
     if (ID<0)
         return;
     else if (ID == 0){
         //unbind
+        // C->payload.renderMap[GL_BIND_VAO] = -1;
+
         C->payload.renderMap[GL_BIND_VAO] = -1;
+        C->payload.renderMap[GL_ARRAY_BUFFER] = -1;
+        C->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER] = -1;
     }
     else{
         // verify that the ID is valid
-        glObject* ptr;
-        int ret;
-        ret = mgr.searchStorage(&ptr, ID);
-        if (ret == GL_FAILURE){
+        // glObject* ptr;
+        // int ret;
+        // ret = mgr.searchStorage(&ptr, ID);
+        // if (ret == GL_FAILURE){
+        //     return;
+        // }
+        // C->payload.renderMap[GL_BIND_VAO] = ID;
+
+        glObject* vaoPtr, *vboPtr, *eboPtr;
+        int vboId, eboId, ret;
+        if (vaoMgr.searchStorage(&vaoPtr, ID) == GL_FAILURE) {
             return;
         }
+
+        bufMgr.searchStorage(&vboPtr, vboId = ((vertex_array_object_t*)vaoPtr->getDataPtr())->vertex_buffer_object_id);
+        bufMgr.searchStorage(&eboPtr, eboId = ((vertex_array_object_t*)vaoPtr->getDataPtr())->element_buffer_object_id);
+
         C->payload.renderMap[GL_BIND_VAO] = ID;
+        C->payload.renderMap[GL_ARRAY_BUFFER] = vboId;
+        C->payload.renderMap[GL_ELEMENT_ARRAY_BUFFER] = eboId;
     }
 }
 
@@ -341,7 +379,8 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     if (dtype != GL_FLOAT)
         throw std::runtime_error("not supporting data types beside float\n");
-    auto& mgr = C->share.vertex_attribs;
+    // auto& mgr = C->share.vertex_attribs;
+    auto& mgr = C->share.vertex_array_objects;
     auto& payload_map = C->payload.renderMap;
     int ID = payload_map[GL_BIND_VAO];
     if (ID<0){
@@ -354,14 +393,16 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
         printf("There is no such entry in the glManager for vertex attribs, pay attention!\n");
         return;
     }
-    if (index >= ptr->getSize()){
+    if (index >= GL_MAX_VERTEX_ATTRIB_NUM) {
         printf("Cannot hold that many vertex attribs!\n");
         return;
     }
     assert(ptr->bind == GL_BIND_VAO);
-    vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
+    // vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
+    vertex_array_object_t* vao_data = (vertex_array_object_t*)ptr->getDataPtr();
+    vertex_attrib_t* attribs = vao_data->attribs;
     vertex_attrib_t new_entry = {index, size, dtype, normalized, false, stride, pointer};
-    data[index] = new_entry;
+    attribs[index] = new_entry;
 }
 
 void glTexParameteri(GLenum target,unsigned int pname,int param){
@@ -375,16 +416,28 @@ void glEnableVertexAttribArray(unsigned int idx){
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glObject* ptr;
     int ret;
-    auto& mgr = C->share.vertex_attribs;
+    
+    // auto& mgr = C->share.vertex_attribs;
+    auto& vaoMgr = C->share.vertex_array_objects;
+
     int ID = C->payload.renderMap[GL_BIND_VAO];
-    if (idx<0 || ID<0){
+    if (idx < 0 || ID < 0 || idx >= GL_MAX_VERTEX_ATTRIB_NUM) {
         return;
     }
-    ret = mgr.searchStorage(&ptr, ID);
-    if (ret == GL_FAILURE || (unsigned)ptr->getSize()<=idx || ptr->getDataPtr()==nullptr)
+    // ret = mgr.searchStorage(&ptr, ID);
+    // if (ret == GL_FAILURE || (unsigned)ptr->getSize()<=idx || ptr->getDataPtr()==nullptr)
+    //     return;
+
+    ret = vaoMgr.searchStorage(&ptr, ID);
+    if(ret == GL_FAILURE || ptr->getDataPtr() == nullptr){
         return;
+    }
+
     // mark the activated vertex attribs
-    vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
+    // vertex_attrib_t* data = (vertex_attrib_t*)ptr->getDataPtr();
+    // data[idx].activated = true;
+
+    vertex_attrib_t* data = ((vertex_array_object_t*)ptr->getDataPtr())->attribs;
     data[idx].activated = true;
 }
 
@@ -428,7 +481,8 @@ void glDrawArrays(GLenum mode, int first, int count){
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     glManager& bufs = C->share.buffers;
-    glManager& vaos = C->share.vertex_attribs;
+    // glManager& vaos = C->share.vertex_attribs;
+    glManager& vaos = C->share.vertex_array_objects;
     glManager& texs = C->share.textures;
     glObject* vao_ptr;
     glObject* vbo_ptr;
@@ -477,9 +531,9 @@ void glDrawArrays(GLenum mode, int first, int count){
         }
         cnt++;
     }
-    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
+#if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
     check_set_layouts();
-    #endif
+#endif
     // prepare pipeline environment
     C->pipeline.vao_ptr = vao_ptr;
     C->pipeline.vbo_ptr = vbo_ptr;
@@ -510,7 +564,8 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         return;
     }
     glManager& bufs = ctx->share.buffers;
-    glManager& vaos = ctx->share.vertex_attribs;
+    // glManager& vaos = ctx->share.vertex_attribs;
+    glManager& vaos = ctx->share.vertex_array_objects;
     glManager& texs = ctx->share.textures;
     glObject* vao_ptr;
     glObject* vbo_ptr;
@@ -563,9 +618,9 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         }
         ++cnt; 
     }
-    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
+#if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
     check_set_layouts();
-    #endif
+#endif
     // prepare pipeline environment
     ctx->pipeline.vao_ptr = vao_ptr;
     ctx->pipeline.vbo_ptr = vbo_ptr;
@@ -784,6 +839,33 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
     }
     data.mat4_var = mat;
     for (auto uniform_ftable_pair : uniform_var_info.uniform_ftable_idx){
+        GLenum shader_type = uniform_ftable_pair.first;
+        int ftable_idx = uniform_ftable_pair.second;
+        Shader* shader_ptr = program.shaders[shader_type];
+        shader_ptr->set_uniform_variables(ftable_idx, data);
+    }
+}
+
+void glUniform3fv(unsigned int location, int count, const float* value){
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    if (count != 1)
+        throw std::runtime_error("the glsl cannot support uniform varaible array now\n");
+    // fetch current program id
+    auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
+    if (it_prog == C->glsl_shaders.shader_program_map.end())
+        throw std::runtime_error("using invalid shader program\n");
+    glProgrammableShader& program = it_prog->second;
+    auto it_id = program.uniform_id_to_name.find(location);
+    if (it_id == program.uniform_id_to_name.end())
+        return;
+    uniform_varaible_t& uniform_var_info = program.merged_uniform_maps[it_id->second];
+    data_t& data = uniform_var_info.data;
+    glm::vec3 vec = glm::make_vec3(value);
+    data.vec3_var = vec;
+    for (auto uniform_ftable_pair : uniform_var_info.uniform_ftable_idx) {
         GLenum shader_type = uniform_ftable_pair.first;
         int ftable_idx = uniform_ftable_pair.second;
         Shader* shader_ptr = program.shaders[shader_type];

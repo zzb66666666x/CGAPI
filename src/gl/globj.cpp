@@ -76,6 +76,8 @@ glObject* glManager::__storage(GLenum dtype, int size, GLenum bind){
             return new glStorage<char>(size, bind);
         case GL_VERTEX_ATTRIB_CONFIG:
             return new glStorage<vertex_attrib_t>(size, bind);
+        case GL_VERTEX_ARRAY_OBJECT:
+            return new glStorage<vertex_array_object_t>(size, bind);
         default:
             break;
     }
