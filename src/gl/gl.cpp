@@ -459,6 +459,7 @@ void glDrawArrays(GLenum mode, int first, int count){
         return;
 
     // sanity check for texture and layout (the method depends on whether we use programmable shaders)
+    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
     int cnt = 0;
     for (auto& it:C->payload.tex_units){
         if(it.second > 0){
@@ -467,17 +468,13 @@ void glDrawArrays(GLenum mode, int first, int count){
             if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr()==nullptr)
                 return;
             C->pipeline.textures[cnt] = tex_ptr;
-
-            #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
             C->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0+cnt));
-            #endif
         }
         else{
             C->pipeline.textures[cnt] = nullptr;
         }
         cnt++;
     }
-    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
     check_set_layouts();
     #endif
     // prepare pipeline environment
@@ -546,6 +543,7 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
         return;
     }
     // sanity check for texture and layout (the method depends on whether we use programmable shaders)
+    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
     int cnt = 0;
     for (auto& it : ctx->payload.tex_units) {
         if (it.second > 0) {
@@ -554,16 +552,12 @@ void glDrawElements(GLenum mode, int count, unsigned int type, const void* indic
             if (ret == GL_FAILURE || tex_ptr->getSize() <= 0 || tex_ptr->getDataPtr() == nullptr)
                 return;
             ctx->pipeline.textures[cnt] = tex_ptr;
-
-            #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
             ctx->shader.set_diffuse_texture((GLenum)((int)GL_TEXTURE0 + cnt));
-            #endif
         } else {
             ctx->pipeline.textures[cnt] = nullptr;
         }
         ++cnt; 
     }
-    #if (ENABLE_PROGRAMMABLE_PIPELINE == 0)
     check_set_layouts();
     #endif
     // prepare pipeline environment
@@ -692,11 +686,24 @@ void glShaderSource(unsigned int shader, int count, const char* const* string, c
 }
 
 sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
+    // this function will be called when we set the uniform texture
+    // which is outside of the render loop
     GET_CURRENT_CONTEXT(C);
     sampler_data_pack pack;
     if (texunit_id >= GL_MAX_TEXTURE_UNITS || texunit_id < 0)
         throw std::runtime_error("terminated because you use invlaid texture unit id\n");
-    
+    int tex_obj_id = C->payload.tex_units[(GLenum)(GL_TEXTURE0+texunit_id)];
+    glObject* obj_ptr;
+    int ret = C->share.textures.searchStorage(&obj_ptr, tex_obj_id);
+    auto it = C->share.tex_config_map.find(tex_obj_id);
+    if (it == C->share.tex_config_map.end() || ret==GL_FAILURE)
+        throw std::runtime_error("terminated because the texture cannot be found\n");
+    pack.tex_data = (unsigned char*)obj_ptr->getDataPtr();
+    pack.color_format = it->second.color_format;
+    pack.filter = NEAREST;
+    pack.height = it->second.height;
+    pack.width = it->second.width;
+    return pack;
 }
 
 void glCompileShader(unsigned int shader){
