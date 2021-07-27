@@ -87,7 +87,7 @@ set(GL_PARSER
 # find_package(glm REQUIRED)
 
 # set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
-set(OpenCV_DIR D:/CodingLibs/opencv/mingw_build)
+set(OpenCV_DIR D:/CodingLibs/opencv/mingw_build_release)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
