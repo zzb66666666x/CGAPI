@@ -691,6 +691,14 @@ void glShaderSource(unsigned int shader, int count, const char* const* string, c
     free_buffer(&code_buf);
 }
 
+sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
+    GET_CURRENT_CONTEXT(C);
+    sampler_data_pack pack;
+    if (texunit_id >= GL_MAX_TEXTURE_UNITS || texunit_id < 0)
+        throw std::runtime_error("terminated because you use invlaid texture unit id\n");
+    
+}
+
 void glCompileShader(unsigned int shader){
     // compile a shader in the shader cache
     GET_CURRENT_CONTEXT(C);
@@ -714,6 +722,7 @@ void glCompileShader(unsigned int shader){
     }
     shader_ptr->compile(output_fname);
     shader_ptr->load_shader();
+    shader_ptr->set_sampler2D_callback(get_sampler2D_data_fdef);
 }
 
 unsigned int glCreateProgram(){
@@ -758,8 +767,29 @@ void glUseProgram(unsigned int shaderProgram){
     C->payload.cur_shader_program_ptr = &(it->second);
 }
 
-// uniform variable location has 32 bits
-// 32bits |shader program id|uniform variable location|
+void glUniform1i(int location, int val){
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
+    if(it_prog == C->glsl_shaders.shader_program_map.end())
+        throw std::runtime_error("using invalid shader program\n");
+    glProgrammableShader& program = it_prog->second;
+    auto it_id = program.uniform_id_to_name.find(location);
+    if (it_id == program.uniform_id_to_name.end())
+        return;
+    uniform_varaible_t& uniform_var_info = program.merged_uniform_maps[it_id->second];
+    data_t& data = uniform_var_info.data;
+    // the sampler2D_var and int_var shares the same space in an anonymous union
+    data.sampler2D_var = val;
+    for (auto uniform_ftable_pair : uniform_var_info.uniform_ftable_idx){
+        GLenum shader_type = uniform_ftable_pair.first;
+        int ftable_idx = uniform_ftable_pair.second;
+        Shader* shader_ptr = program.shaders[shader_type];
+        shader_ptr->set_uniform_variables(ftable_idx, data);
+    }
+}
 
 void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const float * value){
     GET_CURRENT_CONTEXT(C);

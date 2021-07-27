@@ -50,6 +50,7 @@ extern unsigned int glCreateProgram();
 extern void glAttachShader(unsigned int shaderProgram, unsigned int shader);
 extern void glLinkProgram(unsigned int shaderProgram);
 extern void glUseProgram(unsigned int shaderProgram);
+extern void glUniform1i(int location, int val);
 extern void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const float * value);
 extern int glGetUniformLocation(unsigned int program, const char* name);
 
