@@ -1302,7 +1302,7 @@ void programmable_process_geometry_openmp()
     GET_PIPELINE(ppl);
     GET_CURRENT_CONTEXT(ctx);
 
-    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)ppl->vao_ptr->getDataPtr();
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)((vertex_array_object_t *)ppl->vao_ptr->getDataPtr())->attribs;
 
     // parse indices BEGIN
     std::vector<int>* indices;

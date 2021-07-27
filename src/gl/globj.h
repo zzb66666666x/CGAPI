@@ -53,6 +53,12 @@ typedef struct{
     void*   pointer;    // offset
 }vertex_attrib_t;
 
+typedef struct{
+    int vertex_buffer_object_id;                        // vbo id
+    int element_buffer_object_id;                       // ebo id
+    vertex_attrib_t attribs[GL_MAX_VERTEX_ATTRIB_NUM];  // attribs
+} vertex_array_object_t;
+
 // typedef struct{
 //     uint8_t R;
 //     uint8_t G;
@@ -199,6 +205,8 @@ class glShareData{
     glShareData(){}
     glManager buffers;
     glManager vertex_attribs;
+    // new vao fields
+    glManager vertex_array_objects;
     glManager textures;
     std::map<int, sampler_config> tex_config_map;
     glManager framebufs;
