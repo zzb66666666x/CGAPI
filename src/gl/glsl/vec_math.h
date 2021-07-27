@@ -14,7 +14,11 @@ union data_t{
     glm::mat2 mat2_var;
     glm::mat3 mat3_var;
     glm::mat4 mat4_var;
-    int sampler2D_var;
+    // if you want to pass int, still use the field sampler2D_var, they can share
+    union{
+        int sampler2D_var;
+        int int_var;
+    };
 };
 
 #endif

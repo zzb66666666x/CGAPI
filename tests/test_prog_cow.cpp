@@ -6,6 +6,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "OBJ_Loader.h"
+#include "header_assimp/shader.h"
+#include "header_assimp/configs.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
 
@@ -25,9 +30,6 @@ int load_vertices(std::vector<float> & vertices){
                 vertices.push_back(mesh.Vertices[i+j].Position.X);
                 vertices.push_back(mesh.Vertices[i+j].Position.Y);
                 vertices.push_back(mesh.Vertices[i+j].Position.Z);
-                vertices.push_back(0.2f);
-                vertices.push_back(0.3f);
-                vertices.push_back(0.8f);
                 // vertices.push_back(mesh.Vertices[i+j].Normal.X);
                 // vertices.push_back(mesh.Vertices[i+j].Normal.Y);
                 // vertices.push_back(mesh.Vertices[i+j].Normal.Z);
@@ -59,6 +61,9 @@ static void testDrawCowWindow(){
     int vertex_num;
     vertex_num = load_vertices(vertices_data);
 
+    // create shader
+    Shader myshader("../shader/cow_vert.glsl", "../shader/cow_frag.glsl");
+
     // Gen
     unsigned int VBO, VAO, texture1;
     glGenVertexArrays(1, &VAO);
@@ -86,9 +91,8 @@ static void testDrawCowWindow(){
     glBufferData(GL_ARRAY_BUFFER, vertices_data.size()*sizeof(float), &vertices_data[0], GL_STATIC_DRAW);
 
     // VAO config
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
 
     // activate VAO attribs
     glEnableVertexAttribArray(0);
@@ -97,6 +101,10 @@ static void testDrawCowWindow(){
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    // activate shader
+    myshader.use();
+    myshader.setInt("texture_diffuse1", 0);
+
     // DWORD begin;
     double fps = 0.0;
     int frameCount = 0;
@@ -104,6 +112,8 @@ static void testDrawCowWindow(){
     auto curTime = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
     double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
+    
+    float angle = 20.0f;
     while (!glvWindowShouldClose(window))
     {
         // begin = GetTickCount();
@@ -114,13 +124,30 @@ static void testDrawCowWindow(){
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
 
+        myshader.use();
+        glm::mat4 model(1.0f);
+        glm::mat4 view(1.0f);
+        glm::mat4 projection(1.0f);
+        projection = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        myshader.setMat4("projection", projection);
+        glm::vec3 eyepos(0.0f,0.0f,5.0f);
+        glm::vec3 front(0.0f, 0.0f, -1.0f);
+        glm::vec3 up(0.0f, 1.0f, 0.0f);
+        view = glm::lookAt(eyepos, eyepos+front, up);
+        myshader.setMat4("view", view);
+        // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
+        myshader.setMat4("model", model);
+        angle += 2.0f;
+
         glDrawArrays(GL_TRIANGLES, 0, vertex_num);
         glvWriteStream(window);
         // std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
         curTime = std::chrono::system_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
         duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
-        if (duration_s > 2)//2秒之后开始统计FPS
+        if (duration_s > 10)//2秒之后开始统计FPS
 	    {
             fps = frameCount / duration_s;
             frameCount = 0;
