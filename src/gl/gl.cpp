@@ -831,14 +831,17 @@ void glUseProgram(unsigned int shaderProgram){
 }
 
 void glUniform1i(int location, int val){
+    if (location < 0)
+        return;
     GET_CURRENT_CONTEXT(C);
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     }
-    auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
-    if(it_prog == C->glsl_shaders.shader_program_map.end())
-        throw std::runtime_error("using invalid shader program\n");
-    glProgrammableShader& program = it_prog->second;
+    // auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
+    // if(it_prog == C->glsl_shaders.shader_program_map.end())
+    //     throw std::runtime_error("using invalid shader program\n");
+    // glProgrammableShader& program = it_prog->second;
+    glProgrammableShader& program = *(C->payload.cur_shader_program_ptr);
     auto it_id = program.uniform_id_to_name.find(location);
     if (it_id == program.uniform_id_to_name.end())
         return;
@@ -854,7 +857,9 @@ void glUniform1i(int location, int val){
     }
 }
 
-void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const float * value){
+void glUniformMatrix4fv(int location, int count, bool transpose, const float * value){
+    if (location < 0)
+        return;    
     GET_CURRENT_CONTEXT(C);
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -862,10 +867,11 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
     if (count != 1)
         throw std::runtime_error("the glsl cannot support uniform varaible array now\n");
     // fetch current program id
-    auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
-    if(it_prog == C->glsl_shaders.shader_program_map.end())
-        throw std::runtime_error("using invalid shader program\n");
-    glProgrammableShader& program = it_prog->second;
+    // auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
+    // if(it_prog == C->glsl_shaders.shader_program_map.end())
+    //     throw std::runtime_error("using invalid shader program\n");
+    // glProgrammableShader& program = it_prog->second;
+    glProgrammableShader& program = *(C->payload.cur_shader_program_ptr);
     auto it_id = program.uniform_id_to_name.find(location);
     if (it_id == program.uniform_id_to_name.end())
         return;
@@ -884,7 +890,9 @@ void glUniformMatrix4fv(unsigned int location, int count, bool transpose, const 
     }
 }
 
-void glUniform3fv(unsigned int location, int count, const float* value){
+void glUniform3fv(int location, int count, const float* value){
+    if (location < 0)
+        return;
     GET_CURRENT_CONTEXT(C);
     if (C == nullptr) {
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
@@ -892,10 +900,11 @@ void glUniform3fv(unsigned int location, int count, const float* value){
     if (count != 1)
         throw std::runtime_error("the glsl cannot support uniform varaible array now\n");
     // fetch current program id
-    auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
-    if (it_prog == C->glsl_shaders.shader_program_map.end())
-        throw std::runtime_error("using invalid shader program\n");
-    glProgrammableShader& program = it_prog->second;
+    // auto it_prog = C->glsl_shaders.shader_program_map.find(C->payload.shader_program_in_use);
+    // if (it_prog == C->glsl_shaders.shader_program_map.end())
+    //     throw std::runtime_error("using invalid shader program\n");
+    // glProgrammableShader& program = it_prog->second;
+    glProgrammableShader& program = *(C->payload.cur_shader_program_ptr);
     auto it_id = program.uniform_id_to_name.find(location);
     if (it_id == program.uniform_id_to_name.end())
         return;
