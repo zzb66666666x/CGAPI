@@ -42,7 +42,7 @@ static void testProgSponza(benchmark::State& state)
     projectionMatrix = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, NEAR, FAR);
 
     Model model("../resources/sponza/sponza.obj");
-    // Model light("../resources/basic/cube.obj");
+    Model light("../resources/basic/cube.obj");
 
     Shader shader("../shader/sponza_vert.glsl", "../shader/sponza_frag.glsl");
     shader.use();
@@ -50,10 +50,10 @@ static void testProgSponza(benchmark::State& state)
     shader.setMat4("view", viewMatrix);
     shader.setMat4("projection", projectionMatrix);
     shader.setMat4("inv_model", glm::transpose(glm::inverse(modelMatrix)));
-    // shader.setVec3("lightPos", lightPos);
-    // shader.setVec3("viewPos", eyepos);
-    // shader.setVec3("lightColor", glm::vec3(1.0f, 0.0f, 1.0f));
-    // shader.setVec3("objectColor", glm::vec3(1.0f, 1.0f, 1.0f));
+    shader.setVec3("lightPos", lightPos);
+    shader.setVec3("viewPos", eyepos);
+    shader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+    shader.setVec3("objectColor", glm::vec3(1.0f, 1.0f, 1.0f));
 
     // Shader lightShader("../shader/light_vert.glsl", "../shader/light_frag.glsl");
     // lightShader.use();
@@ -74,6 +74,9 @@ static void testProgSponza(benchmark::State& state)
         
         shader.use();
         model.draw();
+
+        // lightShader.use();
+        // light.draw();
 
         glvWriteStream(window);
     }

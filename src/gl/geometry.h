@@ -179,7 +179,7 @@ public:
                     interp_data.vec3_var = it->second.vec3_var + (v2.vertex_attrib[it->first].vec3_var - it->second.vec3_var) * weight;
                     break;
                 default:
-                    throw std::runtime_error("don't interp on these types now\n");
+                    throw std::runtime_error("vertex don't interp on these types now\n");
             }
             res.vertex_attrib.emplace(it->first, interp_data);
         }

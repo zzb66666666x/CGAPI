@@ -16,6 +16,8 @@ using namespace std;
 
 const int WIDTH = 800, HEIGHT = 600;
 
+glm::vec3 lightPos(20.0f, 20.0f, 20.0f);
+
 int load_vertices(std::vector<float> & vertices){
     objl::Loader Loader;
     int ret =0;
@@ -30,11 +32,11 @@ int load_vertices(std::vector<float> & vertices){
                 vertices.push_back(mesh.Vertices[i+j].Position.X);
                 vertices.push_back(mesh.Vertices[i+j].Position.Y);
                 vertices.push_back(mesh.Vertices[i+j].Position.Z);
-                // vertices.push_back(mesh.Vertices[i+j].Normal.X);
-                // vertices.push_back(mesh.Vertices[i+j].Normal.Y);
-                // vertices.push_back(mesh.Vertices[i+j].Normal.Z);
                 vertices.push_back(mesh.Vertices[i+j].TextureCoordinate.X);
-                vertices.push_back(mesh.Vertices[i+j].TextureCoordinate.Y);
+                vertices.push_back(mesh.Vertices[i + j].TextureCoordinate.Y);
+                vertices.push_back(mesh.Vertices[i + j].Normal.X);
+                vertices.push_back(mesh.Vertices[i + j].Normal.Y);
+                vertices.push_back(mesh.Vertices[i + j].Normal.Z);
                 ret+=3;
             }
             num_triangles ++;
@@ -91,8 +93,9 @@ static void testDrawCowWindow(){
     glBufferData(GL_ARRAY_BUFFER, vertices_data.size()*sizeof(float), &vertices_data[0], GL_STATIC_DRAW);
 
     // VAO config
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 
     // activate VAO attribs
     glEnableVertexAttribArray(0);
@@ -104,6 +107,8 @@ static void testDrawCowWindow(){
     // activate shader
     myshader.use();
     myshader.setInt("texture_diffuse1", 0);
+    myshader.setVec3("lightPos", lightPos);
+    myshader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
 
     // DWORD begin;
     double fps = 0.0;
@@ -139,6 +144,9 @@ static void testDrawCowWindow(){
         model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
         myshader.setMat4("model", model);
+        myshader.setMat4("inv_model", glm::transpose(glm::inverse(model)));
+        myshader.setVec3("viewPos", eyepos);
+
         angle += 2.0f;
 
         glDrawArrays(GL_TRIANGLES, 0, vertex_num);
