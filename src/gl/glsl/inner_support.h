@@ -101,7 +101,12 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
                 }
                 break;
             case FORMAT_COLOR_8UC4:
-                throw std::runtime_error("not supporting that color format yet\n");
+                channel = 4;
+                // printf("using RGBA\n");
+                for (int i = 0; i < channel; ++i)
+                {
+                    res[i] = ((float) samp.data[index * channel + i]) / 255.0f;
+                }
                 break;
             default:
                 throw std::runtime_error("invalid color format\n");

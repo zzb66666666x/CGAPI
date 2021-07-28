@@ -15,6 +15,7 @@ extern void yy_delete_buffer(YY_BUFFER_STATE yy_buffer);
 #include "parse.h"
 #include "symbols.h"
 
+static int syntax_check;
 static int layout_status = LAYOUT_UNDEF;
 static int io_status = NORMAL_VAR;
 static int dtype = TYPE_VOID;
@@ -333,6 +334,7 @@ layout_val: INTCONSTANT{$$ = $1;}
 %%
 
 void yyerror(char *str){
+	syntax_check = -1;
     fprintf(stderr,"error:%s\n",str);
 }
 
@@ -342,6 +344,7 @@ int yywrap(){
 
 int parse_file(const char* filename, char** output_buffer, int* buf_size)
 {
+	syntax_check = 0;
 	FILE* fp = fopen(filename, "r");
 	/* printf("opening file: %s\n", filename); */
 	if (fp){
@@ -357,11 +360,12 @@ int parse_file(const char* filename, char** output_buffer, int* buf_size)
 	*output_buffer = parser_out.data;
 	*buf_size = parser_out.size;
 	free_lexer_buffer();
-	yywrap();
+	return syntax_check;
 }
 
 int parse_string(const char* str, char** output_buffer, int* buf_size)
 {
+	syntax_check = 0;
     YY_BUFFER_STATE yy_buffer = yy_scan_string(str);
 	init_buffer(&parser_out, 1000);
 	reset_status_flags();
@@ -373,5 +377,5 @@ int parse_string(const char* str, char** output_buffer, int* buf_size)
 	*output_buffer = parser_out.data;
 	*buf_size = parser_out.size;
 	free_lexer_buffer();
-	yywrap();
+	return syntax_check;
 }

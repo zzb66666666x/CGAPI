@@ -109,7 +109,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 58 "grammar.y"
+#line 59 "grammar.y"
 
 	char* str;
 	buffer_t* buf;

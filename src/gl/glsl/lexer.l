@@ -44,6 +44,7 @@ float_const		{digit}+\.{digit}+
 "sampler2D" return SAMPLER2D;
 
 [ \t\n]+
+"//".*
 
 {identifier}	{ yylval.str = strdup(yytext); return IDENTIFIER; }
 {int_const}		{ yylval.intval = atoi(yytext); return INTCONSTANT; }

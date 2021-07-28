@@ -131,6 +131,8 @@ private:
                 // use models where a vertex can have multiple texture coordinates so we always take the first set (0).
                 vec.x = mesh->mTextureCoords[0][i].x; 
                 vec.y = mesh->mTextureCoords[0][i].y;
+                if (vec.x < 0 || vec.y < 0)
+                    throw std::runtime_error("invalid texture coord when reading model\n");
                 vertex.TexCoords = vec;
                 // tangent
                 vector.x = mesh->mTangents[i].x;
@@ -231,11 +233,11 @@ unsigned int TextureFromFile(const char *path, const string &directory, bool gam
     {
         GLenum format;
         if (nrComponents == 1)
-            throw std::runtime_error("not supported color format\n");
+            throw std::runtime_error("not supported color format: only 1 channel\n");
         else if (nrComponents == 3)
             format = GL_RGB;
         else if (nrComponents == 4)
-            throw std::runtime_error("not supported color format\n");
+            format = GL_RGBA;
 
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);

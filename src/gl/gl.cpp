@@ -274,9 +274,10 @@ void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, i
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     if (border != 0 || 
-        level !=0 || 
-        (internalFormat!= GL_RGB)  )
-        throw std::runtime_error("using invalid params when passing tex data \n");
+        level !=0)
+        throw std::runtime_error("using invalid params about level and border when passing tex data\n");
+    if (internalFormat != GL_RGB && internalFormat != GL_RGBA)
+        throw std::runtime_error("the internal format has to be RGB or RGBA\n");
     int ID, ret;
     glObject* tex_ptr;
     auto& texs = C->share.textures;
@@ -308,8 +309,10 @@ static void _pass_tex_data(int ID, glObject* ptr, GLenum internalFormat, int wid
             if (f_desc.out_channels == 3){
                 C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_8UC3));
             }
-            else{
+            else if (f_desc.out_channels == 4){
                 C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_8UC4));
+            }else{
+                throw std::runtime_error("not supporting color format whose num_channel is not 3 or 4\n");
             }
             if (f_desc.direct_pass){
                 nbytes = width * height * f_desc.out_channels;
@@ -336,6 +339,7 @@ static void _tex_data_formatter(GLenum internalFormat, GLenum format, format_des
                     break;
                 case GL_RGBA:
                     desc->out_channels = 4;
+                    desc->direct_pass = false;
                     desc->order[0] = 0;
                     desc->order[1] = 1;
                     desc->order[2] = 2;

@@ -1,10 +1,7 @@
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
-#include "OBJ_Loader.h"
 #include "header_assimp/model.h"
 #include "header_assimp/shader.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 #include <benchmark/benchmark.h>
 #define GLM_FORCE_AVX2
 #define GLM_FORCE_INLINE
@@ -53,15 +50,7 @@ static void testProgSponza(benchmark::State& state)
     shader.setVec3("lightPos", lightPos);
     shader.setVec3("viewPos", eyepos);
     shader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-    shader.setVec3("objectColor", glm::vec3(1.0f, 1.0f, 1.0f));
-
-    // Shader lightShader("../shader/light_vert.glsl", "../shader/light_frag.glsl");
-    // lightShader.use();
-    // glm::mat4 lightModel = glm::mat4(1.0f);
-    // lightModel = glm::translate(lightModel, lightPos);
-    // lightShader.setMat4("model", lightModel);
-    // lightShader.setMat4("view", viewMatrix);
-    // lightShader.setMat4("projection", projectionMatrix);
+    // shader.setVec3("objectColor", glm::vec3(1.0f, 1.0f, 1.0f));
 
     // Perform setup here
     for (auto _ : state) {
@@ -74,9 +63,6 @@ static void testProgSponza(benchmark::State& state)
 
         shader.use();
         model.Draw(shader);
-
-        // lightShader.use();
-        // light.draw();
 
         glvWriteStream(window);
     }

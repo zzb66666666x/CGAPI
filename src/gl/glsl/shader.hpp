@@ -88,7 +88,9 @@ class Shader{
             return;
         char* output_code_buffer;
         int output_code_buffer_size;
-        parse_string(glsl_code.c_str(), &output_code_buffer, &output_code_buffer_size);
+        int syntax = parse_string(glsl_code.c_str(), &output_code_buffer, &output_code_buffer_size);
+        if (syntax < 0)
+            throw std::runtime_error("syntax error in glsl\n");
         std::string parser_out_string = output_code_buffer;
         // std::cout<<"////////// PARSER RAW OUTPUT //////////"<<std::endl;
         // std::cout<<"code buffer size: "<<output_code_buffer_size<<std::endl;
