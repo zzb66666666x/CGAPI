@@ -84,6 +84,8 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
     glm::vec4 res = glm::vec4(1.0f);
     if (samp.height == 0 || samp.width == 0)
         throw std::runtime_error("invalid texture used in shader\n");
+    if (texcoord.x < 0 || texcoord.y < 0)
+        return res;
     float x = texcoord.x * samp.width;
     float y = texcoord.y * samp.height;
     int channel;

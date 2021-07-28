@@ -209,7 +209,7 @@ void glActiveTexture(GLenum unit){
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     auto iter = C->payload.tex_units.find(unit);
-    if(iter->second == TEXTURE_UNIT_CLOSE){
+    if(iter->second != TEXTURE_UNIT_TBD){
         iter->second = TEXTURE_UNIT_TBD;
     }
 }
