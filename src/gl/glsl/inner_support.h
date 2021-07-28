@@ -51,7 +51,8 @@ get_sampler2D_data_fptr get_sampler2D;
 
 class sampler2D{
     public:
-    sampler2D(){}
+    sampler2D():loaded_texture(false){}
+    bool loaded_texture;
     int texunit_id;
     int width;
     int height;
@@ -60,22 +61,26 @@ class sampler2D{
     filter_type filter;
     sampler2D& operator=(int val){
         texunit_id = val;
+        loaded_texture = false;
         // printf("define value for sampler2D\n");
-        sampler_data_pack tmp = get_sampler2D(val);
+        return *this;
+    }
+    inline void load_texture(){
+        if (loaded_texture)
+            return;
+        sampler_data_pack tmp = get_sampler2D(texunit_id);
         width = tmp.width;
         height = tmp.height;
         color_format = tmp.color_format;
         data = tmp.tex_data;
         filter = tmp.filter;
-        // printf("width: %d\n", width);
-        // printf("height: %d\n", height);
-        // printf("data: %x\n", data);
-        return *this;
+        loaded_texture = true;
     }
 };
 
 glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
 {
+    samp.load_texture();
     glm::vec4 res = glm::vec4(1.0f);
     if (samp.height == 0 || samp.width == 0)
         throw std::runtime_error("invalid texture used in shader\n");
