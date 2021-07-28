@@ -774,14 +774,15 @@ void glCompileShader(unsigned int shader){
     std::string output_fname;
     switch(shader_ptr->shader_type){
         case GL_VERTEX_SHADER:
-            output_fname = "vshader.dll";
+            output_fname = "vshader";
             break;
         case GL_FRAGMENT_SHADER:
-            output_fname = "fshader.dll";
+            output_fname = "fshader";
             break;
         default:
             throw std::runtime_error("not supported shader\n");
     }
+    output_fname += (std::to_string(shader) + std::string(".dll"));
     shader_ptr->compile(output_fname);
     shader_ptr->load_shader();
     shader_ptr->set_sampler2D_callback(get_sampler2D_data_fdef);
