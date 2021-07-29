@@ -760,6 +760,7 @@ sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
     pack.tex_data = (unsigned char*)obj_ptr->getDataPtr();
     pack.color_format = it->second.color_format;
     pack.filter = NEAREST;
+    // pack.filter = filter_type::BILINEAR;
     pack.height = it->second.height;
     pack.width = it->second.width;
     return pack;
