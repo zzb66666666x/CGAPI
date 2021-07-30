@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <string>
 
-#define KEY_ESC         27
-
 /**
  * macro function
  */
@@ -30,6 +28,8 @@ typedef struct{
     // only for rendering a window
     GLVcursorposfun mouse_move;
     GLVscrollfun mouse_scroll;
+    bool should_exit_flag;
+    int keyinput;
 }_GLVStream;
 
 typedef struct{
@@ -38,19 +38,5 @@ typedef struct{
 }_GLVContext;
 
 extern _GLVContext *_glvContext;
-
-extern int should_exit_flag;
-
-// /**
-//  * file internal function
-//  */
-// _GLVStream *create_file_stream(int width, int height, const char *name);
-// int write_file_stream(_GLVStream *_file);
-
-// /**
-//  * window internal function
-//  */
-// _GLVStream* create_window_stream(int width, int height, const char* name);
-// int write_window_stream(_GLVStream *_window);
 
 #endif

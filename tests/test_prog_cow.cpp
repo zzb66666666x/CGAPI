@@ -2,7 +2,6 @@
 #include <vector>
 #include "../include/gl/gl.h"
 #include "../include/glv/glv.h"
-#include <chrono>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "OBJ_Loader.h"
@@ -26,6 +25,11 @@ glm::vec3 lightPos(20.0f, 20.0f, 20.0f);
 
 void mouse_callback(GLVStream* stream, float xpos, float ypos);
 void scroll_callback(GLVStream* stream, float xoffset, float yoffset);
+void processInput(GLVStream* stream);
+
+// timing
+float deltaTime = 0.0f;	// time between current frame and last frame
+float lastFrame = 0.0f;
 
 int load_vertices(std::vector<float> & vertices){
     objl::Loader Loader;
@@ -122,19 +126,17 @@ static void testDrawCowWindow(){
     myshader.setInt("texture_diffuse1", 0);
     myshader.setVec3("lightPos", lightPos);
     myshader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-
-    // DWORD begin;
-    double fps = 0.0;
-    int frameCount = 0;
-    auto lastTime = std::chrono::system_clock::now();
-    auto curTime = std::chrono::system_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
-    double duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
     
     float angle = 20.0f;
     while (!glvWindowShouldClose(window))
     {
-        // begin = GetTickCount();
+        float currentFrame = glvGetTime();
+        deltaTime = currentFrame - lastFrame;
+        // std::cout<<deltaTime<<std::endl;
+        lastFrame = currentFrame;
+
+        processInput(window);
+
         glBindVertexArray(VAO);
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -144,7 +146,7 @@ static void testDrawCowWindow(){
 
         myshader.use();
         glm::mat4 model(1.0f);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
         myshader.setMat4("projection", projection);
         glm::mat4 view = camera.GetViewMatrix();
         myshader.setMat4("view", view);
@@ -159,23 +161,34 @@ static void testDrawCowWindow(){
 
         glDrawArrays(GL_TRIANGLES, 0, vertex_num);
         glvWriteStream(window);
-        // std::cout << "fps:" << 1000.0 / (GetTickCount() - begin) << std::endl;
-        curTime = std::chrono::system_clock::now();
-        duration = std::chrono::duration_cast<std::chrono::microseconds>(curTime - lastTime);
-        duration_s = double(duration.count()) * std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
-        if (duration_s > 10)//2秒之后开始统计FPS
-	    {
-            fps = frameCount / duration_s;
-            frameCount = 0;
-            lastTime = curTime;
-            std::cout<<"fps: "<<fps<<"\n";
-        }
-
-        ++frameCount;
     }
 
     glvTerminate(); 
 }
+
+void processInput(GLVStream* stream)
+{
+    if (glvGetKey(stream, GLV_KEY_ESCAPE) == GLV_PRESS){
+        glvSetWindowShouldClose(stream, true);
+    }
+    if (glvGetKey(stream, GLV_KEY_W) == GLV_PRESS){
+        // std::cout<<"forward"<<std::endl;
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    }
+    if (glvGetKey(stream, GLV_KEY_S) == GLV_PRESS){
+        // std::cout<<"back"<<std::endl;
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    }
+    if (glvGetKey(stream, GLV_KEY_A) == GLV_PRESS){
+        // std::cout<<"left"<<std::endl;
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    }
+    if (glvGetKey(stream, GLV_KEY_D) == GLV_PRESS){
+        // std::cout<<"right"<<std::endl;
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+    }
+}
+
 
 void mouse_callback(GLVStream* stream, float xpos, float ypos)
 {
@@ -197,6 +210,7 @@ void mouse_callback(GLVStream* stream, float xpos, float ypos)
 
 void scroll_callback(GLVStream* stream, float xoffset, float yoffset)
 {
+    std::cout<<yoffset<<std::endl;
     camera.ProcessMouseScroll(yoffset);
 }
 

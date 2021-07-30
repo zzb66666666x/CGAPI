@@ -7,12 +7,19 @@
 #include "../gl/globj.h"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
+#include <chrono>
+
+#define A_to_a  32
+
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::seconds;
+using std::chrono::system_clock;
 
 //////////////////////////////////////////
 ///////// internal variable //////////////
 //////////////////////////////////////////
 _GLVContext *_glvContext = nullptr;
-int should_exit_flag = 0;
 
 //////////////////////////////////////////
 ///////// window stream api //////////////
@@ -27,6 +34,7 @@ static _GLVStream *create_window_stream(int width, int height, const char *name)
     window->type = GLV_STREAM_WINDOW;
     window->mouse_move = nullptr;
     window->mouse_scroll = nullptr;
+    window->should_exit_flag = 0;
     gl_context *ctx = _cg_create_context(width, height, false);
     _cg_make_current(ctx);
     _glvContext->ctx = ctx;
@@ -50,8 +58,9 @@ static int write_window_stream(_GLVStream *_window)
     cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
     cv::imshow(_window->name, frame);
     int key = cv::waitKey(1);
-    if (key == KEY_ESC || cv::getWindowProperty(_glvContext->curStream->name, cv::WND_PROP_VISIBLE) == 0){
-        should_exit_flag = 1;
+    _window->keyinput = key;
+    if (key == GLV_KEY_ESCAPE || cv::getWindowProperty(_glvContext->curStream->name, cv::WND_PROP_VISIBLE) == 0){
+        _window->should_exit_flag = 1;
         return GLV_FALSE;
     }
     if(ctx->use_double_buf){
@@ -171,7 +180,7 @@ int glvWindowShouldClose(GLVStream* stream){
     if (_stream->type != GLV_STREAM_WINDOW){
         return GLV_FALSE;
     }
-    if (should_exit_flag == 1){
+    if (_stream->should_exit_flag == 1){
         return GLV_TRUE;
     }
     return GLV_FALSE;
@@ -193,7 +202,7 @@ void on_mouse(int event, int x, int y, int flags, void*)
         return;
     _GLVStream* window = _glvContext->curStream;
     double value;
-    float step=0.02;
+    float step= 1.0f;
     switch (event) {
     case cv::EVENT_MOUSEWHEEL:
         value = cv::getMouseWheelDelta(flags);
@@ -238,4 +247,36 @@ GLVscrollfun glvSetScrollCallback(GLVStream* stream, GLVscrollfun callback){
     }else{
         return nullptr;
     }
+}
+
+int glvGetKey(GLVStream* stream, int key){
+    if (stream == NULL)
+        return 0;
+    _GLVStream *_stream = (_GLVStream*) stream;
+    if (_stream->type != GLV_STREAM_WINDOW)
+        return 0;
+    // std::cout<<_stream->keyinput<<"    "<<key + A_to_a<<std::endl;
+    if (key >= (int)'A' && key <= (int)'Z')
+        return (int)(_stream->keyinput == key || _stream->keyinput == key + A_to_a);
+    else
+        return (int)(_stream->keyinput == key);
+}
+
+void glvSetWindowShouldClose(GLVStream* stream, bool flag){
+    if (stream == NULL)
+        return;
+    _GLVStream *_stream = (_GLVStream*) stream;
+    _stream->should_exit_flag = flag;
+}
+
+float glvGetTime(){
+    static int first_entry = 1;
+    static int64_t begin_time;
+    int64_t millisec_since_epoch = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    if (first_entry){
+        begin_time = millisec_since_epoch;
+        first_entry = 0;
+    }
+    float ret = (float)(millisec_since_epoch-begin_time)/1000.0f;
+    return ret;
 }
