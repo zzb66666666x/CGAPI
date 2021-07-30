@@ -64,6 +64,13 @@ void glvTerminate();
  */
 int glvWindowShouldClose(GLVStream* stream);
 
+typedef void(*GLVcursorposfun)(GLVStream* stream, float x, float y);
+typedef void(*GLVscrollfun)(GLVStream* stream, float xoffset, float yoffset);
+
+GLVcursorposfun glvSetCursorPosCallback(GLVStream* stream, GLVcursorposfun callback);
+
+GLVscrollfun glvSetScrollCallback(GLVStream* stream, GLVscrollfun callback);
+
 #ifdef __cplusplus
 }
 #endif 

@@ -7,7 +7,7 @@
 #include "stb_image.h"
 #include "OBJ_Loader.h"
 #include "header_assimp/shader.h"
-#include "header_assimp/configs.h"
+#include "header_assimp/camera.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -16,7 +16,16 @@ using namespace std;
 
 const int WIDTH = 800, HEIGHT = 600;
 
+// camera
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = WIDTH / 2.0f;
+float lastY = HEIGHT / 2.0f;
+bool firstMouse = true;
+
 glm::vec3 lightPos(20.0f, 20.0f, 20.0f);
+
+void mouse_callback(GLVStream* stream, float xpos, float ypos);
+void scroll_callback(GLVStream* stream, float xoffset, float yoffset);
 
 int load_vertices(std::vector<float> & vertices){
     objl::Loader Loader;
@@ -56,6 +65,10 @@ static void testDrawCowWindow(){
         return;
     }
     GLVStream *window = glvCreateStream(WIDTH, HEIGHT, "cow", GLV_STREAM_WINDOW);
+
+    glvSetCursorPosCallback(window, mouse_callback);
+    glvSetScrollCallback(window, scroll_callback);
+
     glEnable(GL_DEPTH_TEST);
 
     // load model
@@ -131,21 +144,16 @@ static void testDrawCowWindow(){
 
         myshader.use();
         glm::mat4 model(1.0f);
-        glm::mat4 view(1.0f);
-        glm::mat4 projection(1.0f);
-        projection = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
         myshader.setMat4("projection", projection);
-        glm::vec3 eyepos(0.0f,0.0f,5.0f);
-        glm::vec3 front(0.0f, 0.0f, -1.0f);
-        glm::vec3 up(0.0f, 1.0f, 0.0f);
-        view = glm::lookAt(eyepos, eyepos+front, up);
+        glm::mat4 view = camera.GetViewMatrix();
         myshader.setMat4("view", view);
         // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
         model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
+        // model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
         myshader.setMat4("model", model);
         myshader.setMat4("inv_model", glm::transpose(glm::inverse(model)));
-        myshader.setVec3("viewPos", eyepos);
+        myshader.setVec3("viewPos", camera.Position);
 
         angle += 2.0f;
 
@@ -167,6 +175,29 @@ static void testDrawCowWindow(){
     }
 
     glvTerminate(); 
+}
+
+void mouse_callback(GLVStream* stream, float xpos, float ypos)
+{
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void scroll_callback(GLVStream* stream, float xoffset, float yoffset)
+{
+    camera.ProcessMouseScroll(yoffset);
 }
 
 int main(){

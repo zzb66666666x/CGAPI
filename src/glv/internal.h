@@ -1,13 +1,12 @@
 #ifndef _internal_h_
 #define _internal_h_
 
+#include "../../include/glv/glv.h"
 #include "../gl/glcontext.h"
 #include <stdlib.h>
+#include <string>
 
-// container of io stream's title
-#define MAX_NAME_LEN    128
 #define KEY_ESC         27
-
 
 /**
  * macro function
@@ -25,9 +24,12 @@
 typedef struct{
     int width;
     int height;
-    char name[MAX_NAME_LEN];
+    std::string name;
     // GLV_STREAM_FILE, GLV_STREAM_Window
     int type;
+    // only for rendering a window
+    GLVcursorposfun mouse_move;
+    GLVscrollfun mouse_scroll;
 }_GLVStream;
 
 typedef struct{

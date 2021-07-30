@@ -19,22 +19,19 @@ int should_exit_flag = 0;
 //////////////////////////////////////////
 static _GLVStream *create_window_stream(int width, int height, const char *name)
 {
-    int title_len = strlen(name);
-    if (title_len > MAX_NAME_LEN)
-    {
-        printf("The filename is too long!\n");
-        return NULL;
-    }
-    _GLVStream *window = MALLOC(_GLVStream, 1);
-    memcpy(window->name, name, title_len);
+    _GLVStream *window = new _GLVStream;
+    window->name = name;
 
     window->height = height;
     window->width = width;
     window->type = GLV_STREAM_WINDOW;
+    window->mouse_move = nullptr;
+    window->mouse_scroll = nullptr;
     gl_context *ctx = _cg_create_context(width, height, false);
     _cg_make_current(ctx);
     _glvContext->ctx = ctx;
     _glvContext->curStream = window;
+    cv::namedWindow(window->name);
     return window;
 }
 
@@ -68,20 +65,9 @@ static int write_window_stream(_GLVStream *_window)
 //////////////////////////////////////////
 static _GLVStream *create_file_stream(int width, int height, const char *name)
 {
-    int filename_len = strlen(name);
-    if (filename_len > MAX_NAME_LEN - 5)
-    {
-        printf("The filename is too long!\n");
-        return NULL;
-    }
-    _GLVStream *file = MALLOC(_GLVStream, 1);
-    memcpy(file->name, name, filename_len);
+    _GLVStream *file = new _GLVStream;
+    file->name = std::string(name) + std::string(".bmp");
 
-    file->name[filename_len] = '.';
-    file->name[filename_len + 1] = 'b';
-    file->name[filename_len + 2] = 'm';
-    file->name[filename_len + 3] = 'p';
-    file->name[filename_len + 4] = '\0';
     file->height = height;
     file->width = width;
     file->type = GLV_STREAM_FILE;
@@ -117,7 +103,7 @@ static int write_file_stream(_GLVStream *_file)
     }
     int l = (w * 3 + 3) / 4 * 4;
     int bmi[] = {l * h + 54, 0, 54, 40, w, h, 1 | 3 * 8 << 16, 0, l * h, 0, 0, 100, 0};
-    FILE *fp = fopen(_file->name, "wb");
+    FILE *fp = fopen(_file->name.c_str(), "wb");
     fprintf(fp, "BM");
     fwrite(&bmi, 52, 1, fp);
     fwrite(img, 1, l * h, fp);
@@ -189,4 +175,67 @@ int glvWindowShouldClose(GLVStream* stream){
         return GLV_TRUE;
     }
     return GLV_FALSE;
+}
+
+inline bool should_process_mouse(){
+    if (_glvContext == nullptr)
+        return false;
+    if (_glvContext->curStream == nullptr || _glvContext->ctx == nullptr)   
+        return false;
+    if (_glvContext->curStream->type != GLV_STREAM_WINDOW)
+        return false;
+    return true;
+}
+
+void on_mouse(int event, int x, int y, int flags, void*)
+{
+    if (!should_process_mouse())
+        return;
+    _GLVStream* window = _glvContext->curStream;
+    double value;
+    float step=0.02;
+    switch (event) {
+    case cv::EVENT_MOUSEWHEEL:
+        value = cv::getMouseWheelDelta(flags);
+        if (value >= 0){
+            window->mouse_scroll((GLVStream*)window, 0, step);
+        }else{
+            window->mouse_scroll((GLVStream*)window, 0, -step);
+        }
+        break;
+
+    case cv::EVENT_MOUSEMOVE:
+        window->mouse_move((GLVStream*)window, (float)x, (float)y);
+        break;
+    default:
+        break;
+    }
+}
+
+GLVcursorposfun glvSetCursorPosCallback(GLVStream* stream, GLVcursorposfun callback){
+    if (stream == NULL)
+        return nullptr;
+    _GLVStream *_stream = (_GLVStream*) stream;
+    if (_stream->type == GLV_STREAM_WINDOW){
+        GLVcursorposfun ret = _stream->mouse_move;
+        _stream->mouse_move = callback;
+        cv::setMouseCallback(_stream->name, on_mouse, NULL);
+        return ret;
+    }else{
+        return nullptr;
+    }
+}
+
+GLVscrollfun glvSetScrollCallback(GLVStream* stream, GLVscrollfun callback){
+    if (stream == NULL)
+        return nullptr;
+    _GLVStream *_stream = (_GLVStream*) stream;
+    if (_stream->type == GLV_STREAM_WINDOW){
+        GLVscrollfun ret = _stream->mouse_scroll;
+        _stream->mouse_scroll = callback;
+        cv::setMouseCallback(_stream->name, on_mouse, NULL);
+        return ret;
+    }else{
+        return nullptr;
+    }
 }
