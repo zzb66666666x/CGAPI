@@ -132,8 +132,8 @@ target_link_libraries(test_pipeline glite)
 
 add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
 
-# add_executable(test_sampler2D_type ${GL_PARSER} src/utests/test_sampler2D_type.cpp)
-# target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
+add_executable(test_sampler2D_type ${GL_PARSER} src/utests/test_sampler2D_type.cpp)
+target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
 
 ################################################
 ################## test make ###################
@@ -143,7 +143,6 @@ set(TESTS_HEADER_ASSIMP
 	tests/header_assimp/mesh.h
 	tests/header_assimp/model.h
 	tests/header_assimp/shader.h
-	tests/header_assimp/camera.h
 )
 
 set(TESTS_HEADER
@@ -181,8 +180,8 @@ target_link_libraries(test_prog_cube glite)
 add_executable(test_prog_basics tests/test_prog_basics.cpp tests/shared_data.cpp)
 target_link_libraries(test_prog_basics glite)
 
-add_executable(test_prog_cow tests/test_prog_cow.cpp)
-target_link_libraries(test_prog_cow glite)
+# add_executable(test_prog_cow tests/test_prog_cow.cpp)
+# target_link_libraries(test_prog_cow glite)
 
 add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
 target_link_libraries(test_prog_sponza_texture glite)
