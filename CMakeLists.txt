@@ -143,6 +143,7 @@ set(TESTS_HEADER_ASSIMP
 	tests/header_assimp/mesh.h
 	tests/header_assimp/model.h
 	tests/header_assimp/shader.h
+	tests/header_assimp/camera.h
 )
 
 set(TESTS_HEADER

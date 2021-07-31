@@ -18,6 +18,15 @@ extern "C" {
 #define GLV_STREAM_WINDOW  1
 #define GLV_STREAM_NETWORK 2
 
+#define GLV_KEY_ESCAPE      27
+#define GLV_KEY_W           87
+#define GLV_KEY_A           65
+#define GLV_KEY_S           83
+#define GLV_KEY_D           68
+
+#define GLV_PRESS           1
+
+
 /*************************************************************************
  * GLV API types
  *************************************************************************/
@@ -63,6 +72,19 @@ void glvTerminate();
  * should close the window? 
  */
 int glvWindowShouldClose(GLVStream* stream);
+
+typedef void(*GLVcursorposfun)(GLVStream* stream, float x, float y);
+typedef void(*GLVscrollfun)(GLVStream* stream, float xoffset, float yoffset);
+
+GLVcursorposfun glvSetCursorPosCallback(GLVStream* stream, GLVcursorposfun callback);
+
+GLVscrollfun glvSetScrollCallback(GLVStream* stream, GLVscrollfun callback);
+
+int glvGetKey(GLVStream* stream, int key);
+
+void glvSetWindowShouldClose(GLVStream* stream, bool flag);
+
+float glvGetTime();
 
 #ifdef __cplusplus
 }

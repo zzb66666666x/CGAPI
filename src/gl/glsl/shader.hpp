@@ -1,5 +1,6 @@
 #ifndef _SHADER_HPP_
 #define _SHADER_HPP_
+#include "os.h"
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -8,9 +9,15 @@
 #include <assert.h>
 #include <map>
 #include <vector>
+#ifdef OS_WIN
 // windows API
 #include <wtypes.h>   
 #include <winbase.h>   
+#endif
+#ifdef OS_LINUX
+// linux API
+#include <dlfcn.h>
+#endif
 // parser
 #include "parse.h"
 #include "symbols.h"
@@ -21,8 +28,14 @@
 #include "../../../include/gl/common.h"
 #include "../formats.h"
 
+#ifdef OS_WIN
 __declspec(dllimport) ShaderInterface* create_shader_inst();
 __declspec(dllimport) void destroy_shader_inst(ShaderInterface* inst);
+#endif
+#ifdef OS_LINUX
+ShaderInterface* create_shader_inst();
+void destroy_shader_inst(ShaderInterface* inst);
+#endif
 
 typedef ShaderInterface* (*func_create_shader_inst)();
 typedef void (*func_destroy_shader_inst)(ShaderInterface*);
@@ -72,11 +85,20 @@ class Shader{
     inline void load_shader(){   
         if (compiled == false)
             return;
+        #ifdef OS_WIN
         hDLL = LoadLibrary(TEXT(output_name.c_str())); 
         if(hDLL == NULL)
-            std::cout<<"Error!!!\n";  
+            throw std::runtime_error("fail to load shader dynamic lib\n");
         create_shader_inst = (func_create_shader_inst)GetProcAddress(hDLL,"create_shader_inst"); 
         destroy_shader_inst = (func_destroy_shader_inst)GetProcAddress(hDLL,"destroy_shader_inst");    
+        #endif
+        #ifdef OS_LINUX
+        handle = dlopen(output_name.c_str(), RTLD_LAZY);
+        if (handle == NULL)
+            throw std::runtime_error("fail to load shader dynamic lib\n");
+        create_shader_inst = (func_create_shader_inst)dlsym(handle, "create_shader_inst");
+        destroy_shader_inst = (func_destroy_shader_inst)dlsym(handle, "destroy_shader_inst");
+        #endif
         for (int i=0; i<inst_num; i++){
             glsl_shader_insts[i] = create_shader_inst();
         }
@@ -173,8 +195,13 @@ class Shader{
     std::string glsl_code;
     std::string cpp_code;
     std::string output_name;
-    // windows dll object
+    // dynamic lib
+    #ifdef OS_WIN
     HINSTANCE hDLL;
+    #endif
+    #ifdef OS_LINUX
+    void* handle;
+    #endif
     int inst_num;
     bool loaded_inst;
     bool compiled;

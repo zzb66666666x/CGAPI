@@ -12,6 +12,7 @@
 #include "glsl/parse.h"
 #include "glsl/vec_math.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "glsl/os.h"
 
 #define FILL_ZERO   -1
 #define FILL_ONE    -2
@@ -787,7 +788,13 @@ void glCompileShader(unsigned int shader){
         default:
             throw std::runtime_error("not supported shader\n");
     }
-    output_fname += (std::to_string(shader) + std::string(".dll"));
+    #ifdef OS_WIN
+    std::string libfiletype(".dll");
+    #endif
+    #ifdef OS_LINUX
+    std::string libfiletype(".so");
+    #endif
+    output_fname += (std::to_string(shader) + libfiletype);
     shader_ptr->compile(output_fname);
     shader_ptr->load_shader();
     shader_ptr->set_sampler2D_callback(get_sampler2D_data_fdef);

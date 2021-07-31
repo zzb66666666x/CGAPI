@@ -1,3 +1,4 @@
+#include "os.h"
 #include "translate.h"
 #include "parse.h"
 #include <vector>
@@ -55,11 +56,17 @@ static string class_shader_code = \
 static string postfix = \
 "\n};\n"
 "extern \"C\"{ \n "
-"__declspec(dllexport) ShaderInterface* create_shader_inst(){ \n "
+"#ifdef OS_WIN \n"
+"__declspec(dllexport) \n"
+"#endif \n"
+"ShaderInterface* create_shader_inst(){ \n "
 "    ShaderInterface* ret = new GLSLShader; \n "
 "    return ret; \n "
 "} \n "
-"__declspec(dllexport) void destroy_shader_inst(ShaderInterface* inst){ \n "
+"#ifdef OS_WIN \n"
+"__declspec(dllexport) \n"
+"#endif \n"
+"void destroy_shader_inst(ShaderInterface* inst){ \n "
 "    delete inst; \n "
 "} \n "
 "} \n "
@@ -86,6 +93,7 @@ static string extract_headers(vector<string>& headers){
 
 void cpp_code_generate(string& src, string& dest){
     vector<string> headers;
+    headers.push_back(string("../src/gl/glsl/os.h"));
     headers.push_back(string("../src/gl/formats.h"));
     headers.push_back(string("../src/gl/glsl/vec_math.h"));
     headers.push_back(string("../src/gl/glsl/inner_variable.h"));
