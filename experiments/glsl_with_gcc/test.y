@@ -66,7 +66,7 @@ void reset_status_flags(){
 %token<str> IDENTIFIER
 %token<intval> INTCONSTANT
 %token<floatval> FLOATCONSTANT
-%token<str>	FUNCTION_CODE_BODY
+%token<str>	SIMPLESTATEMENT
 /* %token<doubleval> DOUBLECONSTANT */
 /* %token<uintval> UINTCONSTANT */
 
@@ -76,7 +76,10 @@ void reset_status_flags(){
 %type<intval> layout_val
 %type<str> type_specifier
 %type<str> full_type
-%type<str> compound_statement
+%type<buf> statement
+%type<buf> compound_statement
+%type<buf> statements_list
+%type<buf> simple_statement
 %type<buf> function_header
 %type<buf> function_prototype
 %type<buf> parameter_declaration
@@ -88,14 +91,14 @@ void reset_status_flags(){
 
 root: translation_unit{
 	emplace_profile("gl_Position", OUTPUT_VAR, TYPE_VEC4, LAYOUT_UNDEF);
-	printf("////////// TRANSLATION_UNIT_PARSED //////////\n");
+	// printf("////////// TRANSLATION_UNIT_PARSED //////////\n");
 }	
 
 translation_unit: glsl_code {
-					printf("\n");
+					// printf("\n");
 				}
 				| translation_unit glsl_code {
-					printf("\n");
+					// printf("\n");
 				}
 				;
 
@@ -136,7 +139,8 @@ decl_expression: function_prototype SEMICOLON{
 
 def_function: function_prototype compound_statement{
 				buffer_t * tmp_buf = $1;
-				register_code(tmp_buf, $2);
+				register_code(tmp_buf, $2->data);
+				free_buffer($2);
 				free($2);
 				$$ = tmp_buf;
 			}
@@ -146,10 +150,10 @@ function_prototype: function_header RIGHT_PAREN {
 						buffer_t* tmp_buf = $1;
 						register_code(tmp_buf, ")");
 						$$ = tmp_buf;
-						printf("\nend functional without params\n");
+						// printf("\nend functional without params\n");
 					}
 				  | function_header params_list RIGHT_PAREN {
-					  	printf("\nend functional with params\n");
+					  	// printf("\nend functional with params\n");
 						buffer_t * tmp_buf1 = $1;
 						buffer_t * tmp_buf2 = $2;
 						register_code(tmp_buf1, tmp_buf2->data);
@@ -161,7 +165,7 @@ function_prototype: function_header RIGHT_PAREN {
 				  ;
 				   
 function_header: full_type function_name LEFT_PAREN {
-					printf("begin functional: \n    ");
+					// printf("begin functional: \n    ");
 					buffer_t* tmp_buf = (buffer_t*)malloc(sizeof(buffer_t));
 					init_buffer(tmp_buf, 300);
 					register_code(tmp_buf, $1);
@@ -196,7 +200,7 @@ parameter_declaration: type_specifier variable_name {
 							init_buffer(tmp_buf, 300);
 							register_code(tmp_buf, $1);
 							register_code(tmp_buf, $2);
-							printf("%s\t", $2);
+							// printf("%s\t", $2);
 							free($2);
 							$$ = tmp_buf;
 						}
@@ -208,27 +212,106 @@ parameter_declaration: type_specifier variable_name {
 					 	}
 					 ;
 
-/* compound_statement: LEFT_BRACE RIGHT_BRACE {printf("function body but empty\t");}
-				  | LEFT_BRACE statements_list RIGHT_BRACE {printf("function body\t");}
-				  ; */
+compound_statement: LEFT_BRACE RIGHT_BRACE {
+						buffer_t* comp_buf = (buffer_t*)malloc(sizeof(buffer_t));
+						init_buffer(comp_buf, 10);
+						register_code(comp_buf, "\n{}\n");
+						$$ = comp_buf;
+					}
+				  | LEFT_BRACE statements_list RIGHT_BRACE {
+						buffer_t* comp_buf = (buffer_t*)malloc(sizeof(buffer_t));
+						init_buffer(comp_buf, $2->size + 10);
+						register_code(comp_buf, "\n{\n");
+						register_code(comp_buf, $2->data);
+						register_code(comp_buf, "\n}\n");
+						free_buffer($2);
+						free($2);
+						$$ = comp_buf;
+					}
+				  ;
 
-compound_statement: FUNCTION_CODE_BODY {printf("%s", $1); $$ = $1;}
+statements_list: statement {$$ = $1;}
+			| statements_list statement{
+				buffer_t* statement_list_buf = $1;
+				register_code(statement_list_buf, $2->data);
+				free_buffer($2);
+				free($2);
+				$$ = statement_list_buf;
+			}
+			;
+
+statement: compound_statement {$$ = $1;}
+		 | simple_statement {$$ = $1;}
+		 ;
+
+simple_statement: SIMPLESTATEMENT {
+					buffer_t* statement_buf = (buffer_t*)malloc(sizeof(buffer_t));
+					init_buffer(statement_buf, 300);
+					register_code(statement_buf, $1);
+					free($1);
+					$$ = statement_buf;
+				}
+				;
 
 full_type: type_specifier {$$ = $1;}
 		 | type_descriptors_list type_specifier {$$ = $2;}
 		 ;
 
-type_specifier: VOID 	{printf("void \t"); $$ = " void "; dtype = TYPE_VOID;}
-			  | FLOAT 	{printf("float \t"); $$ = " float "; dtype = TYPE_FLOAT;}
-			  | DOUBLE	{printf("double \t"); $$ = " double "; dtype = TYPE_DOUBLE;}
-			  | INT   	{printf("int \t"); $$ = " int "; dtype = TYPE_INT;}
-			  | BOOL 	{printf("bool \t"); $$ = " bool "; dtype = TYPE_BOOL;}
-			  | MAT4 	{printf("mat4 \t"); $$ = " mat4 "; dtype = TYPE_MAT4;}
-			  | MAT3 	{printf("mat3 \t"); $$ = " mat3 "; dtype = TYPE_MAT3;}
-			  | MAT2 	{printf("mat2 \t"); $$ = " mat2 "; dtype = TYPE_MAT2;}
-			  | VEC4 	{printf("vec4 \t"); $$ = " vec4 "; dtype = TYPE_VEC4;}
-			  | VEC3 	{printf("vec3 \t"); $$ = " vec3 "; dtype = TYPE_VEC3;}
-			  | VEC2 	{printf("vec2 \t"); $$ = " vec2 "; dtype = TYPE_VEC2;}
+type_specifier: VOID 	{
+				// printf("void \t"); 
+				$$ = " void "; 
+				dtype = TYPE_VOID;
+				}
+			  | FLOAT 	{
+				// printf("float \t"); 
+				$$ = " float "; 
+				dtype = TYPE_FLOAT;
+				}
+			  | DOUBLE	{
+				// printf("double \t"); 
+				$$ = " double "; 
+				dtype = TYPE_DOUBLE;
+			}
+			  | INT   	{
+				// printf("int \t"); 
+				$$ = " int "; 
+				dtype = TYPE_INT;
+			}
+			  | BOOL 	{
+				// printf("bool \t"); 
+				$$ = " bool "; 
+				dtype = TYPE_BOOL;
+			}
+			  | MAT4 	{
+				// printf("mat4 \t"); 
+				$$ = " mat4 "; 
+				dtype = TYPE_MAT4;
+			}
+			  | MAT3 	{
+				// printf("mat3 \t"); 
+				$$ = " mat3 "; 
+				dtype = TYPE_MAT3;
+			}
+			  | MAT2 	{
+				// printf("mat2 \t"); 
+				$$ = " mat2 "; 
+				dtype = TYPE_MAT2;
+			}
+			  | VEC4 	{
+				// printf("vec4 \t"); 
+				$$ = " vec4 "; 
+				dtype = TYPE_VEC4;
+			}
+			  | VEC3 	{
+				// printf("vec3 \t"); 
+				$$ = " vec3 "; 
+				dtype = TYPE_VEC3;
+			}
+			  | VEC2 	{
+				// printf("vec2 \t"); 
+				$$ = " vec2 "; 
+				dtype = TYPE_VEC2;
+			}
 			  ;
 
 type_descriptors_list: type_descriptor
@@ -241,27 +324,33 @@ type_descriptor: io_decl
 
 io_decl: IN {
 			io_status = INPUT_VAR;
-			printf("input var\t");
+			// printf("input var\t");
 		}
 	   | OUT {
 		   	io_status = OUTPUT_VAR;
-		   	printf("output var\t");
+		   	// printf("output var\t");
 		}
 	   | UNIFORM {
 		   	io_status = UNIFORM_VAR;
-		   	printf("uniform var\t");
+		   	// printf("uniform var\t");
 		}
 	   ;
 
 layout_decl: LAYOUT LEFT_PAREN LOC EQ layout_val RIGHT_PAREN {
-				printf("layout num %d\t", $5);
+				// printf("layout num %d\t", $5);
 				layout_status = $5;
 			}
 		   ;
 
-variable_name: IDENTIFIER{$$ = $1; printf("var name %s\t", $1);}
+variable_name: IDENTIFIER{
+				$$ = $1; 
+				// printf("var name %s\t", $1);
+			}
 
-function_name: IDENTIFIER{$$ = $1; printf("func name %s\t", $1);}
+function_name: IDENTIFIER{
+				$$ = $1; 
+				// printf("func name %s\t", $1);
+			}
 
 layout_val: INTCONSTANT{$$ = $1;}
 
@@ -301,7 +390,7 @@ int parse_string(const char* str, char** output_buffer, int* buf_size)
     YY_BUFFER_STATE yy_buffer = yy_scan_string(str);
 	init_buffer(&parser_out, 1000);
 	reset_status_flags();
-	printf("////////// TRANSLATION_UNIT_BEGIN //////////\n");
+	// printf("////////// TRANSLATION_UNIT_BEGIN //////////\n");
     yyparse();
 	print_profile();
 	generate_data_path(&parser_out);
