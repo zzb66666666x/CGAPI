@@ -31,7 +31,7 @@ class ShaderInterface{
     virtual ~ShaderInterface(){}
     virtual void glsl_main() = 0;
     virtual void input_port(std::map<std::string, data_t>& indata) = 0; 
-    virtual void output_port(std::map<std::string, data_t>& outdata) = 0; 
+    virtual void output_port(std::map<std::string, data_t>& outdata) = 0;
     virtual void input_uniform_dispatch(int idx, data_t& data) = 0; 
     virtual data_t output_uniform_dispatch(int idx) = 0; 
     virtual void set_inner_variable(int variable, data_t& data) = 0;
@@ -56,6 +56,8 @@ class sampler2D{
     int texunit_id;
     int width;
     int height;
+    // size = width * height
+    int size;
     int color_format;
     unsigned char *data;
     filter_type filter;
@@ -71,6 +73,7 @@ class sampler2D{
         sampler_data_pack tmp = get_sampler2D(texunit_id);
         width = tmp.width;
         height = tmp.height;
+        size = width * height;
         color_format = tmp.color_format;
         data = tmp.tex_data;
         filter = tmp.filter;
@@ -103,7 +106,7 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
             ty += 1.0f;
         }
     }
-    int channel,size = samp.width * samp.height;
+    int channel;
     switch (samp.color_format) {
         case FORMAT_COLOR_8UC3:
             channel = 3;
@@ -136,9 +139,9 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
         i01 = (int)(y + 0.5f) * samp.width + (int)x;
         i10 = (int)y * samp.width + (int)(x + 0.5f);
         i11 = (int)(y + 0.5f) * samp.width + (int)(x + 0.5f);
-        i01 = i00 >= size ? size - 1 : i00;
-        i10 = i10 >= size ? size - 1 : i10;
-        i11 = i11 >= size ? size - 1 : i11;
+        i01 = i00 >= samp.size ? samp.size - 1 : i00;
+        i10 = i10 >= samp.size ? samp.size - 1 : i10;
+        i11 = i11 >= samp.size ? samp.size - 1 : i11;
         for (int i = 0;i < channel;++i){
             u00[i] = ((float)samp.data[i00 * channel + i]) * inv_255;
             u01[i] = ((float)samp.data[i01 * channel + i]) * inv_255;

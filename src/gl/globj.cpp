@@ -308,7 +308,11 @@ glPipeline::glPipeline(){
     // exec.emplace_back(process_pixel_openmp);
 
     exec.emplace_back(programmable_process_geometry_openmp);
+    
     exec.emplace_back(programmable_rasterize_with_shading_openmp);
+
+    // exec.emplace_back(programmable_rasterize_with_scanline);
+
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
     ebo_config.ebo_ptr = nullptr;
