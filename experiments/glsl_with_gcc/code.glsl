@@ -1,6 +1,6 @@
-layout (location = 0) in vec3 aPos;     
+layout (location = 0) in vec3 aPos;  
 layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoord;  
+layout (location = 2) in vec2 aTexCoord;
    
 out vec2 TexCoord;
 out vec3 Normal;
@@ -16,4 +16,10 @@ void main()
     gl_Position =  view * vec4(aPos,1.0);
     Normal = vec3(projection * vec4(aNormal, 1.0));
     TexCoord = vec2(666*aTexCoord.x, 666*aTexCoord.y);
+    for (int i=0; i<3; i++){
+        if (i == 2){
+            printf("final round!\n");
+        }
+        printf("for nested bracket: %d\n", 183829+i);
+    }
 }

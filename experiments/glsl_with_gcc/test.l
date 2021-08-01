@@ -1,11 +1,13 @@
 %{
-	#include "parse.h"
-	#include "y.tab.h"
-	#include <string.h>
-	#include <stdio.h>
-	#include <math.h>
-	#include <stdbool.h>
-	void yyerror(char *);
+#include "parse.h"
+#include "y.tab.h"
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+#include <stdbool.h>
+void yyerror(char *);
+
+int brace_depth = 0;
 	
 %}
 
@@ -14,6 +16,8 @@ nondigit		[_a-zA-Z]
 identifier		{nondigit}({nondigit}|{digit})*
 int_const		{digit}+
 float_const		{digit}+\.{digit}+
+
+%x in_brace
 
 %%
 
@@ -24,8 +28,18 @@ float_const		{digit}+\.{digit}+
 "uniform"	return UNIFORM;
 "(" 		return LEFT_PAREN;
 ")" 		return RIGHT_PAREN;
-"{" 		return LEFT_BRACE;
-"}" 		return RIGHT_BRACE;
+<*>"{" 		{
+				BEGIN(in_brace);
+				brace_depth ++;
+				return LEFT_BRACE;
+			}
+<*>"}"		{
+				brace_depth --;
+				if (brace_depth == 0){
+					BEGIN(0);
+				}
+				return RIGHT_BRACE;
+			}
 "="			return EQ;
 ";"			return SEMICOLON;
 "." 		return DOT;
@@ -43,11 +57,13 @@ float_const		{digit}+\.{digit}+
 "vec2"		return VEC2;
 
 [ \t\n]+
+"//".*
 
-{identifier}	{ yylval.str = strdup(yytext); return IDENTIFIER; }
-{int_const}		{ yylval.intval = atoi(yytext); return INTCONSTANT; }
-{float_const}	{ yylval.floatval = atof(yytext); return FLOATCONSTANT; }
-\{[^{}]*\}		{ yylval.str = strdup(yytext); return FUNCTION_CODE_BODY; }
+{identifier}		{ yylval.str = strdup(yytext); return IDENTIFIER; }
+{int_const}			{ yylval.intval = atoi(yytext); return INTCONSTANT; }
+{float_const}		{ yylval.floatval = atof(yytext); return FLOATCONSTANT; }
+
+<in_brace>[^{}]* 	{ yylval.str = strdup(yytext); return SIMPLESTATEMENT; }
 
 %%
 
