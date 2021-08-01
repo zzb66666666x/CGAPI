@@ -68,7 +68,7 @@ void reset_status_flags(){
 %token<str> IDENTIFIER
 %token<intval> INTCONSTANT
 %token<floatval> FLOATCONSTANT
-%token<str>	FUNCTION_CODE_BODY
+%token<str>	SIMPLESTATEMENT
 /* %token<doubleval> DOUBLECONSTANT */
 /* %token<uintval> UINTCONSTANT */
 
@@ -78,7 +78,10 @@ void reset_status_flags(){
 %type<intval> layout_val
 %type<str> type_specifier
 %type<str> full_type
-%type<str> compound_statement
+%type<buf> statement
+%type<buf> compound_statement
+%type<buf> statements_list
+%type<buf> simple_statement
 %type<buf> function_header
 %type<buf> function_prototype
 %type<buf> parameter_declaration
@@ -140,7 +143,8 @@ decl_expression: function_prototype SEMICOLON{
 
 def_function: function_prototype compound_statement{
 				buffer_t * tmp_buf = $1;
-				register_code(tmp_buf, $2);
+				register_code(tmp_buf, $2->data);
+				free_buffer($2);
 				free($2);
 				$$ = tmp_buf;
 			}
@@ -212,14 +216,46 @@ parameter_declaration: type_specifier variable_name {
 					 	}
 					 ;
 
-/* compound_statement: LEFT_BRACE RIGHT_BRACE {printf("function body but empty\t");}
-				  | LEFT_BRACE statements_list RIGHT_BRACE {printf("function body\t");}
-				  ; */
-
-compound_statement: FUNCTION_CODE_BODY {
-						// printf("%s", $1); 
-						$$ = $1;
+compound_statement: LEFT_BRACE RIGHT_BRACE {
+						buffer_t* comp_buf = (buffer_t*)malloc(sizeof(buffer_t));
+						init_buffer(comp_buf, 10);
+						register_code(comp_buf, "\n{}\n");
+						$$ = comp_buf;
 					}
+				  | LEFT_BRACE statements_list RIGHT_BRACE {
+						buffer_t* comp_buf = (buffer_t*)malloc(sizeof(buffer_t));
+						init_buffer(comp_buf, $2->size + 10);
+						register_code(comp_buf, "\n{\n");
+						register_code(comp_buf, $2->data);
+						register_code(comp_buf, "\n}\n");
+						free_buffer($2);
+						free($2);
+						$$ = comp_buf;
+					}
+				  ;
+
+statements_list: statement {$$ = $1;}
+			| statements_list statement{
+				buffer_t* statement_list_buf = $1;
+				register_code(statement_list_buf, $2->data);
+				free_buffer($2);
+				free($2);
+				$$ = statement_list_buf;
+			}
+			;
+
+statement: compound_statement {$$ = $1;}
+		 | simple_statement {$$ = $1;}
+		 ;
+
+simple_statement: SIMPLESTATEMENT {
+					buffer_t* statement_buf = (buffer_t*)malloc(sizeof(buffer_t));
+					init_buffer(statement_buf, 300);
+					register_code(statement_buf, $1);
+					free($1);
+					$$ = statement_buf;
+				}
+				;
 
 full_type: type_specifier {$$ = $1;}
 		 | type_descriptors_list type_specifier {$$ = $2;}
