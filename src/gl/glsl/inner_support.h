@@ -130,7 +130,6 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
     }
     else if (samp.filter == filter_type::BILINEAR)
     {
-        // TODO
         float x = tx * samp.width;
         float y = ty * samp.height;
         glm::vec4 u00, u01, u10, u11;
