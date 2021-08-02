@@ -3,10 +3,10 @@ set(CMAKE_CXX_STANDARD 17)
 project(glite LANGUAGES CXX C)
 
 # vcpkg dir settings
-# set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
-#   CACHE STRING "Vcpkg toolchain file")
-set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
+set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
   CACHE STRING "Vcpkg toolchain file")
+# set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
+#   CACHE STRING "Vcpkg toolchain file")
 
 # flags
 # set(CMAKE_CXX_FLAGS "-g -O0")
@@ -77,23 +77,31 @@ set(GL_PARSER
 	src/gl/glsl/vec_math.h
 )
 
-# set(Boost_USE_STATIC_LIBS ON)
-# set(Boost_USE_STATIC_RUNTIME ON)
-# set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
-# include_directories(${Boost_INCLUDE_DIR})
-# find_package(Boost REQUIRED)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
+set(Boost_INCLUDE_DIR ./vcpkg/installed/x64-mingw-static/include)
+include_directories(${Boost_INCLUDE_DIR})
+find_package(Boost REQUIRED)
 
-# set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
-# find_package(glm REQUIRED)
+set(glm_DIR ./vcpkg/installed/x64-mingw-static/share/glm)
+find_package(glm REQUIRED)
 
-# set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
-set(OpenCV_DIR D:/CodingLibs/opencv/mingw_build_release)
+set(OpenCV_DIR E:/developer/lib/opencv-3.4.13/build/install)
+# set(OpenCV_DIR D:/CodingLibs/opencv/mingw_build_release)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-# set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
-set(benchmark_DIR D:/CodingLibs/vcpkg/installed/x64-mingw-static/share/benchmark)
+set(benchmark_DIR ./vcpkg/installed/x64-mingw-static/share/benchmark)
+# set(benchmark_DIR D:/CodingLibs/vcpkg/installed/x64-mingw-static/share/benchmark)
 find_package(benchmark REQUIRED)
+
+find_package(assimp CONFIG REQUIRED)
+if(assimp_FOUND)
+link_directories(${ASSIMP_LIBRARY_DIRS})
+message(${ASSIMP_LIBRARY_DIRS})
+include_directories(${ASSIMP_INCLUDE_DIRS})
+message(${ASSIMP_INCLUDE_DIRS})
+endif(assimp_FOUND)
 
 ################################################
 ################# library make #################
@@ -110,8 +118,8 @@ add_library(glite SHARED
 target_link_libraries(glite pthread)
 target_link_libraries(glite ${OpenCV_LIBRARIES})
 target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
-# target_link_libraries(glite ${Boost_LIBRARIES})
-# target_link_libraries(glite glm::glm)
+target_link_libraries(glite ${Boost_LIBRARIES})
+target_link_libraries(glite glm::glm)
 
 ################################################
 ################# utest make ###################
@@ -126,6 +134,11 @@ add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
 
 add_executable(test_sampler2D_type ${GL_PARSER} src/utests/test_sampler2D_type.cpp)
 target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
+
+add_executable(benchmark_prog_pipeline src/utests/benchmark_prog_pipeline.cpp ${UTESTS_HEADER_ASSIMP})
+target_link_libraries(benchmark_prog_pipeline glite)
+target_link_libraries(benchmark_prog_pipeline assimp)
+
 
 ################################################
 ################## test make ###################
@@ -144,6 +157,12 @@ set(TESTS_HEADER
 	tests/header/shader.h
 )
 
+set(UTESTS_HEADER_ASSIMP
+	src/utests/header_assimp/configs.h
+	src/utests/header_assimp/mesh.h
+	src/utests/header_assimp/model.h
+	src/utests/header_assimp/shader.h
+)
 
 add_executable(basics tests/test_basics.cpp tests/shared_data.cpp tests/shared_data.h)
 target_link_libraries(basics glite)
@@ -173,9 +192,9 @@ target_link_libraries(test_prog_cube glite)
 add_executable(test_prog_basics tests/test_prog_basics.cpp tests/shared_data.cpp)
 target_link_libraries(test_prog_basics glite)
 
-add_executable(test_prog_cow tests/test_prog_cow.cpp)
-target_link_libraries(test_prog_cow glite)
+# add_executable(test_prog_cow tests/test_prog_cow.cpp)
+# target_link_libraries(test_prog_cow glite)
 
-add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
-target_link_libraries(test_prog_sponza_texture glite)
-target_link_libraries(test_prog_sponza_texture assimp)
+# add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
+# target_link_libraries(test_prog_sponza_texture glite)
+# target_link_libraries(test_prog_sponza_texture assimp)

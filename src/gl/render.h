@@ -16,6 +16,12 @@ typedef void (*render_fp)();
 
 #define GL_PARALLEL_OPEN
 
+#define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#define GET_INDEX(x, y, width, height) (((height)-1 - (y)) * (width) + (x))
+#define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3) / weight)
+
 // single thread interface
 void process_geometry();
 void rasterize();
@@ -36,7 +42,7 @@ void rasterize_threadmain();
 
 // programmable version of code
 void programmable_process_geometry_openmp();
-void programmable_rasterize_with_scanline();
 void programmable_rasterize_with_shading_openmp();
+void programmable_rasterize_with_scanline();
 
 #endif

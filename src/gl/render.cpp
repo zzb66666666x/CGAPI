@@ -13,11 +13,6 @@
 #include <set>
 #include <unordered_map>
 
-#define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
-#define GET_INDEX(x, y, width, height) (((height) - 1 - (y)) * (width) + (x))
-
 // for test
 float angle = 0.0f;
 
@@ -31,8 +26,6 @@ inline static glm::vec2 interpolate(float alpha, float beta, float gamma, glm::v
 {
     return (alpha * vert1 + beta * vert2 + gamma * vert3) / weight;
 }
-
-#define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3) / weight)
 
 /////////////////////////////////////// face culling function //////////////////////////////////
 inline static void backface_culling(Triangle& t)
