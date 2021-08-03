@@ -200,6 +200,21 @@ class glManager{
         glObject* __storage(GLenum dtype, int size, GLenum bind);
 };
 
+class framebuf_attachment_t{
+    public:
+    framebuf_attachment_t():attachment_type(GL_UNDEF),
+                            attached_obj_for_depth(-1),
+                            attached_obj_for_color(-1),
+                            color_buf(nullptr),
+                            depth_buf(nullptr)
+                            {}
+    GLenum attachment_type;
+    int attached_obj_for_depth;
+    int attached_obj_for_color;
+    color_t * color_buf;
+    float * depth_buf;
+};
+
 class glShareData{
     public:
     glShareData(){}
@@ -209,8 +224,8 @@ class glShareData{
     glManager vertex_array_objects;
     glManager textures;
     std::map<int, sampler_config> tex_config_map;
-    glManager framebufs;
-};
+    glManager framebuf_attachments;
+};  
 
 class glThreads{
     public:

@@ -25,6 +25,9 @@ class gl_context{
     glStorage<color_t>  framebuf_2;
     glStorage<float>    zbuf_1;
     glStorage<float>    zbuf_2;
+    color_t*            override_color_buf;
+    float*              override_depth_buf;
+    bool                override_default_framebuf;
     bool                use_double_buf;
     bool                use_z_test;
     struct {

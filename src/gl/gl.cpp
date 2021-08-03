@@ -82,6 +82,18 @@ void glGenTextures(int num, unsigned int* ID){
     }
 }
 
+void glGenFramebuffers(int num, unsigned int* ID){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto& framebufs = C->share.framebuf_attachments;
+    int ret;
+    for (int i=0; i<num; i++){
+        ret = framebufs.insertStorage(GL_FRAMEBUFFER_ATTACHMENT_CONFIG, 1, GL_FRAMEBUFFER);
+        ID[i] = ret;
+    }
+}
+
 // Bind & Activate
 void glBindBuffer(GLenum buf_type, unsigned int ID){
     GET_CURRENT_CONTEXT(C);
@@ -136,9 +148,7 @@ void glBindVertexArray(unsigned int ID){
     // auto& mgr = C->share.vertex_attribs;
     auto& vaoMgr = C->share.vertex_array_objects;
     auto& bufMgr = C->share.buffers;
-    if (ID<0)
-        return;
-    else if (ID == 0){
+    if (ID == 0){
         //unbind
         // C->payload.renderMap[GL_BIND_VAO] = -1;
 
@@ -180,14 +190,12 @@ void glBindTexture(GLenum target,  unsigned int ID){
     glObject* ptr;  
     switch(target){
         case GL_TEXTURE_2D:
-            if (ID<0){
-                return;
-            }  
-            else if (ID == 0){
+            if (ID == 0){
                 C->payload.renderMap[GL_TEXTURE_2D] = -1;
             }
             else{
                 ret = texs.searchStorage(&ptr, ID);
+                ptr->bind = GL_TEXTURE_2D;
                 if (ret == GL_FAILURE)
                     return;
                 C->payload.renderMap[GL_TEXTURE_2D] = ID;
@@ -205,6 +213,36 @@ void glBindTexture(GLenum target,  unsigned int ID){
     }
 }
 
+void glBindFramebuffer(GLenum target, unsigned int ID){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    auto& framebufs = C->share.framebuf_attachments;
+    auto& render_map = C->payload.renderMap;
+    int ret;
+    glObject* ptr;  
+    switch(target){
+        case GL_FRAMEBUFFER:    
+            if (ID==0){
+                // restore to default framebuf
+                C->override_default_framebuf = false;
+                C->override_color_buf = nullptr;
+                C->override_depth_buf = nullptr;
+                render_map[GL_FRAMEBUFFER] = 0;
+            }else{
+                // make sure that the ID exists
+                ret = framebufs.searchStorage(&ptr, ID);
+                if (ret == GL_FAILURE || ptr->bind != GL_FRAMEBUFFER)
+                    return;
+                render_map[GL_FRAMEBUFFER] = ID;
+                C->override_default_framebuf = true;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 void glActiveTexture(GLenum unit){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
@@ -212,6 +250,58 @@ void glActiveTexture(GLenum unit){
     auto iter = C->payload.tex_units.find(unit);
     if(iter->second != TEXTURE_UNIT_TBD){
         iter->second = TEXTURE_UNIT_TBD;
+    }
+}
+
+void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, unsigned int texture, int level){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    if (textarget != GL_TEXTURE_2D)
+        throw std::runtime_error("not supported texture form\n");
+    if (level != 0)
+        throw std::runtime_error("mip map is not supported for now");
+    if (target != GL_FRAMEBUFFER)
+        throw std::runtime_error("please don't bind texture to target except GL_FRAMEBUFFER\n");
+    int framebuf_obj_id = C->payload.renderMap[GL_FRAMEBUFFER];
+    if (framebuf_obj_id <= 0){
+        printf("you haven't binded any framebuffer other than the default one\n");
+        return;
+    }
+    bool detach_texture = false;
+    glObject* tex_ptr = nullptr;
+    sampler_config* tex_conf = nullptr;
+    if (texture == 0){
+        detach_texture = true;
+    }else{
+        // search the texture
+        int ret = C->share.textures.searchStorage(&tex_ptr, texture);
+        if (ret == GL_FAILURE){
+            printf("invalid texture passed in to render frame to texture\n");
+            return;
+        }
+        tex_conf = &(C->share.tex_config_map[texture]);
+    }
+    glObject* framebuf_config_ptr;
+    C->share.framebuf_attachments.searchStorage(&framebuf_config_ptr, framebuf_obj_id);
+    switch(attachment){
+        case GL_DEPTH_ATTACHMENT:{
+            framebuf_attachment_t* attachment_configs = (framebuf_attachment_t*)framebuf_config_ptr->getDataPtr();
+            if (detach_texture){
+                attachment_configs->attached_obj_for_depth = GL_UNDEF;
+                attachment_configs->depth_buf = nullptr;
+                C->override_depth_buf = nullptr;
+            }else{
+                attachment_configs->attachment_type = textarget;
+                attachment_configs->attached_obj_for_depth = texture;
+                attachment_configs->depth_buf = (float*)tex_ptr->getDataPtr();
+                if (C->override_default_framebuf){
+                    C->override_depth_buf = attachment_configs->depth_buf;
+                }
+            }
+        }break;
+        default:
+            throw std::runtime_error("not supported attachment to framebuffer\n");
     }
 }
 
@@ -277,8 +367,8 @@ void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, i
     if (border != 0 || 
         level !=0)
         throw std::runtime_error("using invalid params about level and border when passing tex data\n");
-    if (internalFormat != GL_RGB && internalFormat != GL_RGBA)
-        throw std::runtime_error("the internal format has to be RGB or RGBA\n");
+    // if (internalFormat != GL_RGB && internalFormat != GL_RGBA)
+    //     throw std::runtime_error("the internal format has to be RGB or RGBA\n");
     int ID, ret;
     glObject* tex_ptr;
     auto& texs = C->share.textures;
@@ -318,12 +408,27 @@ static void _pass_tex_data(int ID, glObject* ptr, GLenum internalFormat, int wid
             if (f_desc.direct_pass){
                 nbytes = width * height * f_desc.out_channels;
                 ptr->allocByteSpace(nbytes);
-                memcpy(ptr->getDataPtr(), tex_data, nbytes);
+                if (tex_data != nullptr)
+                    memcpy(ptr->getDataPtr(), tex_data, nbytes);
             }
             else{
                 throw std::runtime_error("not supporting format auto conversion yet\n");
             }
-            }break;
+        }break;
+        case GL_FLOAT:{
+            float* tex_data = (float*) data;
+            int nbytes;
+            _tex_data_formatter(internalFormat, format, &f_desc);
+            if (f_desc.in_channels == 1 && f_desc.out_channels == 1 && f_desc.direct_pass){
+                C->share.tex_config_map.emplace(ID, sampler_config(width, height, (int)FORMAT_COLOR_32FC1));
+                nbytes = width * height * sizeof(float);
+                ptr->allocByteSpace(nbytes);
+                if (tex_data != nullptr)
+                    memcpy(ptr->getDataPtr(), tex_data, nbytes);
+            }else{
+                throw std::runtime_error("for GL_FLOAT texture data, we assume it to be float depth for simplicity\n");
+            }
+        }break;
         default:
             break;
     }
@@ -368,6 +473,13 @@ static void _tex_data_formatter(GLenum internalFormat, GLenum format, format_des
                 default:
                     break;
             }
+            break;
+        case GL_DEPTH_COMPONENT:
+            desc->in_channels = 1;
+            if (internalFormat != GL_DEPTH_COMPONENT)
+                throw std::runtime_error("invalid internal format\n");
+            desc->direct_pass = true;
+            desc->out_channels = 1;
             break;
         default:
             break;
@@ -672,6 +784,7 @@ void glClear(unsigned int bitfields){
         int size = C->framebuf->getSize();
         // std::cout<<"data array: "<<data<<std::endl;
         // std::cout<<"size: "<<size<<std::endl;
+        #pragma omp parallel for
         for (int i=0; i<size; i++){
             data[i] = C->clear_color;
         }

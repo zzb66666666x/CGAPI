@@ -32,11 +32,16 @@ typedef struct{
     unsigned char A;
 }COLOR_8UC4;
 
+typedef struct{
+    float R;
+}COLOR_32FC1;
+
 
 #define FORMAT_COLOR_32FC3  1
 #define FORMAT_COLOR_8UC3   2
 #define FORMAT_COLOR_32FC4  3
 #define FORMAT_COLOR_8UC4   4
+#define FORMAT_COLOR_32FC1  5
 
 
 #endif

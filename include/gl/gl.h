@@ -14,11 +14,14 @@ extern void glHelloWorld();
 extern void glGenBuffers(int num, unsigned int * ID);
 extern void glGenVertexArrays(int num, unsigned int* ID);
 extern void glGenTextures(int num, unsigned int* ID);
+extern void glGenFramebuffers(int num, unsigned int* ID);
 // Bind & Activate
 extern void glBindBuffer(GLenum buf_type, unsigned int ID);
 extern void glBindVertexArray(unsigned int ID);
 extern void glBindTexture(GLenum target, unsigned int ID);
+extern void glBindFramebuffer(GLenum target, unsigned int ID);
 extern void glActiveTexture(GLenum unit);
+extern void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, unsigned int texture, int level);
 // Pass data
 extern void glBufferData(GLenum buf_type, int nbytes, const void* data, GLenum usage);
 extern void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int width, int height, int border, GLenum format, GLenum type, void * data);

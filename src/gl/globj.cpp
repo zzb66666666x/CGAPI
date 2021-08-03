@@ -78,20 +78,22 @@ glObject* glManager::__storage(GLenum dtype, int size, GLenum bind){
             return new glStorage<vertex_attrib_t>(size, bind);
         case GL_VERTEX_ARRAY_OBJECT:
             return new glStorage<vertex_array_object_t>(size, bind);
+        case GL_FRAMEBUFFER_ATTACHMENT_CONFIG:
+            return new glStorage<framebuf_attachment_t>(size, bind);
         default:
             break;
     }
     return nullptr;
 }
 
-
 glRenderPayload::glRenderPayload(){
+    // -1: undef    0: default
     renderMap.emplace(GL_ARRAY_BUFFER, -1);
     renderMap.emplace(GL_BIND_VAO, -1);
     renderMap.emplace(GL_ELEMENT_ARRAY_BUFFER, -1);
-    renderMap.emplace(GL_FRAMEBUFFER, -1);
     renderMap.emplace(GL_TEXTURE_2D, -1);
     renderMap.emplace(GL_BIND_PROGRAM, -1);
+    renderMap.emplace(GL_FRAMEBUFFER, 0);
 
     // GL_TEXTURE0 is default open to be set (activated)
     tex_units.emplace(GL_TEXTURE0, TEXTURE_UNIT_TBD);
