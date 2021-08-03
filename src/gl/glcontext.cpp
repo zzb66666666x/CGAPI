@@ -7,7 +7,7 @@ gl_context* glapi_ctx = nullptr;
 
 gl_context::gl_context(int npixels, bool double_buf){
     // std::cout<<"npixels: "<<npixels<<std::endl;
-    share = glShareData();
+    // share = glShareData();
     framebuf_1 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
     zbuf_1 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
     use_double_buf = double_buf;
@@ -19,10 +19,10 @@ gl_context::gl_context(int npixels, bool double_buf){
         framebuf_2 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
         zbuf_2 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
     }
-    shader = glProgram();
+    // shader = glProgram();
     shader.initialize_layouts();
-    payload = glRenderPayload();
-    pipeline = glPipeline();
+    // payload = glRenderPayload();
+    // pipeline = glPipeline();
     pipeline.pixel_tasks = std::vector<Pixel>(npixels);
     pipeline.init_pixel_locks();
     windowbuf = nullptr;

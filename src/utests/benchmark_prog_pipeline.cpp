@@ -19,17 +19,17 @@ glm::vec3 lightPos(0.0f, 0.0f, -80.0f);
 /////////////////////////////// pipeline helper ///////////////////////////////////////////
 static const std::vector<glm::vec4> planes = {
     //Near
-    glm::vec4(0, 0, 1, -1),
+    glm::vec4(0, 0, 1, -0.99999f),
     //far
-    glm::vec4(0, 0, -1, -1),
+    glm::vec4(0, 0, -1, -0.99999f),
     //left
-    glm::vec4(-1, 0, 0, -1),
+    glm::vec4(-1, 0, 0, -0.99999f),
     //top
-    glm::vec4(0, 1, 0, -1),
+    glm::vec4(0, 1, 0, -0.99999f),
     //right
-    glm::vec4(1, 0, 0, -1),
+    glm::vec4(1, 0, 0, -0.99999f),
     //bottom
-    glm::vec4(0, -1, 0, -1)
+    glm::vec4(0, -1, 0, -0.99999f)
 };
 static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, std::map<std::string, data_t>& target)
 {
@@ -267,7 +267,7 @@ static void testProgPipeline(benchmark::State& state){
     initialize();
     // Perform setup here
     for (auto _ : state) {
-        state.PauseTiming();
+        // state.PauseTiming();
         if (glvWindowShouldClose(window)) {
             break;
         }
@@ -309,11 +309,11 @@ static void testProgPipeline(benchmark::State& state){
 
             // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
-
-            state.ResumeTiming();
+            // state.ResumeTiming();
             programmable_process_geometry_openmp();
-            state.PauseTiming();
             programmable_rasterize_with_shading_openmp();
+            // programmable_rasterize_with_scanline();
+            // state.PauseTiming();
             glBindVertexArray(0);
 
             // always good practice to set everything back to defaults once configured.
@@ -321,7 +321,7 @@ static void testProgPipeline(benchmark::State& state){
         }
 
         glvWriteStream(window);
-        state.ResumeTiming();
+        // state.ResumeTiming();
     }
 
     memoryCollection();
@@ -331,6 +331,7 @@ void pipeline(benchmark::State& state)
 {
 
 //////////////////////////////////////////////////// geometry processing //////////////////////////////////////////////////
+
     /**
      * input assembly
      */
@@ -340,30 +341,22 @@ void pipeline(benchmark::State& state)
     vertex_attrib_t* vattrib_data = (vertex_attrib_t*)((vertex_array_object_t*)ppl->vao_ptr->getDataPtr())->attribs;
     int triangle_size = 0;
 
-////////////////////////////////////////////// start timing ///////////////////////////////////////////////
-    state.ResumeTiming();
     // parse indices
     std::vector<int>* indices = programmable_parse_indices(triangle_size);
-////////////////////////////////////////////// end timing ///////////////////////////////////////////////
-    state.PauseTiming();
-
     unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
 
     std::vector<ProgrammableTriangle*>& triangle_list = ppl->prog_triangle_list;
 
     // triangle list management
     if (triangle_list.size() < triangle_size) {
+        // printf("triangle_size: %d\n", triangle_size);
         int tsize = triangle_list.size();
         triangle_list.resize(triangle_size);
         for (int i = tsize, len = triangle_size; i < len; ++i) {
             triangle_list[i] = new ProgrammableTriangle();
         }
-    } else if (triangle_list.size() > triangle_size) {
-        for (int i = triangle_size, len = triangle_list.size(); i < len; ++i) {
-            delete triangle_list[i];
-        }
-        triangle_list.resize(triangle_size);
     }
+    ppl->prog_triangle_size = triangle_size;
 
     Shader* vert_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_VERTEX_SHADER);
 
@@ -381,9 +374,9 @@ void pipeline(benchmark::State& state)
     unsigned char* buf;
     int thread_id;
     std::vector<ProgrammableTriangle*> vfc_list;
-#ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(input_ptr) private(buf) private(vs_input) private(vs_output) private(thread_id) private(vfc_list)
-#endif
+    #ifdef GL_PARALLEL_OPEN
+    #pragma omp parallel for private(input_ptr) private(buf) private(vs_input) private(vs_output) private(thread_id) private(vfc_list)
+    #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
@@ -417,8 +410,13 @@ void pipeline(benchmark::State& state)
             // assemble triangle
             data_t gl_pos_inner;
             shader_interfaces[thread_id]->get_inner_variable(INNER_GL_POSITION, gl_pos_inner);
+#ifndef GL_SCANLINE
             triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
             triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
+#else
+            triangle_list[tri_ind]->vertices[i].screen_pos = gl_pos_inner.vec4_var;
+            triangle_list[tri_ind]->vertices[i].vertex_attrib = vs_output;
+#endif
             vs_input.clear();
             vs_output.clear();
         }
@@ -449,23 +447,30 @@ void pipeline(benchmark::State& state)
         programmable_view_port(triangle_list[tri_ind]);
     }
 
-    int culling_size = 0, ind = triangle_list.size();
+    int culling_size = 0;
     for (int i = 0; i < ppl->cpu_num; ++i) {
         // printf("thread_id: %d, size: %d\n", i, tri_cullings[i].size());
         culling_size += tri_cullings[i].size();
     }
 
-    triangle_list.resize(triangle_list.size() + culling_size);
+    int ind = ppl->prog_triangle_size;
+    ppl->prog_triangle_size += culling_size;
+    if (ppl->prog_triangle_size > triangle_list.size()) {
+        int begin = triangle_list.size();
+        triangle_list.resize(ppl->prog_triangle_size);
+        // Deleting null pointer has a definition.
+        fill(triangle_list.begin() + begin, triangle_list.end(), nullptr);
+    }
 
     for (int j = 0; j < ppl->cpu_num; ++j) {
         int tri_ind = 0, len = tri_cullings[j].size();
         for (; tri_ind < len; ++tri_ind) {
             programmable_view_port(tri_cullings[j][tri_ind]);
+            delete triangle_list[ind + tri_ind];
             triangle_list[ind + tri_ind] = tri_cullings[j][tri_ind];
         }
         ind += len;
     }
-
 /////////////////////////////////////////////  rasterization ///////////////////////////////////////////////////
 
     std::vector<ProgrammableTriangle*>& prog_triangle_list = ctx->pipeline.prog_triangle_list;
@@ -473,7 +478,8 @@ void pipeline(benchmark::State& state)
 
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
 
-    int len = prog_triangle_list.size();
+    // int len = prog_triangle_list.size();
+    int len = ctx->pipeline.prog_triangle_size;
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
     // std::vector<ShaderInterface*> shader_interfaces;
@@ -487,9 +493,9 @@ void pipeline(benchmark::State& state)
     glm::vec4* screen_pos = nullptr;
     float* w_inv = nullptr;
     std::map<std::string, data_t> frag_shader_in, frag_shader_out;
-#ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(t) private(screen_pos) private(w_inv) private(frag_shader_in) private(frag_shader_out)
-#endif
+// #ifdef GL_PARALLEL_OPEN
+// #pragma omp parallel for private(t) private(screen_pos) private(w_inv) private(frag_shader_in) private(frag_shader_out)
+// #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
         int thread_id = omp_get_thread_num();
@@ -508,7 +514,7 @@ void pipeline(benchmark::State& state)
         maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
-#if 1
+#if 0
         // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
@@ -539,14 +545,16 @@ void pipeline(benchmark::State& state)
                     omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
+                        state.ResumeTiming();
                         functions->input_port(frag_shader_in);
                         functions->glsl_main();
                         functions->output_port(frag_shader_out);
+                        state.PauseTiming();
                         data_t frag_color_union;
                         functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
-                        omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
                         frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
                         frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
@@ -623,7 +631,7 @@ static void testPerStatement(benchmark::State& state)
 
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-// BENCHMARK(testProgPipeline)->Iterations(10);
-BENCHMARK(testPerStatement)->Iterations(100);
+BENCHMARK(testProgPipeline)->Iterations(100);
+// BENCHMARK(testPerStatement)->Iterations(100);
 // Run the benchmark
 BENCHMARK_MAIN();

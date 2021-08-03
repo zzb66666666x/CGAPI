@@ -41,17 +41,17 @@ inline static void backface_culling(Triangle& t)
 /////////////////////////////////////// view frustum culling function //////////////////////////////////
 static const std::vector<glm::vec4> planes = {
     //Near
-    glm::vec4(0, 0, 1, -1),
+    glm::vec4(0, 0, 1, -0.99999f),
     //far
-    glm::vec4(0, 0, -1, -1),
+    glm::vec4(0, 0, -1, -0.99999f),
     //left
-    glm::vec4(-1, 0, 0, -1),
+    glm::vec4(-1, 0, 0, -0.99999f),
     //top
-    glm::vec4(0, 1, 0, -1),
+    glm::vec4(0, 1, 0, -0.99999f),
     //right
-    glm::vec4(1, 0, 0, -1),
+    glm::vec4(1, 0, 0, -0.99999f),
     //bottom
-    glm::vec4(0, -1, 0, -1)
+    glm::vec4(0, -1, 0, -0.99999f)
 };
 
 static bool outside_clip_space(Triangle& t)
@@ -668,7 +668,7 @@ void rasterize_with_shading_openmp()
         maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
-#if 1
+#if 0
         // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
@@ -1291,7 +1291,8 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
 static void programmable_view_port(ProgrammableTriangle* t)
 {
     GET_CURRENT_CONTEXT(ctx);
-    for (int i = 0; i < 3;++i){
+    for (int i = 0; i < 3; ++i) {
+#ifndef GL_SCANLINE
         t->w_inversed[i] = 1.0f / t->screen_pos[i].w;
         t->screen_pos[i].x *= t->w_inversed[i];
         t->screen_pos[i].y *= t->w_inversed[i];
@@ -1304,6 +1305,19 @@ static void programmable_view_port(ProgrammableTriangle* t)
 
         // [-1,1] to [0,1]
         t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
+#else
+        t->w_inversed[i] = 1.0f / t->vertices[i].screen_pos.w;
+        t->vertices[i].screen_pos.x *= t->w_inversed[i];
+        t->vertices[i].screen_pos.y *= t->w_inversed[i];
+        t->vertices[i].screen_pos.z *= t->w_inversed[i];
+
+        // view port transformation
+        t->vertices[i].screen_pos.x = 0.5f * ctx->width * (t->vertices[i].screen_pos.x + 1.0f);
+        t->vertices[i].screen_pos.y = 0.5f * ctx->height * (t->vertices[i].screen_pos.y + 1.0f);
+
+        // [-1,1] to [0,1]
+        t->vertices[i].screen_pos.z = t->vertices[i].screen_pos.z * 0.5f + 0.5f;
+#endif
     }
 }
 
@@ -1398,18 +1412,14 @@ void programmable_process_geometry_openmp()
 
     // triangle list management
     if (triangle_list.size() < triangle_size) {
+        // printf("triangle_size: %d\n", triangle_size);
         int tsize = triangle_list.size();
         triangle_list.resize(triangle_size);
         for (int i = tsize, len = triangle_size; i < len; ++i) {
             triangle_list[i] = new ProgrammableTriangle();
         }
-    } 
-    else if (triangle_list.size() > triangle_size) {
-        for (int i = triangle_size, len = triangle_list.size(); i < len; ++i) {
-            delete triangle_list[i];
-        }
-        triangle_list.resize(triangle_size);
     }
+    ppl->prog_triangle_size = triangle_size;
 
     Shader* vert_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_VERTEX_SHADER);
 
@@ -1464,8 +1474,13 @@ void programmable_process_geometry_openmp()
             // assemble triangle
             data_t gl_pos_inner;
             shader_interfaces[thread_id]->get_inner_variable(INNER_GL_POSITION, gl_pos_inner);
+#ifndef GL_SCANLINE
             triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
             triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
+#else
+            triangle_list[tri_ind]->vertices[i].screen_pos = gl_pos_inner.vec4_var;
+            triangle_list[tri_ind]->vertices[i].vertex_attrib = vs_output;
+#endif
             vs_input.clear();
             vs_output.clear();
         }
@@ -1485,29 +1500,38 @@ void programmable_process_geometry_openmp()
             } else {
                 tri_cullings[thread_id].insert(tri_cullings[thread_id].end(), vfc_list.begin(), vfc_list.end());
             }
+            vfc_list.clear();
         } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
             // backface_culling(*triangle_list[tri_ind]);
         }
-        vfc_list.clear();
 
         if (triangle_list[tri_ind]->culling) {
             continue;
         }
+
         programmable_view_port(triangle_list[tri_ind]);
     }
 
-    int culling_size = 0, ind = triangle_list.size();
+    int culling_size = 0;
     for (int i = 0; i < ppl->cpu_num; ++i) {
         // printf("thread_id: %d, size: %d\n", i, tri_cullings[i].size());
         culling_size += tri_cullings[i].size();
     }
 
-    triangle_list.resize(triangle_list.size() + culling_size);
+    int ind = ppl->prog_triangle_size;
+    ppl->prog_triangle_size += culling_size;
+    if(ppl->prog_triangle_size > triangle_list.size()){
+        int begin = triangle_list.size();
+        triangle_list.resize(ppl->prog_triangle_size);
+        // Deleting null pointer has a definition.
+        fill(triangle_list.begin() + begin, triangle_list.end(), nullptr);
+    }
 
     for (int j = 0; j < ppl->cpu_num; ++j) {
         int tri_ind = 0, len = tri_cullings[j].size();
         for (; tri_ind < len; ++tri_ind) {
             programmable_view_port(tri_cullings[j][tri_ind]);
+            delete triangle_list[ind + tri_ind];
             triangle_list[ind + tri_ind] = tri_cullings[j][tri_ind];
         }
         ind += len;
@@ -1522,7 +1546,8 @@ void programmable_rasterize_with_shading_openmp()
 
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
 
-    int len = prog_triangle_list.size();
+    // int len = prog_triangle_list.size();
+    int len = ctx->pipeline.prog_triangle_size;
     float* zbuf = (float*)ctx->zbuf->getDataPtr();
     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
     std::vector<ShaderInterface*> shader_interfaces;
@@ -1535,15 +1560,16 @@ void programmable_rasterize_with_shading_openmp()
     ProgrammableTriangle* t = nullptr;
     glm::vec4* screen_pos = nullptr;
     float* w_inv = nullptr;
+    ShaderInterface* functions = nullptr;
     std::map<std::string, data_t> frag_shader_in, frag_shader_out;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(t) private(screen_pos) private(w_inv) \
-    private(frag_shader_in) private(frag_shader_out)
+    private(frag_shader_in) private(frag_shader_out) private(functions)
 #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
         int thread_id = omp_get_thread_num();
-        ShaderInterface* functions = shader_interfaces[thread_id];
+        functions = shader_interfaces[thread_id];
 
         if (t->culling) {
             t->culling = false;
@@ -1552,20 +1578,21 @@ void programmable_rasterize_with_shading_openmp()
 
         screen_pos = t->screen_pos;
         w_inv = t->w_inversed;
+
         int minx, maxx, miny, maxy, x, y;
         minx = MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x));
         miny = MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y));
         maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
-#if 1
+#if 0
         // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
         maxx = maxx >= width ? width - 1 : maxx;
         maxy = maxy >= height ? height - 1 : maxy;
 #endif
-
+        
         // AABB algorithm
         for (y = miny; y <= maxy; ++y) {
             for (x = minx; x <= maxx; ++x) {
@@ -1589,14 +1616,14 @@ void programmable_rasterize_with_shading_openmp()
                     omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
                         functions->input_port(frag_shader_in);
                         functions->glsl_main();
                         functions->output_port(frag_shader_out);
                         data_t frag_color_union;
                         functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
-                        omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                        // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
                         frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
                         frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
@@ -1782,24 +1809,165 @@ static void fill_bottom_flat_triangle(const std::vector<glm::vec4>& new_t, Progr
     }
 }
 
-// void upTriangle(const std::vector<glm::vec4>& new_t, ProgrammableTriangle* t, ShaderInterface* functions, Shader* fragment_shader)
-// {
+// void programmable_rasterize_with_scanline(){
 //     GET_CURRENT_CONTEXT(ctx);
-//     float* zbuf = (float*)ctx->zbuf->getDataPtr();
-//     glm::vec4* screen_pos = t->screen_pos;
-//     float* w_inv = t->w_inversed;
+//     // printf("scanline begin\n");
+//     std::vector<ProgrammableTriangle*>& prog_triangle_list = ctx->pipeline.prog_triangle_list;
+//     int width = ctx->width, height = ctx->height;
+
 //     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+
+//     int len = prog_triangle_list.size();
+//     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
+//     std::vector<ShaderInterface*> shader_interfaces;
+//     shader_interfaces.resize(ctx->pipeline.cpu_num);
+//     for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
+//         shader_interfaces[i] = fragment_shader->get_shader_utils(i);
+//     }
+
+//     // parallel variable value
+//     glm::vec4* screen_pos = nullptr;
+//     ShaderInterface* functions = nullptr;
+// #ifdef GL_PARALLEL_OPEN
+// #pragma omp parallel for private(screen_pos) private(functions)
+// #endif
+//     for (int i = 0; i < len; ++i) {
+//         if (prog_triangle_list[i]->culling) {
+//             prog_triangle_list[i]->culling = false;
+//             continue;
+//         }
+
+//         functions = shader_interfaces[omp_get_thread_num()];
+//         screen_pos = prog_triangle_list[i]->screen_pos;
+
+//         int v[3] = { 0, 1, 2 };
+        
+//         if(screen_pos[v[0]].y > screen_pos[v[1]].y){
+//             // std::swap(v[0], v[1]);
+//             v[0] ^= v[1] ^= v[0] ^= v[1];
+//         }
+//         if(screen_pos[v[1]].y > screen_pos[v[2]].y){
+//             // std::swap(v[1], v[2]);
+//             v[1] ^= v[2] ^= v[1] ^= v[2];
+//         }
+//         if (screen_pos[v[0]].y > screen_pos[v[1]].y) {
+//             // std::swap(v[0], v[1]);
+//             v[0] ^= v[1] ^= v[0] ^= v[1];
+//         }
+
+//         if(screen_pos[v[0]].y == screen_pos[v[1]].y){
+//             fill_top_flat_triangle({ screen_pos[v[0]], screen_pos[v[1]], screen_pos[v[2]] }, prog_triangle_list[i], functions, fragment_shader);
+//         } else if (screen_pos[v[1]].y == screen_pos[v[2]].y){
+//             fill_bottom_flat_triangle({ screen_pos[v[1]], screen_pos[v[2]], screen_pos[v[0]] }, prog_triangle_list[i], functions, fragment_shader);
+//         }else{
+//             float weight = (screen_pos[v[2]].y - screen_pos[v[1]].y) / (screen_pos[v[2]].y - screen_pos[v[0]].y);
+//             float pos_x = screen_pos[v[2]].x - (screen_pos[v[2]].x - screen_pos[v[0]].x) * weight;
+
+//             glm::vec4 new_p = { pos_x, screen_pos[v[1]].y, 0.0f, 0.0f};
+//             fill_top_flat_triangle({ screen_pos[v[1]], new_p, screen_pos[v[2]] }, prog_triangle_list[i], functions, fragment_shader);
+//             fill_bottom_flat_triangle({ screen_pos[v[1]], new_p, screen_pos[v[0]] }, prog_triangle_list[i], functions, fragment_shader);
+//         }
+//         // printf("i: %d\n", i); 
+//     }
+
+//     // printf("scanline end\n");
 // }
+void _scan_line(ProgrammableVertex& left, ProgrammableVertex& right, Shader *fs, ShaderInterface* functions){
+    GET_CURRENT_CONTEXT(ctx);
+    int len = right.screen_pos.x - left.screen_pos.x;
+    float weight = 0.0f, Z_viewspace;
+
+    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+    float* zbuf = (float*)ctx->zbuf->getDataPtr();
+
+    for (int i = 0; i < len;++i){
+        int index = GET_INDEX((int)(left.screen_pos.x + i), (int)(left.screen_pos.y), ctx->width, ctx->height);
+        weight = (float)i / len;
+        Z_viewspace = 1.0f / (weight / right.screen_pos.w + (1.0f - weight) / left.screen_pos.w);
+        ProgrammableVertex v = ProgrammableVertex::lerp(fs, left, right, weight * Z_viewspace / right.screen_pos.w);
+        if (!ctx->use_z_test) {
+            throw std::runtime_error("please open the z depth test\n");
+        }else{
+            float zp = weight * right.screen_pos.w + (1.0f - weight) * left.screen_pos.w;
+            omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+            if (zp < zbuf[index]) {
+                // printf("index: %d\n", index);
+                zbuf[index] = zp;
+                omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                std::map<std::string, data_t> frag_shader_out;
+                functions->input_port(v.vertex_attrib);
+                functions->glsl_main();
+                functions->output_port(frag_shader_out);
+                data_t frag_color_union;
+                functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
+                omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
+                frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
+                frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+            }
+            omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+        }
+    }
+}
+void _fill_top_flat(const std::vector<ProgrammableVertex*> &vertices, Shader *fs, ShaderInterface* functions){
+    GET_CURRENT_CONTEXT(ctx);
+    ProgrammableVertex left, right;
+    left = vertices[0]->screen_pos.x > vertices[1]->screen_pos.x ? *vertices[1] : *vertices[0];
+    right = vertices[0]->screen_pos.x < vertices[1]->screen_pos.x ? *vertices[1] : *vertices[0];
+
+    float weight = (vertices[0]->screen_pos.y - (int)vertices[0]->screen_pos.y) / (vertices[2]->screen_pos.y - vertices[0]->screen_pos.y);
+    ProgrammableVertex t = ProgrammableVertex::lerp(fs, left, right, weight);
+    right = ProgrammableVertex::lerp(fs, left, right, 1.0f - weight);
+    left = t;
+
+    int deltay = vertices[2]->screen_pos.y - (int)vertices[0]->screen_pos.y;
+    float Z_viewspace;
+    for (int i = 0; i <= deltay; ++i) {
+        weight = (float)i / deltay;
+
+        Z_viewspace = 1.0f / (weight / vertices[2]->screen_pos.w + (1.0f - weight) / left.screen_pos.w);
+        ProgrammableVertex newLeft = ProgrammableVertex::lerp(fs, left, *vertices[2], weight * Z_viewspace / vertices[2]->screen_pos.w);
+        Z_viewspace = 1.0f / (weight / vertices[2]->screen_pos.w + (1.0f - weight) / right.screen_pos.w);
+        ProgrammableVertex newRight = ProgrammableVertex::lerp(fs, right, *vertices[2], weight * Z_viewspace / vertices[2]->screen_pos.w);
+
+        _scan_line(newLeft, newRight, fs, functions);
+    }
+}
+
+void _fill_bottom_flat(const std::vector<ProgrammableVertex*>& vertices, Shader* fs, ShaderInterface* functions)
+{
+    GET_CURRENT_CONTEXT(ctx);
+    ProgrammableVertex left, right;
+    left = vertices[0]->screen_pos.x > vertices[1]->screen_pos.x ? *vertices[1] : *vertices[0];
+    right = vertices[0]->screen_pos.x < vertices[1]->screen_pos.x ? *vertices[1] : *vertices[0];
+
+    float weight = (vertices[0]->screen_pos.y - (int)vertices[0]->screen_pos.y) / (vertices[2]->screen_pos.y - vertices[0]->screen_pos.y);
+    ProgrammableVertex t = ProgrammableVertex::lerp(fs, left, right, weight);
+    right = ProgrammableVertex::lerp(fs, left, right, 1.0f - weight);
+    left = t;
+
+    int deltay = vertices[0]->screen_pos.y - (int)vertices[2]->screen_pos.y;
+    float Z_viewspace;
+    for (int i = deltay; i >= 0; --i) {
+        weight = (float)i / deltay;
+
+        Z_viewspace = 1.0f / (weight / left.screen_pos.w + (1.0f - weight) / vertices[2]->screen_pos.w);
+        ProgrammableVertex newLeft = ProgrammableVertex::lerp(fs, *vertices[2], left , weight * Z_viewspace / left.screen_pos.w);
+        Z_viewspace = 1.0f / (weight / right.screen_pos.w + (1.0f - weight) / vertices[2]->screen_pos.w);
+        ProgrammableVertex newRight = ProgrammableVertex::lerp(fs, *vertices[2], right, weight * Z_viewspace / right.screen_pos.w);
+
+        _scan_line(newLeft, newRight, fs, functions);
+    }
+}
 
 void programmable_rasterize_with_scanline(){
     GET_CURRENT_CONTEXT(ctx);
-    // printf("scanline begin\n");
+
     std::vector<ProgrammableTriangle*>& prog_triangle_list = ctx->pipeline.prog_triangle_list;
     int width = ctx->width, height = ctx->height;
-
     color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
-
-    int len = prog_triangle_list.size();
+    int len = ctx->pipeline.prog_triangle_size;
+    float* zbuf = (float*)ctx->zbuf->getDataPtr();
     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
     std::vector<ShaderInterface*> shader_interfaces;
     shader_interfaces.resize(ctx->pipeline.cpu_num);
@@ -1808,10 +1976,8 @@ void programmable_rasterize_with_scanline(){
     }
 
     // parallel variable value
-    glm::vec4* screen_pos = nullptr;
-    ShaderInterface* functions = nullptr;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(screen_pos) private(functions)
+#pragma omp parallel for
 #endif
     for (int i = 0; i < len; ++i) {
         if (prog_triangle_list[i]->culling) {
@@ -1819,38 +1985,34 @@ void programmable_rasterize_with_scanline(){
             continue;
         }
 
-        functions = shader_interfaces[omp_get_thread_num()];
-        screen_pos = prog_triangle_list[i]->screen_pos;
+        ProgrammableVertex* vertices = prog_triangle_list[i]->vertices;
+        ShaderInterface* functions = shader_interfaces[omp_get_thread_num()];
 
         int v[3] = { 0, 1, 2 };
-        
-        if(screen_pos[v[0]].y > screen_pos[v[1]].y){
-            // std::swap(v[0], v[1]);
+
+        if (vertices[v[0]].screen_pos.y > vertices[v[1]].screen_pos.y) {
             v[0] ^= v[1] ^= v[0] ^= v[1];
         }
-        if(screen_pos[v[1]].y > screen_pos[v[2]].y){
-            // std::swap(v[1], v[2]);
+        if (vertices[v[1]].screen_pos.y > vertices[v[2]].screen_pos.y) {
             v[1] ^= v[2] ^= v[1] ^= v[2];
         }
-        if (screen_pos[v[0]].y > screen_pos[v[1]].y) {
-            // std::swap(v[0], v[1]);
+        if (vertices[v[0]].screen_pos.y > vertices[v[1]].screen_pos.y) {
             v[0] ^= v[1] ^= v[0] ^= v[1];
         }
 
-        if(screen_pos[v[0]].y == screen_pos[v[1]].y){
-            fill_top_flat_triangle({ screen_pos[v[0]], screen_pos[v[1]], screen_pos[v[2]] }, prog_triangle_list[i], functions, fragment_shader);
-        } else if (screen_pos[v[1]].y == screen_pos[v[2]].y){
-            fill_bottom_flat_triangle({ screen_pos[v[1]], screen_pos[v[2]], screen_pos[v[0]] }, prog_triangle_list[i], functions, fragment_shader);
-        }else{
-            float weight = (screen_pos[v[2]].y - screen_pos[v[1]].y) / (screen_pos[v[2]].y - screen_pos[v[0]].y);
-            float pos_x = screen_pos[v[2]].x - (screen_pos[v[2]].x - screen_pos[v[0]].x) * weight;
-
-            glm::vec4 new_p = { pos_x, screen_pos[v[1]].y, 0.0f, 0.0f};
-            fill_top_flat_triangle({ screen_pos[v[1]], new_p, screen_pos[v[2]] }, prog_triangle_list[i], functions, fragment_shader);
-            fill_bottom_flat_triangle({ screen_pos[v[1]], new_p, screen_pos[v[0]] }, prog_triangle_list[i], functions, fragment_shader);
+        // if(std::abs(vertices[v[0]].screen_pos.y - vertices[v[1]].screen_pos.y) < 0.5f){
+        if (vertices[v[0]].screen_pos.y == vertices[v[1]].screen_pos.y) {
+            _fill_top_flat({ &vertices[v[0]], &vertices[v[1]], &vertices[v[2]] }, fragment_shader, functions);
+        // } else if (std::abs(vertices[v[1]].screen_pos.y - vertices[v[2]].screen_pos.y) < 0.5f) {
+        } else if (vertices[v[1]].screen_pos.y == vertices[v[2]].screen_pos.y) {
+            _fill_bottom_flat({ &vertices[v[1]], &vertices[v[2]], &vertices[v[0]] }, fragment_shader, functions);
+        } else {
+            float weight = (vertices[v[2]].screen_pos.y - vertices[v[1]].screen_pos.y) / (vertices[v[2]].screen_pos.y - vertices[v[0]].screen_pos.y);
+            float Z_viewspace = 1.0f / (weight / vertices[v[0]].screen_pos.w + (1.0f - weight) / vertices[v[2]].screen_pos.w);
+            weight = weight * Z_viewspace / vertices[v[0]].screen_pos.w;
+            ProgrammableVertex newVertex = ProgrammableVertex::lerp(fragment_shader, vertices[v[2]], vertices[v[0]], weight);
+            _fill_top_flat({ &vertices[v[1]], &newVertex, &vertices[v[2]] }, fragment_shader, functions);
+            _fill_bottom_flat({ &vertices[v[1]], &newVertex, &vertices[v[0]] }, fragment_shader, functions);
         }
-        // printf("i: %d\n", i);
     }
-
-    // printf("scanline end\n");
 }

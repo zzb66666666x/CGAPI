@@ -298,6 +298,7 @@ glPipeline::glPipeline(){
 
     vertex_num = 0;
     first_vertex = 0;
+    prog_triangle_size = 0;
     triangle_stream_mtx = PTHREAD_MUTEX_INITIALIZER;
     // exec.emplace_back(process_geometry_threadmain);
     // exec.emplace_back(rasterize_threadmain);
@@ -308,10 +309,12 @@ glPipeline::glPipeline(){
     // exec.emplace_back(process_pixel_openmp);
 
     exec.emplace_back(programmable_process_geometry_openmp);
-    
-    exec.emplace_back(programmable_rasterize_with_shading_openmp);
 
-    // exec.emplace_back(programmable_rasterize_with_scanline);
+#ifndef GL_SCANLINE
+    exec.emplace_back(programmable_rasterize_with_shading_openmp);
+#else
+    exec.emplace_back(programmable_rasterize_with_scanline);
+#endif
 
     vao_ptr = nullptr;
     vbo_ptr = nullptr;
@@ -321,14 +324,17 @@ glPipeline::glPipeline(){
     }
 }
 
-// glPipeline::~glPipeline()
-// {
-//     std::vector<Pixel>::iterator it;
-//     for (it = pixel_tasks.begin(); it != pixel_tasks.end(); it++) {
-//         omp_destroy_lock(&(it->lock));
-//     }
-//     delete bins;
-// }
+glPipeline::~glPipeline()
+{
+    std::vector<Pixel>::iterator it;
+    for (it = pixel_tasks.begin(); it != pixel_tasks.end(); it++) {
+        omp_destroy_lock(&(it->lock));
+    }
+    for (int i = 0, len = prog_triangle_list.size(); i < len;++i){
+        delete prog_triangle_list[i];
+    }
+    // delete bins;
+}
 
 void glPipeline::init_pixel_locks()
 {

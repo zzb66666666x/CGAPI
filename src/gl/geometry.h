@@ -163,7 +163,13 @@ class ProgrammableVertex {
 public:
     glm::vec4 screen_pos;
     std::map<std::string, data_t> vertex_attrib;
+    ProgrammableVertex() {
 
+    }
+    ProgrammableVertex(const ProgrammableVertex& v){
+        this->screen_pos = v.screen_pos;
+        this->vertex_attrib = v.vertex_attrib;
+    }
     inline static ProgrammableVertex lerp(Shader* shader_ptr, ProgrammableVertex &v1, ProgrammableVertex &v2, float weight)
     {
         ProgrammableVertex res;
@@ -185,6 +191,8 @@ public:
         }
         return res;
     }
+
+
 };
 
 class ProgrammableTriangle{
@@ -195,6 +203,8 @@ public:
     bool culling = false;
     float w_inversed[3];
 
+    ProgrammableVertex vertices[3];
+
     Shader* cur_shader;
 
     bool inside(float x, float y);
@@ -203,8 +213,13 @@ public:
 
     inline void setVertex(int index, ProgrammableVertex& v)
     {
+#ifndef GL_SCANLINE
         screen_pos[index] = v.screen_pos;
         vertex_attribs[index] = v.vertex_attrib;
+#else
+        vertices[index].screen_pos = v.screen_pos;
+        vertices[index].vertex_attrib = v.vertex_attrib;
+#endif
     }
 
 private:

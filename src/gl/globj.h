@@ -335,7 +335,7 @@ private:
 class glPipeline{
     public:
         glPipeline();
-        // ~glPipeline();
+        ~glPipeline();
         void init_pixel_locks();
         // the number of cpu core
         int cpu_num;
@@ -347,6 +347,7 @@ class glPipeline{
         std::vector<Triangle*> triangle_list;
         // list of programmable triangles
         std::vector<ProgrammableTriangle*> prog_triangle_list;
+        int prog_triangle_size;
         // list of programmable triangles
         std::vector<ProgrammableTriangle*> prog_tri_culling_list;
         // the triangles are from view frustum culling

@@ -16,6 +16,8 @@ typedef void (*render_fp)();
 
 #define GL_PARALLEL_OPEN
 
+// #define GL_SCANLINE
+
 #define GET_PIPELINE(P) glPipeline* P = &(glapi_ctx->pipeline)
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))

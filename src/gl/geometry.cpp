@@ -136,22 +136,32 @@ glm::vec3 ProgrammableTriangle::computeBarycentric2D(float x, float y){
     glm::vec4 *v = screen_pos;
     float c1 = (x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*y + v[1].x*v[2].y - v[2].x*v[1].y) / (v[0].x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*v[0].y + v[1].x*v[2].y - v[2].x*v[1].y);
     float c2 = (x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*y + v[2].x*v[0].y - v[0].x*v[2].y) / (v[1].x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*v[1].y + v[2].x*v[0].y - v[0].x*v[2].y);
-    float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
-    return {c1, c2, c3};
+    // float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
+    return { c1, c2, 1.0f - c1 - c2 };
 }
 
 bool ProgrammableTriangle::outside_clip_space()
 {
+#ifndef GL_SCANLINE
     for (int i = 0; i < 3; ++i) {
         if ((screen_pos[0][i] > screen_pos[0].w && screen_pos[1][i] > screen_pos[1].w && screen_pos[2][i] > screen_pos[2].w)
             || (screen_pos[0][i] < -screen_pos[0].w && screen_pos[1][i] < -screen_pos[1].w && screen_pos[2][i] < -screen_pos[2].w)) {
             return true;
         }
     }
+#else
+    for (int i = 0; i < 3;++i){
+        if ((vertices[0].screen_pos[i] > vertices[0].screen_pos.w && vertices[1].screen_pos[i] > vertices[1].screen_pos.w && vertices[2].screen_pos[i] > vertices[2].screen_pos.w)
+            || (vertices[0].screen_pos[i] < -vertices[0].screen_pos.w && vertices[1].screen_pos[i] < -vertices[1].screen_pos.w && vertices[2].screen_pos[i] < -vertices[2].screen_pos.w)) {
+            return true;
+        }
+    }
+#endif
     return false;
 }
 bool ProgrammableTriangle::all_inside_clip_space()
 {
+#ifndef GL_SCANLINE
     for (int i = 0; i < 3; ++i) {
         if (!(screen_pos[i].x < screen_pos[i].w && screen_pos[i].x > -screen_pos[i].w
                 && screen_pos[i].y < screen_pos[i].w && screen_pos[i].y > -screen_pos[i].w
@@ -159,11 +169,20 @@ bool ProgrammableTriangle::all_inside_clip_space()
             return false;
         }
     }
+#else
+    for (int i = 0; i < 3; ++i) {
+        if (!(vertices[i].screen_pos.x < vertices[i].screen_pos.w && vertices[i].screen_pos.x > -vertices[i].screen_pos.w
+                && vertices[i].screen_pos.y < vertices[i].screen_pos.w && vertices[i].screen_pos.y > -vertices[i].screen_pos.w
+                && vertices[i].screen_pos.z < vertices[i].screen_pos.w && vertices[i].screen_pos.z > -vertices[i].screen_pos.w)) {
+            return false;
+        }
+    }
+#endif
     return true;
 }
 bool ProgrammableTriangle::inside_plane(const glm::vec4& plane, glm::vec4& pos)
 {
-    return glm::dot(pos, plane) <= 0;
+    return glm::dot(pos, plane) < 0;
 }
 ProgrammableVertex ProgrammableTriangle::intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane)
 {
@@ -187,8 +206,13 @@ void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& pl
     std::vector<ProgrammableVertex> vertex_list(3);
     for (int i = 0; i < 3; ++i) {
         // vertex_list[i] = t.getVertex(i);
+#ifndef GL_SCANLINE
         vertex_list[i].screen_pos = this->screen_pos[i];
         vertex_list[i].vertex_attrib = this->vertex_attribs[i];
+#else
+        vertex_list[i].screen_pos = this->vertices[i].screen_pos;
+        vertex_list[i].vertex_attrib = this->vertices[i].vertex_attrib;
+#endif
     }
 
     for (i = 0, len = planes.size(); i < len; ++i) {
@@ -199,13 +223,11 @@ void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& pl
             ProgrammableVertex& last = input[(j + jlen - 1) % jlen];
             if (inside_plane(planes[i], current.screen_pos)) {
                 if (!inside_plane(planes[i], last.screen_pos)) {
-                    ProgrammableVertex intersecting = this->intersect(last, current, planes[i]);
-                    vertex_list.push_back(intersecting);
+                    vertex_list.push_back(this->intersect(last, current, planes[i]));
                 }
                 vertex_list.push_back(current);
             } else if (inside_plane(planes[i], last.screen_pos)) {
-                ProgrammableVertex intersecting = this->intersect(last, current, planes[i]);
-                vertex_list.push_back(intersecting);
+                vertex_list.push_back(this->intersect(last, current, planes[i]));
             }
         }
     }
