@@ -9,15 +9,18 @@ gl_context::gl_context(int npixels, bool double_buf){
     // std::cout<<"npixels: "<<npixels<<std::endl;
     // share = glShareData();
     framebuf_1 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
-    zbuf_1 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
+    zbuf_1 = glStorage<float>(npixels, GL_DEPTH_ATTACHMENT);
     use_double_buf = double_buf;
     zbuf = &zbuf_1;
+    override_color_buf = nullptr;
+    override_depth_buf = nullptr;
+    override_default_framebuf = false;
     use_z_test = false;
     cull_face.open = false;
     framebuf = &framebuf_1;
     if (double_buf){
         framebuf_2 = glStorage<color_t>(npixels, GL_FRAMEBUFFER);
-        zbuf_2 = glStorage<float>(npixels, GL_FRAMEBUFFER_ATTACH_ZBUF);
+        zbuf_2 = glStorage<float>(npixels, GL_DEPTH_ATTACHMENT);
     }
     // shader = glProgram();
     shader.initialize_layouts();

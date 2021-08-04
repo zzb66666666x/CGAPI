@@ -128,6 +128,9 @@ static void testDrawCowWindow(){
     myshader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
     
     float angle = 20.0f;
+    int frame_cnt = 0;
+    float time_interval = 0.0f;
+    std::vector<float> fps_data;
     while (!glvWindowShouldClose(window))
     {
         float currentFrame = glvGetTime();
@@ -161,9 +164,20 @@ static void testDrawCowWindow(){
 
         glDrawArrays(GL_TRIANGLES, 0, vertex_num);
         glvWriteStream(window);
+
+        frame_cnt ++;
+        time_interval += deltaTime;
+        if (frame_cnt % 100 == 0){
+            fps_data.push_back((100.0f)/time_interval);
+            time_interval = 0.0f;
+            frame_cnt = 0;
+        }
     }
 
     glvTerminate(); 
+    for (int i=0; i<fps_data.size(); i++){
+        printf("fps: %f \n", fps_data[i]);
+    }
 }
 
 void processInput(GLVStream* stream)

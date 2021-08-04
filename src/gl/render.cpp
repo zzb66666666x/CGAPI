@@ -1622,7 +1622,7 @@ void programmable_rasterize_with_shading_openmp()
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    float invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
+                    float invwp = 1.0f / ((coef[0] + coef[1] + coef[2]) * Z_viewspace);
                     float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
                     zp *= invwp;
                     zp = zp * 0.5f + 0.5f;
