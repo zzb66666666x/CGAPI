@@ -29,6 +29,8 @@ extern void glTexParameterf(GLenum target,GLenum pname,float param);
 extern void glTexParameteri(GLenum target,unsigned int pname,int param);
 extern void glTexParameterfv(GLenum target,GLenum pname,const float * params);
 extern void glTexParameteriv(GLenum target,GLenum pname,const int * params);
+// mipmap
+extern void glGenerateMipmap(GLenum target);
 // Enable
 extern void glEnableVertexAttribArray(unsigned int idx);
 extern void glEnable(GLenum cap);

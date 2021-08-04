@@ -192,9 +192,12 @@ target_link_libraries(test_prog_cube glite)
 add_executable(test_prog_basics tests/test_prog_basics.cpp tests/shared_data.cpp)
 target_link_libraries(test_prog_basics glite)
 
-# add_executable(test_prog_cow tests/test_prog_cow.cpp)
-# target_link_libraries(test_prog_cow glite)
+add_executable(test_prog_cow tests/test_prog_cow.cpp)
+target_link_libraries(test_prog_cow glite)
 
-# add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
-# target_link_libraries(test_prog_sponza_texture glite)
-# target_link_libraries(test_prog_sponza_texture assimp)
+add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
+target_link_libraries(test_prog_sponza_texture glite)
+target_link_libraries(test_prog_sponza_texture assimp)
+
+add_executable(test_prog_bunny tests/test_prog_bunny.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
+target_link_libraries(test_prog_bunny glite)

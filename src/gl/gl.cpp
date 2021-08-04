@@ -662,7 +662,8 @@ void glClear(unsigned int bitfields){
     // clear depth
     if((bitfields & GL_DEPTH_BUFFER_BIT) == GL_DEPTH_BUFFER_BIT){
         float* zbuf = (float *)C->zbuf->getDataPtr();
-        std::fill(zbuf ,zbuf + C->zbuf->getSize(), FLT_MAX);
+        // std::fill(zbuf ,zbuf + C->zbuf->getSize(), FLT_MAX);
+        std::fill(zbuf, zbuf + C->zbuf->getSize(), 1.0f);
     }
     if ((bitfields & GL_COLOR_BUFFER_BIT) == GL_COLOR_BUFFER_BIT){
         if (C->framebuf == nullptr)

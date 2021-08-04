@@ -267,7 +267,6 @@ static void testProgPipeline(benchmark::State& state){
     initialize();
     // Perform setup here
     for (auto _ : state) {
-        // state.PauseTiming();
         if (glvWindowShouldClose(window)) {
             break;
         }
@@ -309,11 +308,10 @@ static void testProgPipeline(benchmark::State& state){
 
             // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
-            // state.ResumeTiming();
+
             programmable_process_geometry_openmp();
             programmable_rasterize_with_shading_openmp();
             // programmable_rasterize_with_scanline();
-            // state.PauseTiming();
             glBindVertexArray(0);
 
             // always good practice to set everything back to defaults once configured.
@@ -321,7 +319,6 @@ static void testProgPipeline(benchmark::State& state){
         }
 
         glvWriteStream(window);
-        // state.ResumeTiming();
     }
 
     memoryCollection();
@@ -335,6 +332,7 @@ void pipeline(benchmark::State& state)
     /**
      * input assembly
      */
+    
     GET_PIPELINE(ppl);
     GET_CURRENT_CONTEXT(ctx);
 
@@ -374,9 +372,10 @@ void pipeline(benchmark::State& state)
     unsigned char* buf;
     int thread_id;
     std::vector<ProgrammableTriangle*> vfc_list;
-    #ifdef GL_PARALLEL_OPEN
-    #pragma omp parallel for private(input_ptr) private(buf) private(vs_input) private(vs_output) private(thread_id) private(vfc_list)
-    #endif
+
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for private(input_ptr) private(buf) private(vs_input) private(vs_output) private(thread_id) private(vfc_list)
+#endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
@@ -400,7 +399,6 @@ void pipeline(benchmark::State& state)
                     }
                 }
             }
-
             shader_interfaces[thread_id]->input_port(vs_input);
 
             // execute vertex shading
@@ -420,7 +418,6 @@ void pipeline(benchmark::State& state)
             vs_input.clear();
             vs_output.clear();
         }
-
         // view frustum culling list
         triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);
         if (vfc_list.size() != 0) {
@@ -493,9 +490,9 @@ void pipeline(benchmark::State& state)
     glm::vec4* screen_pos = nullptr;
     float* w_inv = nullptr;
     std::map<std::string, data_t> frag_shader_in, frag_shader_out;
-// #ifdef GL_PARALLEL_OPEN
-// #pragma omp parallel for private(t) private(screen_pos) private(w_inv) private(frag_shader_in) private(frag_shader_out)
-// #endif
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for private(t) private(screen_pos) private(w_inv) private(frag_shader_in) private(frag_shader_out)
+#endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
         int thread_id = omp_get_thread_num();
@@ -542,16 +539,14 @@ void pipeline(benchmark::State& state)
                 } else {
                     // zp: z value after interpolation
                     float zp = alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w;
-                    omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
                         // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
-                        state.ResumeTiming();
                         functions->input_port(frag_shader_in);
                         functions->glsl_main();
                         functions->output_port(frag_shader_out);
-                        state.PauseTiming();
                         data_t frag_color_union;
                         functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
                         // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
@@ -559,13 +554,14 @@ void pipeline(benchmark::State& state)
                         frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
                         frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
                     }
-                    omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     frag_shader_in.clear();
                     frag_shader_out.clear();
                 }
             }
         }
     }
+
 }
 
 static void testPerStatement(benchmark::State& state)
@@ -631,7 +627,7 @@ static void testPerStatement(benchmark::State& state)
 
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-BENCHMARK(testProgPipeline)->Iterations(100);
-// BENCHMARK(testPerStatement)->Iterations(100);
+BENCHMARK(testProgPipeline)->Iterations(128);
+// BENCHMARK(testPerStatement)->Iterations(128);
 // Run the benchmark
 BENCHMARK_MAIN();

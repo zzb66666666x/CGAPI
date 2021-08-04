@@ -38,6 +38,15 @@ inline static void backface_culling(Triangle& t)
     t.culling = res.z < -0.01f;
 }
 
+inline static void backface_culling(ProgrammableTriangle& t){
+    glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
+    glm::vec3 v02 = t.screen_pos[2] - t.screen_pos[0];
+    glm::vec3 res = glm::normalize(glm::cross(v01, v02));
+
+    // the parallel plane will not be culled.
+    t.culling = res.z < -0.01f;
+}
+
 /////////////////////////////////////// view frustum culling function //////////////////////////////////
 static const std::vector<glm::vec4> planes = {
     //Near
@@ -1296,7 +1305,7 @@ static void programmable_view_port(ProgrammableTriangle* t)
         t->w_inversed[i] = 1.0f / t->screen_pos[i].w;
         t->screen_pos[i].x *= t->w_inversed[i];
         t->screen_pos[i].y *= t->w_inversed[i];
-        t->screen_pos[i].z *= t->w_inversed[i];
+        // t->screen_pos[i].z *= t->w_inversed[i];
         // printf("1/w: %f, x: %f, y: %f, z: %f\n", t->screen_pos[i].w, t->screen_pos[i].x, t->screen_pos[i].y, t->screen_pos[i].z);
 
         // view port transformation
@@ -1304,7 +1313,7 @@ static void programmable_view_port(ProgrammableTriangle* t)
         t->screen_pos[i].y = 0.5f * ctx->height * (t->screen_pos[i].y + 1.0f);
 
         // [-1,1] to [0,1]
-        t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
+        // t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
 #else
         t->w_inversed[i] = 1.0f / t->vertices[i].screen_pos.w;
         t->vertices[i].screen_pos.x *= t->w_inversed[i];
@@ -1502,7 +1511,7 @@ void programmable_process_geometry_openmp()
             }
             vfc_list.clear();
         } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
-            // backface_culling(*triangle_list[tri_ind]);
+            backface_culling(*triangle_list[tri_ind]);
         }
 
         if (triangle_list[tri_ind]->culling) {
@@ -1564,7 +1573,7 @@ void programmable_rasterize_with_shading_openmp()
     std::map<std::string, data_t> frag_shader_in, frag_shader_out;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(t) private(screen_pos) private(w_inv) \
-    private(frag_shader_in) private(frag_shader_out) private(functions)
+     private(frag_shader_in) private(frag_shader_out) private(functions)
 #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
@@ -1602,6 +1611,7 @@ void programmable_rasterize_with_shading_openmp()
 
                 // alpha beta gamma
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+
                 // perspective correction
                 float Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
                 float alpha = coef[0] * Z_viewspace * w_inv[0];
@@ -1612,7 +1622,10 @@ void programmable_rasterize_with_shading_openmp()
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    float zp = alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w;
+                    float invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
+                    float zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    zp *= invwp;
+                    zp = zp * 0.5f + 0.5f;
                     omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
@@ -1635,6 +1648,7 @@ void programmable_rasterize_with_shading_openmp()
             }
         }
     }
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
