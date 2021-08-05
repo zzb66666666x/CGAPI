@@ -184,6 +184,9 @@ public:
                 case TYPE_VEC3:
                     interp_data.vec3_var = it->second.vec3_var + (v2.vertex_attrib[it->first].vec3_var - it->second.vec3_var) * weight;
                     break;
+                case TYPE_VEC4:
+                    interp_data.vec4_var = it->second.vec4_var + (v2.vertex_attrib[it->first].vec4_var - it->second.vec4_var) * weight;
+                    break;
                 default:
                     throw std::runtime_error("vertex don't interp on these types now\n");
             }

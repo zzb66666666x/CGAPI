@@ -9,7 +9,7 @@ set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
   CACHE STRING "Vcpkg toolchain file")
 
 # flags
-# set(CMAKE_CXX_FLAGS "-g -O0")
+set(CMAKE_CXX_FLAGS "-g -O0")
 # set(CMAKE_CXX_FLAGS "-mavx")
 # set(CMAKE_CXX_FLAGS "-save-temps")
 set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG")
@@ -198,3 +198,6 @@ target_link_libraries(test_prog_cow glite)
 add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
 target_link_libraries(test_prog_sponza_texture glite)
 target_link_libraries(test_prog_sponza_texture assimp)
+
+add_executable(test_shadow_mapping tests/test_shadow_mapping.cpp ${TESTS_HEADER_ASSIMP})
+target_link_libraries(test_shadow_mapping glite)

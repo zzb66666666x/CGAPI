@@ -81,6 +81,9 @@ GL_BIND_PROGRAM,
 GL_FRAMEBUFFER,
 GL_DEPTH_ATTACHMENT,
 
+// color buffer to draw
+GL_NONE,
+
 // capbilities
 GL_DEPTH_TEST,
 GL_CULL_FACE,

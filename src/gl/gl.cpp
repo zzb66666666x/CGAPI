@@ -99,9 +99,6 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
     GET_CURRENT_CONTEXT(C);
     if (C==nullptr)
         throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
-    if (ID <= 0) {
-        return;
-    }
     auto& vaos = C->share.vertex_array_objects;
     int vaoId = C->payload.renderMap[GL_BIND_VAO];
     if(vaoId == -1){
@@ -118,6 +115,10 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
     vertex_array_object_t *vao_data = (vertex_array_object_t *)vaoPtr->getDataPtr();
     switch(buf_type){
         case GL_ARRAY_BUFFER:
+            if (ID == 0){
+                C->payload.renderMap[GL_ARRAY_BUFFER] = 0;
+                return;
+            }
             // try search out the ID
             ret = bufs.searchStorage(&ptr, ID);
             if (ret == GL_FAILURE){
@@ -128,6 +129,10 @@ void glBindBuffer(GLenum buf_type, unsigned int ID){
             C->payload.renderMap[GL_ARRAY_BUFFER] = ID;
             break;
         case GL_ELEMENT_ARRAY_BUFFER:
+            if (ID == 0){
+                C->payload.renderMap[GL_ARRAY_BUFFER] = 0;
+                return;                
+            }
             ret = bufs.searchStorage(&ptr, ID);
             if (ret == GL_FAILURE) {
                 return;
@@ -228,7 +233,10 @@ void glBindFramebuffer(GLenum target, unsigned int ID){
                 C->override_default_framebuf = false;
                 C->override_color_buf = nullptr;
                 C->override_depth_buf = nullptr;
+                C->override_buf_npixels = 0;
                 render_map[GL_FRAMEBUFFER] = 0;
+                C->draw_color_buf = true;
+                C->cur_sync_unit = &(C->sync_unit);
             }else{
                 // make sure that the ID exists
                 ret = framebufs.searchStorage(&ptr, ID);
@@ -236,6 +244,12 @@ void glBindFramebuffer(GLenum target, unsigned int ID){
                     return;
                 render_map[GL_FRAMEBUFFER] = ID;
                 C->override_default_framebuf = true;
+                framebuf_attachment_t* config = (framebuf_attachment_t*)ptr->getDataPtr();
+                C->override_color_buf = config->color_buf;
+                C->override_depth_buf = config->depth_buf;
+                C->override_buf_npixels = config->buffer_npixels;
+                C->draw_color_buf = config->draw_color_buf;
+                C->cur_sync_unit = &(config->sync_unit);
             }
             break;
         default:
@@ -286,17 +300,26 @@ void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, 
     C->share.framebuf_attachments.searchStorage(&framebuf_config_ptr, framebuf_obj_id);
     switch(attachment){
         case GL_DEPTH_ATTACHMENT:{
+            // check the format of texture
+            if (tex_conf->color_format != FORMAT_COLOR_32FC1){
+                throw std::runtime_error("using invalid texture for depth attachment\n");
+            }
             framebuf_attachment_t* attachment_configs = (framebuf_attachment_t*)framebuf_config_ptr->getDataPtr();
             if (detach_texture){
-                attachment_configs->attached_obj_for_depth = GL_UNDEF;
+                attachment_configs->attached_obj_for_depth = -1;
                 attachment_configs->depth_buf = nullptr;
                 C->override_depth_buf = nullptr;
             }else{
+                int npixels = tex_conf->height * tex_conf->width;
                 attachment_configs->attachment_type = textarget;
                 attachment_configs->attached_obj_for_depth = texture;
                 attachment_configs->depth_buf = (float*)tex_ptr->getDataPtr();
+                attachment_configs->buffer_npixels = npixels;
+                attachment_configs->init_sync_unit(npixels);
                 if (C->override_default_framebuf){
                     C->override_depth_buf = attachment_configs->depth_buf;
+                    C->override_buf_npixels = npixels;
+                    C->cur_sync_unit = &(attachment_configs->sync_unit);
                 }
             }
         }break;
@@ -592,6 +615,40 @@ static void check_set_layouts(){
     }
 }
 
+void glViewport(int x, int y, int width, int height){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    C->width = width;
+    C->height = height;
+    C->start_pos_x = x;
+    C->start_pos_y = y;
+}
+
+void glDrawBuffer(GLenum mode){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    // find the current framebuffer
+    switch(mode){
+        case GL_NONE:{
+            C->draw_color_buf = false;
+            if (C->override_default_framebuf && C->payload.renderMap[GL_FRAMEBUFFER] > 0){
+                glObject * ptr;
+                C->share.framebuf_attachments.searchStorage(&ptr, C->payload.renderMap[GL_FRAMEBUFFER]);
+                framebuf_attachment_t* config = (framebuf_attachment_t*)ptr->getDataPtr();
+                config->draw_color_buf = false;
+            }
+        }   break;
+        default:
+            break;
+    }
+}
+
+void glReadBuffer(GLenum mode){
+
+}
+
 // draw
 void glDrawArrays(GLenum mode, int first, int count){
     GET_CURRENT_CONTEXT(C);
@@ -674,8 +731,8 @@ void glDrawArrays(GLenum mode, int first, int count){
 void glDrawElements(GLenum mode, int count, unsigned int type, const void* indices)
 {
     GET_CURRENT_CONTEXT(ctx);
-    if (ctx == nullptr){
-        return;
+    if (ctx == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
     }
     glManager& bufs = ctx->share.buffers;
     // glManager& vaos = ctx->share.vertex_attribs;
@@ -771,22 +828,44 @@ void glClearColor(float R, float G, float B, float A){
 
 void glClear(unsigned int bitfields){
     GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
     // clear depth
     if((bitfields & GL_DEPTH_BUFFER_BIT) == GL_DEPTH_BUFFER_BIT){
-        float* zbuf = (float *)C->zbuf->getDataPtr();
-        std::fill(zbuf ,zbuf + C->zbuf->getSize(), FLT_MAX);
+        float* zbuf;
+        int size;
+        if (C->override_default_framebuf){
+            zbuf = (float *)C->override_depth_buf;
+            size = C->override_buf_npixels;
+        }else{
+            zbuf = (float *)C->zbuf->getDataPtr();
+            size = C->zbuf->getSize();
+        }
+        if (zbuf != nullptr){
+            #pragma omp parallel for
+            for (int i=0; i<size; i++){
+                zbuf[i] = 1.0f;
+            }
+        }
     }
     if ((bitfields & GL_COLOR_BUFFER_BIT) == GL_COLOR_BUFFER_BIT){
         if (C->framebuf == nullptr)
             return;
-        color_t * data = (color_t*) (C->framebuf->getDataPtr());
-        // assert(C->framebuf == &(C->framebuf_1));
-        int size = C->framebuf->getSize();
-        // std::cout<<"data array: "<<data<<std::endl;
-        // std::cout<<"size: "<<size<<std::endl;
-        #pragma omp parallel for
-        for (int i=0; i<size; i++){
-            data[i] = C->clear_color;
+        color_t* data;
+        int size;
+        if (C->override_default_framebuf){
+            data = C->override_color_buf;
+            size = C->override_buf_npixels; 
+        }else{
+            data = (color_t*) (C->framebuf->getDataPtr());
+            size = C->framebuf->getSize();
+        }
+        if (data != nullptr){
+            #pragma omp parallel for
+            for (int i=0; i<size; i++){
+                data[i] = C->clear_color;
+            }
         }
     }
 }
@@ -871,7 +950,7 @@ sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
     auto it = C->share.tex_config_map.find(tex_obj_id);
     if (it == C->share.tex_config_map.end() || ret==GL_FAILURE)
         throw std::runtime_error("terminated because the texture cannot be found\n");
-    pack.tex_data = (unsigned char*)obj_ptr->getDataPtr();
+    pack.tex_data = obj_ptr->getDataPtr();
     pack.color_format = it->second.color_format;
     pack.filter = NEAREST;
     // pack.filter = filter_type::BILINEAR;
@@ -1062,4 +1141,12 @@ int glGetUniformLocation(unsigned int program, const char* name){
     }else{
         return GL_FAILURE;
     }
+}
+
+void glDebugflag(bool debug_flag){
+    GET_CURRENT_CONTEXT(C);
+    if (C == nullptr) {
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+    C->debug_flag = debug_flag;
 }

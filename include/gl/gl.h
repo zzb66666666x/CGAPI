@@ -36,6 +36,9 @@ extern void glTexParameteriv(GLenum target,GLenum pname,const int * params);
 extern void glEnableVertexAttribArray(unsigned int idx);
 extern void glEnable(GLenum cap);
 // draw
+extern void glDrawBuffer(GLenum mode);
+extern void glReadBuffer(GLenum mode);
+extern void glViewport(int x, int y, int width, int height);
 extern void glDrawArrays(GLenum mode, int first, int count);
 extern void glDrawElements(GLenum mode, int count, unsigned int type, const void* indices);
 extern void glClearColor(float R, float G, float B, float A);
@@ -57,6 +60,8 @@ extern void glUniform1i(int location, int val);
 extern void glUniformMatrix4fv(int location, int count, bool transpose, const float * value);
 extern void glUniform3fv(int location, int count, const float* value);
 extern int glGetUniformLocation(unsigned int program, const char* name);
+// debug API
+extern void glDebugflag(bool debug_flag);
 
 #ifdef __cplusplus
 }

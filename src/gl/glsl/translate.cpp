@@ -5,10 +5,11 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <stdio.h>
 
 using namespace std;
 
-#define CONST_PREFIX    1
+#define CONST_PREFIX    0
 
 static string macros = \
 "#define GLSL_CODE \n" 
@@ -237,7 +238,7 @@ static string const_prefix = \
 "    if (samp.height == 0 || samp.width == 0) \n"
 "        throw std::runtime_error(\"invalid texture used in shader\\n\"); \n"
 "    float tx = texcoord.x, ty = texcoord.y; \n"
-"    float inv_255 = 1.0f / 255.0f; \n"
+"    float scale = 1.0f / 255.0f; \n"
 "    if(tx < 0.0f || tx >= 1.0f){ \n"
 "        tx = tx - (int)tx; \n"
 "        if(tx < 0.0f){ \n"
@@ -258,6 +259,10 @@ static string const_prefix = \
 "        case FORMAT_COLOR_8UC4: \n"
 "            channel = 4; \n"
 "            break; \n"
+"        case FORMAT_COLOR_32FC1: \n"
+"            channel = 1; \n"
+"            scale = 1.0f; \n"
+"            break; \n"
 "        default: \n"
 "            throw std::runtime_error(\"invalid color format\\n\"); \n"
 "            break; \n"
@@ -268,7 +273,7 @@ static string const_prefix = \
 "        int y = ty * samp.height; \n"
 "        int index = y * samp.width + x; \n"
 "        for (int i = 0; i < channel; ++i) { \n"
-"            res[i] = ((float)samp.data[index * channel + i]) * inv_255; \n"
+"            res[i] = ((float)samp.data[index * channel + i]) * scale; \n"
 "        } \n"
 "    } \n"
 "    else if (samp.filter == filter_type::BILINEAR) \n"
@@ -285,10 +290,10 @@ static string const_prefix = \
 "        i10 = i10 >= samp.size ? samp.size - 1 : i10; \n"
 "        i11 = i11 >= samp.size ? samp.size - 1 : i11; \n"
 "        for (int i = 0;i < channel;++i){ \n"
-"            u00[i] = ((float)samp.data[i00 * channel + i]) * inv_255; \n"
-"            u01[i] = ((float)samp.data[i01 * channel + i]) * inv_255; \n"
-"            u10[i] = ((float)samp.data[i10 * channel + i]) * inv_255; \n"
-"            u11[i] = ((float)samp.data[i11 * channel + i]) * inv_255; \n"
+"            u00[i] = ((float)samp.data[i00 * channel + i]) * scale; \n"
+"            u01[i] = ((float)samp.data[i01 * channel + i]) * scale; \n"
+"            u10[i] = ((float)samp.data[i10 * channel + i]) * scale; \n"
+"            u11[i] = ((float)samp.data[i11 * channel + i]) * scale; \n"
 "        } \n"
 "        float s = x - (int)x; \n"
 "        float t = y - (int)y; \n"
@@ -365,6 +370,14 @@ void cpp_code_generate(string& src, string& dest){
     dest = macros + extract_headers(headers) + prefix + class_shader_code + src + postfix;
     #else
     dest = const_prefix + src + postfix;
+    // static int id = 0;
+    // string filename = string("code")+to_string(id)+string(".cpp");
+    // id++;
+    // FILE* fp = NULL;
+    // fp = fopen(filename.c_str(), "w");
+    // fprintf(fp, dest.c_str());
+    // fclose(fp);
+
     #endif
 }
 

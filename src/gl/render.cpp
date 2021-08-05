@@ -1296,15 +1296,15 @@ static void programmable_view_port(ProgrammableTriangle* t)
         t->w_inversed[i] = 1.0f / t->screen_pos[i].w;
         t->screen_pos[i].x *= t->w_inversed[i];
         t->screen_pos[i].y *= t->w_inversed[i];
-        t->screen_pos[i].z *= t->w_inversed[i];
+        // t->screen_pos[i].z *= t->w_inversed[i];
         // printf("1/w: %f, x: %f, y: %f, z: %f\n", t->screen_pos[i].w, t->screen_pos[i].x, t->screen_pos[i].y, t->screen_pos[i].z);
 
         // view port transformation
-        t->screen_pos[i].x = 0.5f * ctx->width * (t->screen_pos[i].x + 1.0f);
-        t->screen_pos[i].y = 0.5f * ctx->height * (t->screen_pos[i].y + 1.0f);
+        t->screen_pos[i].x = (0.5f * ctx->width * (t->screen_pos[i].x + 1.0f)) + (float)ctx->start_pos_x;
+        t->screen_pos[i].y = (0.5f * ctx->height * (t->screen_pos[i].y + 1.0f)) + (float)ctx->start_pos_y;
 
         // [-1,1] to [0,1]
-        t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
+        // t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
 #else
         t->w_inversed[i] = 1.0f / t->vertices[i].screen_pos.w;
         t->vertices[i].screen_pos.x *= t->w_inversed[i];
@@ -1312,8 +1312,8 @@ static void programmable_view_port(ProgrammableTriangle* t)
         t->vertices[i].screen_pos.z *= t->w_inversed[i];
 
         // view port transformation
-        t->vertices[i].screen_pos.x = 0.5f * ctx->width * (t->vertices[i].screen_pos.x + 1.0f);
-        t->vertices[i].screen_pos.y = 0.5f * ctx->height * (t->vertices[i].screen_pos.y + 1.0f);
+        t->screen_pos[i].x = (0.5f * ctx->width * (t->screen_pos[i].x + 1.0f)) + (float)ctx->start_pos_x;
+        t->screen_pos[i].y = (0.5f * ctx->height * (t->screen_pos[i].y + 1.0f)) + (float)ctx->start_pos_y;
 
         // [-1,1] to [0,1]
         t->vertices[i].screen_pos.z = t->vertices[i].screen_pos.z * 0.5f + 0.5f;
@@ -1543,12 +1543,17 @@ void programmable_rasterize_with_shading_openmp()
     GET_CURRENT_CONTEXT(ctx);
     std::vector<ProgrammableTriangle*>& prog_triangle_list = ctx->pipeline.prog_triangle_list;
     int width = ctx->width, height = ctx->height;
-
-    color_t* frame_buf = (color_t*)ctx->framebuf->getDataPtr();
-
+    color_t* frame_buf;
+    float* zbuf;
+    if (!ctx->override_default_framebuf){
+        frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+        zbuf = (float*)ctx->zbuf->getDataPtr();
+    }else{
+        frame_buf = ctx->override_color_buf;
+        zbuf = ctx->override_depth_buf;
+    }
     // int len = prog_triangle_list.size();
     int len = ctx->pipeline.prog_triangle_size;
-    float* zbuf = (float*)ctx->zbuf->getDataPtr();
     Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
     std::vector<ShaderInterface*> shader_interfaces;
     shader_interfaces.resize(ctx->pipeline.cpu_num);
@@ -1585,13 +1590,11 @@ void programmable_rasterize_with_shading_openmp()
         maxx = MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x));
         maxy = MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y));
 
-#if 0
         // view shrinking in rasterization
         minx = minx < 0 ? 0 : minx;
         miny = miny < 0 ? 0 : miny;
         maxx = maxx >= width ? width - 1 : maxx;
         maxy = maxy >= height ? height - 1 : maxy;
-#endif
         
         // AABB algorithm
         for (y = miny; y <= maxy; ++y) {
@@ -1603,38 +1606,49 @@ void programmable_rasterize_with_shading_openmp()
                 // alpha beta gamma
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
                 // perspective correction
+                float alpha, beta, gamma;
                 float Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
-                float alpha = coef[0] * Z_viewspace * w_inv[0];
-                float beta = coef[1] * Z_viewspace * w_inv[1];
-                float gamma = coef[2] * Z_viewspace * w_inv[2];
-
+                alpha = coef[0] * Z_viewspace * w_inv[0];
+                beta = coef[1] * Z_viewspace * w_inv[1];
+                gamma = coef[2] * Z_viewspace * w_inv[2];
                 if (!ctx->use_z_test) {
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    float zp = alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w;
-                    omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    float zp;
+                    float invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
+                    zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    zp *= invwp;
+                    zp = zp * 0.5f + 0.5f;
+                    omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        // omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
                         programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
                         functions->input_port(frag_shader_in);
                         functions->glsl_main();
                         functions->output_port(frag_shader_out);
                         data_t frag_color_union;
                         functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
-                        // omp_set_lock(&(ctx->pipeline.pixel_tasks[index].lock));
-                        frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
-                        frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
-                        frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                        if (ctx->draw_color_buf){
+                            frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
+                            frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
+                            frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                        }
                     }
-                    omp_unset_lock(&(ctx->pipeline.pixel_tasks[index].lock));
+                    omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
                     frag_shader_in.clear();
                     frag_shader_out.clear();
                 }
             }
         }
     }
+    // FILE* fp = NULL;
+    // fp = fopen("shadow.txt","w");
+    // int tmp = width * height;
+    // for (int i=0; i<tmp; i++){
+    //     fprintf(fp, "%f\n", zbuf[i]);
+    // }
+    // fclose(fp);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

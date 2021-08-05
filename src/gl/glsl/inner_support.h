@@ -16,7 +16,7 @@ enum filter_type{
 #endif
 
 typedef struct{
-    unsigned char* tex_data;
+    void* tex_data;
     int width;
     int height;
     int color_format;
@@ -59,7 +59,7 @@ class sampler2D{
     // size = width * height
     int size;
     int color_format;
-    unsigned char *data;
+    void* data;
     filter_type filter;
     sampler2D& operator=(int val){
         texunit_id = val;
@@ -87,11 +87,29 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
     glm::vec4 res = glm::vec4(1.0f);
     if (samp.height == 0 || samp.width == 0)
         throw std::runtime_error("invalid texture used in shader\n");
-    // if (texcoord.x < 0 || texcoord.y < 0)
-    //     return res;
-    float tx = texcoord.x, ty = texcoord.y;
-    float inv_255 = 1.0f / 255.0f;
+    float scale = 1.0f / 255.0f;
+    int channel;
+    bool is_char = true;
+    switch (samp.color_format) {
+        case FORMAT_COLOR_8UC3:
+            channel = 3;
+            break;
+        case FORMAT_COLOR_8UC4:
+            channel = 4;
+            // printf("using RGBA\n");
+            break;
+        case FORMAT_COLOR_32FC1:
+            channel = 1;
+            scale = 1.0f;
+            is_char = false;
+            break;
+        default:
+            throw std::runtime_error("invalid color format\n");
+            break;
+    }
     // REPEAT S
+    float tx = texcoord.x, ty = texcoord.y;
+    bool flag = false;
     if(tx < 0.0f || tx >= 1.0f){
         tx = tx - (int)tx;
         if(tx < 0.0f){
@@ -106,26 +124,19 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
             ty += 1.0f;
         }
     }
-    int channel;
-    switch (samp.color_format) {
-        case FORMAT_COLOR_8UC3:
-            channel = 3;
-            break;
-        case FORMAT_COLOR_8UC4:
-            channel = 4;
-            // printf("using RGBA\n");
-            break;
-        default:
-            throw std::runtime_error("invalid color format\n");
-            break;
-    }
     if (samp.filter == filter_type::NEAREST)
     {
         int x = tx * samp.width;
         int y = ty * samp.height;
         int index = y * samp.width + x;
         for (int i = 0; i < channel; ++i) {
-            res[i] = ((float)samp.data[index * channel + i]) * inv_255;
+            if (is_char){
+                unsigned char* sampler_data_array = (unsigned char*)samp.data;
+                res[i] = ((float)sampler_data_array[index * channel + i]) * scale;
+            }else{
+                float * sampler_data_array = (float*)samp.data;
+                res[i] = ((float)sampler_data_array[index * channel + i]) * scale;
+            }
         }
     }
     else if (samp.filter == filter_type::BILINEAR)
@@ -142,10 +153,19 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
         i10 = i10 >= samp.size ? samp.size - 1 : i10;
         i11 = i11 >= samp.size ? samp.size - 1 : i11;
         for (int i = 0;i < channel;++i){
-            u00[i] = ((float)samp.data[i00 * channel + i]) * inv_255;
-            u01[i] = ((float)samp.data[i01 * channel + i]) * inv_255;
-            u10[i] = ((float)samp.data[i10 * channel + i]) * inv_255;
-            u11[i] = ((float)samp.data[i11 * channel + i]) * inv_255;
+            if (is_char){
+                unsigned char* sampler_data_array = (unsigned char*)samp.data;
+                u00[i] = ((float)sampler_data_array[i00 * channel + i]) * scale;
+                u01[i] = ((float)sampler_data_array[i01 * channel + i]) * scale;
+                u10[i] = ((float)sampler_data_array[i10 * channel + i]) * scale;
+                u11[i] = ((float)sampler_data_array[i11 * channel + i]) * scale;
+            }else{
+                float * sampler_data_array = (float*)samp.data;
+                u00[i] = ((float)sampler_data_array[i00 * channel + i]) * scale;
+                u01[i] = ((float)sampler_data_array[i01 * channel + i]) * scale;
+                u10[i] = ((float)sampler_data_array[i10 * channel + i]) * scale;
+                u11[i] = ((float)sampler_data_array[i11 * channel + i]) * scale;
+            }
         }
         float s = x - (int)x;
         float t = y - (int)y;

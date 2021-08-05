@@ -86,6 +86,13 @@ glObject* glManager::__storage(GLenum dtype, int size, GLenum bind){
     return nullptr;
 }
 
+void framebuf_attachment_t::init_sync_unit(int npixels){
+    sync_unit.resize(npixels);
+    for (int i=0; i<npixels; i++){
+        omp_init_lock(&(sync_unit[i]));
+    }
+}
+
 glRenderPayload::glRenderPayload(){
     // -1: undef    0: default
     renderMap.emplace(GL_ARRAY_BUFFER, -1);
@@ -294,7 +301,8 @@ int glProgramManager::attach(int prog, int shader_cache_id){
 }
 
 glPipeline::glPipeline(){
-    cpu_num = std::thread::hardware_concurrency();
+    // cpu_num = std::thread::hardware_concurrency();
+    cpu_num = 10;
     omp_set_num_threads(cpu_num);
     omp_init_lock(&tri_culling_lock);
 
