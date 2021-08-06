@@ -9,7 +9,7 @@ set(CMAKE_TOOLCHAIN_FILE D:/CodingLibs/vcpkg/scripts/buildsystems/vcpkg.cmake
   CACHE STRING "Vcpkg toolchain file")
 
 # flags
-set(CMAKE_CXX_FLAGS "-g -O0")
+# set(CMAKE_CXX_FLAGS "-g -O0")
 # set(CMAKE_CXX_FLAGS "-mavx")
 # set(CMAKE_CXX_FLAGS "-save-temps")
 set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG")
