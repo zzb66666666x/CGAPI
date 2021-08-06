@@ -195,7 +195,7 @@ ProgrammableVertex ProgrammableTriangle::intersect(ProgrammableVertex& v1, Progr
 void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res)
 {
     // if all vertices are outside or inside, it will return directly.
-    if ((this->culling = outside_clip_space()) || all_inside_clip_space()) {
+    if (all_inside_clip_space() || (this->culling = outside_clip_space())) {
         return;
     }
     // for loop

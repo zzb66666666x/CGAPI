@@ -38,6 +38,15 @@ inline static void backface_culling(Triangle& t)
     t.culling = res.z < -0.01f;
 }
 
+inline static void backface_culling(ProgrammableTriangle& t){
+    glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
+    glm::vec3 v02 = t.screen_pos[2] - t.screen_pos[0];
+    glm::vec3 res = glm::normalize(glm::cross(v01, v02));
+
+    // the parallel plane will not be culled.
+    t.culling = res.z < -0.01f;
+}
+
 /////////////////////////////////////// view frustum culling function //////////////////////////////////
 static const std::vector<glm::vec4> planes = {
     //Near
@@ -1502,7 +1511,7 @@ void programmable_process_geometry_openmp()
             }
             vfc_list.clear();
         } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
-            // backface_culling(*triangle_list[tri_ind]);
+            backface_culling(*triangle_list[tri_ind]);
         }
 
         if (triangle_list[tri_ind]->culling) {
@@ -1569,7 +1578,7 @@ void programmable_rasterize_with_shading_openmp()
     std::map<std::string, data_t> frag_shader_in, frag_shader_out;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(t) private(screen_pos) private(w_inv) \
-    private(frag_shader_in) private(frag_shader_out) private(functions)
+     private(frag_shader_in) private(frag_shader_out) private(functions)
 #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
@@ -1609,6 +1618,7 @@ void programmable_rasterize_with_shading_openmp()
 
                 // alpha beta gamma
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+
                 // perspective correction
                 float alpha, beta, gamma;
                 float Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
