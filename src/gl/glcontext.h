@@ -35,6 +35,7 @@ class gl_context{
     bool                use_double_buf;
     bool                use_z_test;
     bool                draw_color_buf;
+    bool                flip_image;
     struct {
         bool open;
         unsigned int cull_face_mode;

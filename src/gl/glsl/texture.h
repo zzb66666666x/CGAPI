@@ -4,6 +4,7 @@
 #include "../configs.h"
 #include <glm/glm.hpp>
 #include "../formats.h"
+#include "../../../include/gl/common.h"
 
 // class debug_texture{
 // private:
@@ -25,16 +26,32 @@ enum filter_type{
 class sampler_config{
     public:
     sampler_config()
-    : width(0),
-      height(0),
-      color_format(FORMAT_COLOR_8UC3){}
+    :   width(0),
+        height(0),
+        color_format(FORMAT_COLOR_8UC3),
+        wrap_s(GL_REPEAT),
+        wrap_t(GL_REPEAT),
+        border_val(glm::vec4(0.0f)){}
     sampler_config(int w, int h, int cf)
-        : width(w),
-          height(h),
-          color_format(cf){}
+    :   width(w),
+        height(h),
+        color_format(cf),
+        wrap_s(GL_REPEAT),
+        wrap_t(GL_REPEAT),
+        border_val(glm::vec4(0.0f)){}
+    sampler_config(int w, int h, int cf, int ws, int wt)
+    :   width(w),
+        height(h),
+        color_format(cf),
+        wrap_s(ws),
+        wrap_t(wt),
+        border_val(glm::vec4(0.0f)){}
     int width;
     int height;
     int color_format;
+    int wrap_s;
+    int wrap_t;
+    glm::vec4 border_val;
 };
 
 class sampler2D{

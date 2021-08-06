@@ -236,6 +236,7 @@ void glBindFramebuffer(GLenum target, unsigned int ID){
                 C->override_buf_npixels = 0;
                 render_map[GL_FRAMEBUFFER] = 0;
                 C->draw_color_buf = true;
+                C->flip_image = true;
                 C->cur_sync_unit = &(C->sync_unit);
             }else{
                 // make sure that the ID exists
@@ -250,6 +251,7 @@ void glBindFramebuffer(GLenum target, unsigned int ID){
                 C->override_buf_npixels = config->buffer_npixels;
                 C->draw_color_buf = config->draw_color_buf;
                 C->cur_sync_unit = &(config->sync_unit);
+                C->flip_image = config->flip_image;
             }
             break;
         default:
@@ -316,10 +318,12 @@ void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, 
                 attachment_configs->depth_buf = (float*)tex_ptr->getDataPtr();
                 attachment_configs->buffer_npixels = npixels;
                 attachment_configs->init_sync_unit(npixels);
+                attachment_configs->flip_image = false;
                 if (C->override_default_framebuf){
                     C->override_depth_buf = attachment_configs->depth_buf;
                     C->override_buf_npixels = npixels;
                     C->cur_sync_unit = &(attachment_configs->sync_unit);
+                    C->flip_image  = false;
                 }
             }
         }break;
@@ -545,8 +549,56 @@ void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, i
     attribs[index] = new_entry;
 }
 
-void glTexParameteri(GLenum target,unsigned int pname,int param){
-    
+void glTexParameteri(GLenum target, GLenum pname, int param){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    if (target != GL_TEXTURE_2D){
+        throw std::runtime_error("not supporting setting params for texture other than texture_2D");
+    }
+    int tex_id = C->payload.renderMap[GL_TEXTURE_2D];
+    if (tex_id <=0 ){
+        throw std::runtime_error("haven't binded any texture\n");
+    }
+    auto tex_config = C->share.tex_config_map.find(tex_id);
+    if (tex_config == C->share.tex_config_map.end())
+        throw std::runtime_error("invalid texture binded\n");
+    if (param != GL_REPEAT && param != GL_CLAMP_TO_BORDER){
+        throw std::runtime_error("not supported param value for setting the texture parameter\n");
+    }
+    switch(pname){
+        case GL_TEXTURE_WRAP_S:
+            tex_config->second.wrap_s = param;
+            break;
+        case GL_TEXTURE_WRAP_T:
+            tex_config->second.wrap_t = param;
+            break;
+        default:
+            throw std::runtime_error("not supporting this parameter settings\n");
+    }
+}
+
+void glTexParameterfv(GLenum target,GLenum pname,const float * params){
+    GET_CURRENT_CONTEXT(C);
+    if (C==nullptr)
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    if (target != GL_TEXTURE_2D){
+        throw std::runtime_error("not supporting setting params for texture other than texture_2D");
+    }
+    int tex_id = C->payload.renderMap[GL_TEXTURE_2D];
+    if (tex_id <=0 ){
+        throw std::runtime_error("haven't binded any texture\n");
+    }
+    auto tex_config = C->share.tex_config_map.find(tex_id);
+    if (tex_config == C->share.tex_config_map.end())
+        throw std::runtime_error("invalid texture binded\n");
+    switch(pname){
+        case GL_TEXTURE_BORDER_COLOR:
+            tex_config->second.border_val = glm::make_vec4(params);
+            break;
+        default:
+            throw std::runtime_error("not supporting this parameter settings\n");
+    }
 }
 
 // Enable
@@ -956,6 +1008,9 @@ sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
     // pack.filter = filter_type::BILINEAR;
     pack.height = it->second.height;
     pack.width = it->second.width;
+    pack.wrap_s = it->second.wrap_s;
+    pack.wrap_t = it->second.wrap_t;
+    pack.border_val = it->second.border_val;
     return pack;
 }
 

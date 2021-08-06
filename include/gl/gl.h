@@ -29,7 +29,7 @@ extern void glTexImage2D(GLenum target, int level,  GLenum internalFormat, int w
 extern void glVertexAttribPointer(int index, int size, GLenum dtype, bool normalized, int stride, void * pointer);
 // Tex Params
 extern void glTexParameterf(GLenum target,GLenum pname,float param);
-extern void glTexParameteri(GLenum target,unsigned int pname,int param);
+extern void glTexParameteri(GLenum target,GLenum pname,int param);
 extern void glTexParameterfv(GLenum target,GLenum pname,const float * params);
 extern void glTexParameteriv(GLenum target,GLenum pname,const int * params);
 // Enable

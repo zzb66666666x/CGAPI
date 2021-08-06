@@ -22,6 +22,7 @@ typedef void (*render_fp)();
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define GET_INDEX(x, y, width, height) (((height)-1 - (y)) * (width) + (x))
+#define GET_INDEX_NO_FLIP(x, y, width, height) ((y) * (width) + (x))
 #define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3) / weight)
 
 // single thread interface

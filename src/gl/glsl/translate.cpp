@@ -364,6 +364,7 @@ void cpp_code_generate(string& src, string& dest){
     vector<string> headers;
     headers.push_back(string("../src/gl/glsl/os.h"));
     headers.push_back(string("../src/gl/formats.h"));
+    headers.push_back(string("../include/gl/common.h"));
     headers.push_back(string("../src/gl/glsl/vec_math.h"));
     headers.push_back(string("../src/gl/glsl/inner_variable.h"));
     headers.push_back(string("../src/gl/glsl/inner_support.h"));

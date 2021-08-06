@@ -1599,7 +1599,11 @@ void programmable_rasterize_with_shading_openmp()
         // AABB algorithm
         for (y = miny; y <= maxy; ++y) {
             for (x = minx; x <= maxx; ++x) {
-                int index = GET_INDEX(x, y, width, height);
+                int index;
+                if (ctx->flip_image)
+                    index = GET_INDEX(x, y, width, height);
+                else    
+                    index = GET_INDEX_NO_FLIP(x, y, width, height);
                 if (!t->inside(x + 0.5f, y + 0.5f))
                     continue;
 

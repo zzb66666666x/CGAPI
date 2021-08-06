@@ -24,6 +24,7 @@ gl_context::gl_context(int npixels, bool double_buf){
     override_default_framebuf = false;
     use_z_test = false;
     draw_color_buf = true;
+    flip_image  = true;
     cull_face.open = false;
     framebuf = &framebuf_1;
     if (double_buf){

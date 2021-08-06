@@ -208,7 +208,8 @@ class framebuf_attachment_t{
                             buffer_npixels(0),
                             color_buf(nullptr),
                             depth_buf(nullptr),
-                            draw_color_buf(true)
+                            draw_color_buf(true),
+                            flip_image(false)
                             {}
     void init_sync_unit(int npixels);
     GLenum attachment_type;
@@ -218,6 +219,7 @@ class framebuf_attachment_t{
     color_t * color_buf;
     float * depth_buf;
     bool draw_color_buf;
+    bool flip_image;
     std::vector<omp_lock_t> sync_unit;
 };
 

@@ -20,6 +20,9 @@ typedef struct{
     int width;
     int height;
     int color_format;
+    int wrap_s;
+    int wrap_t;
+    glm::vec4 border_val;
     filter_type filter;
 }sampler_data_pack;
 
@@ -59,6 +62,9 @@ class sampler2D{
     // size = width * height
     int size;
     int color_format;
+    int wrap_s;
+    int wrap_t;
+    glm::vec4 border_val;
     void* data;
     filter_type filter;
     sampler2D& operator=(int val){
@@ -77,7 +83,10 @@ class sampler2D{
         color_format = tmp.color_format;
         data = tmp.tex_data;
         filter = tmp.filter;
+        wrap_s = tmp.wrap_s;
+        wrap_t = tmp.wrap_t;
         loaded_texture = true;
+        border_val = tmp.border_val;
     }
 };
 
@@ -100,28 +109,42 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
             break;
         case FORMAT_COLOR_32FC1:
             channel = 1;
-            scale = 1.0f;
             is_char = false;
+            scale = 1.0f;
             break;
         default:
             throw std::runtime_error("invalid color format\n");
             break;
     }
-    // REPEAT S
+    // direction s of texcoord
     float tx = texcoord.x, ty = texcoord.y;
     bool flag = false;
     if(tx < 0.0f || tx >= 1.0f){
-        tx = tx - (int)tx;
-        if(tx < 0.0f){
-            tx += 1.0f;
+        switch(samp.wrap_s){
+            case GL_CLAMP_TO_BORDER:
+                return samp.border_val;
+            case GL_REPEAT:
+            default:
+                tx = tx - (int)tx;
+                if(tx < 0.0f){
+                    tx += 1.0f;
+                }
+                break;
         }
     }
 
-    // REPEAT T
+    // direction t of texcoord
     if(ty < 0.0f || ty >= 1.0f){
-        ty = ty - (int)ty;
-        if(ty < 0.0f){
-            ty += 1.0f;
+        switch(samp.wrap_t){
+            case GL_CLAMP_TO_BORDER:
+                return samp.border_val;
+            case GL_REPEAT:
+            default:
+                ty = ty - (int)ty;
+                if(ty < 0.0f){
+                    ty += 1.0f;
+                }
+                break;
         }
     }
     if (samp.filter == filter_type::NEAREST)
