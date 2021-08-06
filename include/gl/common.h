@@ -19,8 +19,6 @@ extern "C" {
 #define GL_UNSIGNED_INT 0x1405
 
 // texture wrapping parameters
-#define GL_TEXTURE_WRAP_S 0x2802
-#define GL_TEXTURE_WRAP_T 0x2803
 #define GL_REPEAT 0x2901
 #define GL_MIRRORED_REPEAT 0x8370
 #define GL_CLAMP_TO_EDGE 0x812F
@@ -54,6 +52,11 @@ GL_TRIANGLES,
 // target
 GL_TEXTURE_2D, 
 
+// params
+GL_TEXTURE_WRAP_S,
+GL_TEXTURE_WRAP_T,
+GL_TEXTURE_BORDER_COLOR,
+
 //fotmat
 GL_RGB,
 GL_RGBA,
@@ -80,6 +83,9 @@ GL_BIND_PROGRAM,
 // framebuf
 GL_FRAMEBUFFER,
 GL_DEPTH_ATTACHMENT,
+
+// color buffer to draw
+GL_NONE,
 
 // capbilities
 GL_DEPTH_TEST,

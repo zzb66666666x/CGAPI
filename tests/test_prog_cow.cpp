@@ -61,7 +61,6 @@ int load_vertices(std::vector<float> & vertices){
 
 
 static void testDrawCowWindow(){
-    int frame_count = 0;
 
     if (!glvInit())
     {

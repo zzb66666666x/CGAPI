@@ -12,10 +12,19 @@ gl_context::gl_context(int npixels, bool double_buf){
     zbuf_1 = glStorage<float>(npixels, GL_DEPTH_ATTACHMENT);
     use_double_buf = double_buf;
     zbuf = &zbuf_1;
+    sync_unit.resize(npixels);
+    std::vector<omp_lock_t>::iterator it;
+    for (int i=0; i < sync_unit.size(); i++) {
+        omp_init_lock(&(sync_unit[i]));
+    }
+    cur_sync_unit = &sync_unit;
     override_color_buf = nullptr;
     override_depth_buf = nullptr;
+    override_buf_npixels = 0;
     override_default_framebuf = false;
     use_z_test = false;
+    draw_color_buf = true;
+    flip_image  = true;
     cull_face.open = false;
     framebuf = &framebuf_1;
     if (double_buf){
@@ -28,10 +37,10 @@ gl_context::gl_context(int npixels, bool double_buf){
     // pipeline = glPipeline();
     pipeline.pixel_tasks = std::vector<Pixel>(npixels);
     pipeline.init_pixel_locks();
-    windowbuf = nullptr;
     clear_color.R = 0;
     clear_color.G = 0;
     clear_color.B = 0;
+    debug_flag = true;
 }
 
 gl_context* _cg_create_context(int width, int height, bool double_buf){
@@ -39,6 +48,8 @@ gl_context* _cg_create_context(int width, int height, bool double_buf){
     gl_context * ctx = new gl_context(npixels, double_buf);
     ctx->width = width;
     ctx->height = height;
+    ctx->start_pos_x = 0;
+    ctx->start_pos_y = 0;
     ctx->pipeline.bins = new ScreenBins(width, height);
     ctx->znear = 0.1;
     ctx->zfar = 500;

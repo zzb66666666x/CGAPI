@@ -15,21 +15,27 @@ class gl_context{
     // width & height
     int width;
     int height;
+    int start_pos_x;
+    int start_pos_y;
     float znear;
     float zfar;
     // frame buffer info and depth test
     glStorage<color_t> *framebuf;
     glStorage<float>   *zbuf;
-    glStorage<color_t> *windowbuf;
+    std::vector<omp_lock_t>* cur_sync_unit;
+    std::vector<omp_lock_t> sync_unit;
     glStorage<color_t>  framebuf_1;
     glStorage<color_t>  framebuf_2;
     glStorage<float>    zbuf_1;
     glStorage<float>    zbuf_2;
     color_t*            override_color_buf;
     float*              override_depth_buf;
+    int                 override_buf_npixels;
     bool                override_default_framebuf;
     bool                use_double_buf;
     bool                use_z_test;
+    bool                draw_color_buf;
+    bool                flip_image;
     struct {
         bool open;
         unsigned int cull_face_mode;
@@ -45,6 +51,9 @@ class gl_context{
     glPipeline              pipeline;
     // framebuffer clear color
     color_t                 clear_color;
+
+    // for debug
+    bool debug_flag;
 };
 
 extern gl_context* glapi_ctx;

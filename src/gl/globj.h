@@ -205,14 +205,22 @@ class framebuf_attachment_t{
     framebuf_attachment_t():attachment_type(GL_UNDEF),
                             attached_obj_for_depth(-1),
                             attached_obj_for_color(-1),
+                            buffer_npixels(0),
                             color_buf(nullptr),
-                            depth_buf(nullptr)
+                            depth_buf(nullptr),
+                            draw_color_buf(true),
+                            flip_image(false)
                             {}
+    void init_sync_unit(int npixels);
     GLenum attachment_type;
     int attached_obj_for_depth;
     int attached_obj_for_color;
+    int buffer_npixels;
     color_t * color_buf;
     float * depth_buf;
+    bool draw_color_buf;
+    bool flip_image;
+    std::vector<omp_lock_t> sync_unit;
 };
 
 class glShareData{
