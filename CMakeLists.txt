@@ -121,10 +121,20 @@ target_link_libraries(glite benchmark::benchmark benchmark::benchmark_main)
 # target_link_libraries(glite ${Boost_LIBRARIES})
 # target_link_libraries(glite glm::glm)
 
+set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
+
+install(TARGETS glite DESTINATION lib)
+
+install(
+	DIRECTORY ${CMAKE_SOURCE_DIR}/include 
+	DESTINATION ${CMAKE_SOURCE_DIR}/install
+	FILES_MATCHING 
+	PATTERN "*.h"
+)
+
 ################################################
 ################# utest make ###################
 ################################################
-add_executable(test_globjs src/utests/test_globjs.cpp ${GL_SOURCES} ${UTILS_SOURCES})
 
 add_executable(test_pipeline src/utests/test_pipeline.cpp)
 target_link_libraries(test_pipeline glite)
@@ -164,23 +174,23 @@ set(UTESTS_HEADER_ASSIMP
 	src/utests/header_assimp/shader.h
 )
 
-add_executable(basics tests/test_basics.cpp tests/shared_data.cpp tests/shared_data.h)
-target_link_libraries(basics glite)
+# add_executable(basics tests/test_basics.cpp tests/shared_data.cpp tests/shared_data.h)
+# target_link_libraries(basics glite)
 
-add_executable(ebo tests/test_ebo.cpp)
-target_link_libraries(ebo glite)
+# add_executable(ebo tests/test_ebo.cpp)
+# target_link_libraries(ebo glite)
 
-add_executable(texture tests/test_texture.cpp tests/shared_data.cpp tests/shared_data.h)
-target_link_libraries(texture glite)
+# add_executable(texture tests/test_texture.cpp tests/shared_data.cpp tests/shared_data.h)
+# target_link_libraries(texture glite)
 
-add_executable(bunny tests/test_bunny.cpp)
-target_link_libraries(bunny glite)
+# add_executable(bunny tests/test_bunny.cpp)
+# target_link_libraries(bunny glite)
 
-add_executable(test_benchmark tests/test_benchmark.cpp)
-target_link_libraries(test_benchmark glite)
+# add_executable(test_benchmark tests/test_benchmark.cpp)
+# target_link_libraries(test_benchmark glite)
 
-add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
-target_link_libraries(test_sponza glite)
+# add_executable(test_sponza tests/test_sponza.cpp tests/header/mesh.h tests/header/model.h)
+# target_link_libraries(test_sponza glite)
 
 # programmable pipeline version of testing files
 add_executable(test_prog_sponza tests/test_prog_sponza.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
