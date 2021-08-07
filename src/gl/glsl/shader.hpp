@@ -134,7 +134,7 @@ class Shader{
         //     std::cout<<it->first<<"    "<<it->second<<std::endl;
         // }
         // std::cout<<"////////// END OF UNIFORM MAP //////////"<<std::endl;
-        std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -O3 -o ");
+        std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -fopenmp -O3 -o ");
         std::string compile_cmd_2(" -x c++ -");
         std::string compile_cmd = compile_cmd_1 + out + compile_cmd_2;
         // FILE *proc = popen("g++ -fPIC -shared -o test.dll -x c++ -", "w");
@@ -169,6 +169,12 @@ class Shader{
         if (inst_num < 1 || !loaded_inst)
             return;
         glsl_shader_insts[0]->set_sampler2D_callback(func);
+    }
+    
+    inline void set_mipmap_sampler_callback(get_mipmap_sampler_fptr func){
+        if (inst_num < 1 || !loaded_inst)
+            return;
+        glsl_shader_insts[0]->set_mipmap_sampler_callback(func);
     }
 
     inline void print_cpp_code(){

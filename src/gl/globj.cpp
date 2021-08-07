@@ -300,8 +300,13 @@ int glProgramManager::attach(int prog, int shader_cache_id){
     return GL_SUCCESS;
 }
 
-glPipeline::glPipeline(){
+glPipeline::glPipeline()
+{
     cpu_num = std::thread::hardware_concurrency();
+    pixel_block.resize(cpu_num);
+    for(int i = 0;i<cpu_num;++i){
+        pixel_block[i].resize(4);
+    }
     // cpu_num = 10;
     omp_set_num_threads(cpu_num);
     omp_init_lock(&tri_culling_lock);
@@ -322,6 +327,7 @@ glPipeline::glPipeline(){
 
 #ifndef GL_SCANLINE
     exec.emplace_back(programmable_rasterize_with_shading_openmp);
+    exec.emplace_back(programmable_process_pixel);
 #else
     exec.emplace_back(programmable_rasterize_with_scanline);
 #endif

@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "../formats.h"
 #include "../../../include/gl/common.h"
+#include <vector>
 
 // class debug_texture{
 // private:
@@ -18,9 +19,13 @@
 //     glm::vec3 getColor(float u, float v);
 // };
 
-enum filter_type{
+enum filter_type {
     NEAREST,
-    BILINEAR
+    LINEAR,
+    NEAREST_MIPMAP_NEAREST,
+    LINEAR_MIPMAP_NEAREST,
+    NEAREST_MIPMAP_LINEAR,
+    LINEAR_MIPMAP_LINEAR
 };
 
 class sampler_config{
@@ -51,6 +56,8 @@ class sampler_config{
     int color_format;
     int wrap_s;
     int wrap_t;
+    int min_filter;
+    int mag_filter;
     glm::vec4 border_val;
 };
 

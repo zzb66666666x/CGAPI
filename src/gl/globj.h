@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <omp.h>
 #include "glsl/shader.hpp"
+#include "glsl/inner_support.h"
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -232,6 +233,7 @@ class glShareData{
     glManager vertex_array_objects;
     glManager textures;
     std::map<int, sampler_config> tex_config_map;
+    std::map<int, MipmapStorage> tex_mipmaps_map;
     glManager framebuf_attachments;
 };  
 
@@ -329,6 +331,7 @@ struct Pixel{
     omp_lock_t lock;
 };
 
+
 class PrimitiveCache{
 public:
     int removeCacheData(unsigned int VAO){
@@ -380,6 +383,11 @@ class glPipeline{
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
+        // programmable pixel processing task list;
+        std::vector<ProgrammablePixel> prog_pixel_tasks;
+
+        // get information that 2x2 pixels near the current pixel;
+        std::vector<std::vector<ProgrammablePixel*>> pixel_block;
         // glManager search cache
         int first_vertex;
         int vertex_num;

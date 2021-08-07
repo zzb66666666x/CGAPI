@@ -31,7 +31,7 @@ glm::vec4 texture2D(sampler2D &texture, glm::vec2 &texcoord)
                 break;
         }
     }
-    else if (texture.filter == filter_type::BILINEAR)
+    else if (texture.filter == filter_type::LINEAR)
     {
         // TODO
     }

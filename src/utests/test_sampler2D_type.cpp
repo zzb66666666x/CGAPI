@@ -38,7 +38,7 @@ int main(){
             throw std::runtime_error("not suitable color format\n");
         printf("image data: %x\n", data);
         pack.color_format = FORMAT_COLOR_8UC3;
-        pack.filter = NEAREST;
+        // pack.filter = NEAREST;
         pack.height = height;
         pack.width = width;
         pack.tex_data = data;

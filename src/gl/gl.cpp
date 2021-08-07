@@ -563,15 +563,21 @@ void glTexParameteri(GLenum target, GLenum pname, int param){
     auto tex_config = C->share.tex_config_map.find(tex_id);
     if (tex_config == C->share.tex_config_map.end())
         throw std::runtime_error("invalid texture binded\n");
-    if (param != GL_REPEAT && param != GL_CLAMP_TO_BORDER){
-        throw std::runtime_error("not supported param value for setting the texture parameter\n");
-    }
+    // if (param != GL_REPEAT && param != GL_CLAMP_TO_BORDER){
+    //     throw std::runtime_error("not supported param value for setting the texture parameter\n");
+    // }
     switch(pname){
         case GL_TEXTURE_WRAP_S:
             tex_config->second.wrap_s = param;
             break;
         case GL_TEXTURE_WRAP_T:
             tex_config->second.wrap_t = param;
+            break;
+        case GL_TEXTURE_MIN_FILTER:
+            tex_config->second.min_filter = param;
+            break;
+        case GL_TEXTURE_MAG_FILTER:
+            tex_config->second.mag_filter = param;
             break;
         default:
             throw std::runtime_error("not supporting this parameter settings\n");
@@ -600,7 +606,83 @@ void glTexParameterfv(GLenum target,GLenum pname,const float * params){
             throw std::runtime_error("not supporting this parameter settings\n");
     }
 }
+/////////////////////////////////// Mipmap /////////////////////////////////////////////
+static void _generate_texture2D_mipmap(gl_context* ctx, int ID, sampler_config &config, glObject* tex_obj)
+{
+    // check
+    if(config.color_format != FORMAT_COLOR_8UC3 && config.color_format != FORMAT_COLOR_8UC4){
+        return;
+    }
+    // prepare current texture data
+    int format_size = config.color_format == FORMAT_COLOR_8UC4 ? 4 : 3;
+    unsigned char* tex_data = (unsigned char*)tex_obj->getDataPtr();
+    int nlevel = glm::log2((float)(config.width > config.height ? config.width : config.height)) + 1;
+    // insert to mipmap map
+    auto& tex_mipmaps_map = ctx->share.tex_mipmaps_map;
+    tex_mipmaps_map.emplace(ID, MipmapStorage(nlevel));
+    MipmapStorage& mipmap = tex_mipmaps_map[ID];
 
+    // generate mipmap
+    sampler_info_t* samp = new sampler_info_t(config.width, config.height, format_size, tex_obj->getDataPtr());
+    mipmap.set_pyramid(0, samp);
+    for (int i = 1; i < nlevel; ++i){
+        sampler_info_t *prevSamp = mipmap.get_mipmap_sampler(i - 1);
+        int prevW = samp->width;
+        int prevH = samp->height;
+        int w = prevW >> 1;
+        int h = prevH >> 1;
+        w = w > 1? w : 1;
+        h = h > 1 ? h : 1;
+        samp = new sampler_info_t(w, h, format_size, nullptr);
+        samp->data = malloc(w * h * format_size);
+        for (int x = 0; x < w; ++x){
+            for (int y = 0; y < h; ++y){
+                for (int j = 0; j < format_size; ++j) {
+                    // c1 c2
+                    // c3 c4
+                    unsigned char c1 = ((unsigned char*)prevSamp->data)[(y * 2) * prevW * format_size + (x * 2) * format_size + j];
+                    unsigned char c2 = ((unsigned char*)prevSamp->data)[(y * 2) * prevW * format_size + (x * 2 + 1) * format_size + j];
+                    unsigned char c3 = ((unsigned char*)prevSamp->data)[(y * 2 + 1) * prevW * format_size + (x * 2) * format_size + j];
+                    unsigned char c4 = ((unsigned char*)prevSamp->data)[(y * 2 + 1) * prevW * format_size + (x * 2 + 1) * format_size + j];
+                    ((unsigned char*)samp->data)[y * w * format_size + x * format_size + j] = (c1 + c2 + c3 + c4) * 0.25f;
+                }
+            }
+        }
+        mipmap.set_pyramid(i, samp);
+    }
+}
+void glGenerateMipmap(GLenum target)
+{
+    if(target != GL_TEXTURE_2D){
+        throw std::runtime_error("Mipmap only supports GL_TEXTURE_2D currently.");
+    }
+
+    GET_CURRENT_CONTEXT(ctx);
+    if (ctx == nullptr){
+        throw std::runtime_error("YOU DO NOT HAVE CURRENT CONTEXT\n");
+    }
+
+    int ID, ret;
+    glObject* tex_ptr;
+    auto& texs = ctx->share.textures;
+    switch (target) {
+        case GL_TEXTURE_2D:{
+            ID = ctx->payload.renderMap[GL_TEXTURE_2D];
+            if (ID < 0){
+                return;
+            }
+            ret = texs.searchStorage(&tex_ptr, ID);
+            if (ret == GL_FAILURE){
+                return;
+            }
+            sampler_config &conf= ctx->share.tex_config_map[ID];
+            _generate_texture2D_mipmap(ctx, ID, conf, tex_ptr);
+            break;
+        }
+        default:
+            break;
+    }
+}
 // Enable
 void glEnableVertexAttribArray(unsigned int idx){
     GET_CURRENT_CONTEXT(C);
@@ -1002,16 +1084,29 @@ sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
     auto it = C->share.tex_config_map.find(tex_obj_id);
     if (it == C->share.tex_config_map.end() || ret==GL_FAILURE)
         throw std::runtime_error("terminated because the texture cannot be found\n");
+    auto mipmap_it = C->share.tex_mipmaps_map.find(tex_obj_id);
     pack.tex_data = obj_ptr->getDataPtr();
+    pack.mipmap = mipmap_it == C->share.tex_mipmaps_map.end() ? nullptr : &mipmap_it->second;
     pack.color_format = it->second.color_format;
-    pack.filter = NEAREST;
-    // pack.filter = filter_type::BILINEAR;
+    pack.min_filter = it->second.min_filter;
+    pack.mag_filter = it->second.mag_filter;
     pack.height = it->second.height;
     pack.width = it->second.width;
     pack.wrap_s = it->second.wrap_s;
     pack.wrap_t = it->second.wrap_t;
     pack.border_val = it->second.border_val;
     return pack;
+}
+
+sampler_info_t* get_mipmap_sampler_fdef(int thread_id, MipmapStorage* mipmap){
+    GET_CURRENT_CONTEXT(ctx);
+    std::vector<std::vector<ProgrammablePixel*>> &pixel_block = ctx->pipeline.pixel_block;
+    glm::vec2 dx = pixel_block[thread_id][1]->texcoord - pixel_block[thread_id][0]->texcoord;
+    glm::vec2 dy = pixel_block[thread_id][2]->texcoord - pixel_block[thread_id][0]->texcoord;
+
+    float delta = std::max(glm::dot(dx, dx), glm::dot(dy, dy));
+    // printf("delta: %f\n", delta * mipmap->get_nlevel());
+    return mipmap->get_mipmap_sampler(-0.03f * log2(delta));
 }
 
 void glCompileShader(unsigned int shader){
@@ -1045,6 +1140,7 @@ void glCompileShader(unsigned int shader){
     shader_ptr->compile(output_fname);
     shader_ptr->load_shader();
     shader_ptr->set_sampler2D_callback(get_sampler2D_data_fdef);
+    shader_ptr->set_mipmap_sampler_callback(get_mipmap_sampler_fdef);
 }
 
 unsigned int glCreateProgram(){
