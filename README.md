@@ -12,25 +12,25 @@
 
 ## Intro
 
-This project is a realization of OpenGL running on CPU (soft rendering pipeline) with its GUI support from OpenCV. The goal of this library is to provide a set of API to quickly test out your ideas in computer graphics, which is easy enough to use, compile and link. The whole system is not based on GPU, but with multi-core processors nowadays, the efficiency is still acceptable. The advantage of building a system on CPU is that it's simple enough, and totally flexible to customize and debug. I also believe that this project can also be great tool to get new comers to get familiarized with the OpenGL low level features. OpenGL and other graphics API are often realized by graphics card producers, and current open source OpenGL realizations are sometimes too complicated for people to read and learn (like mesa3D). So in this library, I only keep the core logic of a graphics pipeline, which should be easy to read. That's why I call this library `glite`, which is `gl` +  `lite`. 
+This project is a realization of OpenGL running on CPU (soft rendering pipeline) with its GUI support from OpenCV. The goal of this library is to provide a set of API to quickly test out your ideas in computer graphics, which is easy enough to use, compile and link. The whole system is not based on GPU, but with multi-core processors nowadays, the efficiency is still acceptable. The advantage of building a system on CPU is that it's simple enough, and totally flexible to customize and debug. I also believe that this project can also be great tool for new comers to get familiarized with the OpenGL's low level features. OpenGL and other graphics API are often realized by graphics card producers, and current open source OpenGL realizations are sometimes too complicated for people to read and learn (like mesa3D). So in this library, I only keep the core logic of a graphics pipeline, which should be easy to read. That's why I call this library `glite`, which is `gl` +  `lite`. 
 
-The whole set of API provides nearly all the OpenGL functions, and a shader language parser is also supported, so you can pass in a string and let the library to compile it for you. Unlike the real OpenGL compiler, this compiler built inside is more like a front end (with the help of YACC), its function is to detect the grammar, and translate it to C++ code. Then the code is compiled into `.dll` file by `g++`. The `glite` can than extract function pointers from it to realize the programmable rendering pipeline. 
+The whole set of API provides nearly all the OpenGL functions, and a shader language parser is also supported, so you can pass in a string and let the library to compile it for you. Unlike the real OpenGL compiler, this compiler built inside is more like a front end (with the help of YACC), its function is to detect the grammar, and translate it to C++ code. Then the code is compiled into `.dll` file (or `.so` in Linux) by `g++`. The `glite` can then extract function pointers from it to realize a programmable rendering pipeline. 
 
 ## Build
 
 First, you should make sure you have GCC and CMake. We chose C++ 17 in this project, but C++11 can also work. The recommended platform for this library is Windows. I also tried to make it cross platform, but we do not have enough time to fully test it though. 
 
-To make the GUI work, you should also have OpenCV installed. We only use it for GUI and window creation. For Windows users with MinGW toolchain, you are highly recommended to compile the OpenCV. My own version of OpenCV was released in the May of 2020. 
+To make the GUI work, you should also have `OpenCV` installed. We only use it for GUI and window creation. For Windows users with MinGW toolchain, you are highly recommended to compile the OpenCV yourself. My own version of OpenCV was released in the May of 2020. 
 
-This project also relies on GLM as math package support. 
+This project also relies on `GLM` as math package support. GLM has been widely applied to work with OpenGL. It's easy to use and fast because it has inner support for AVX instruction.
 
-The Google benchmark are used for testing performance, which is totally unrelated with the library itself, you can comment out some executable targets. 
+The `Google benchmark` are used for testing performance, which is totally unrelated with the library itself, you can comment out some executable targets. 
 
-The VCPKG is a tool from Microsoft to manage the dependencies, If you don't use it, that's fine. You can comment it out and configure the dependency yourself (like adding paths to environment variables). 
+The `VCPKG` is a tool from Microsoft to manage the dependencies, If you don't use it, that's fine. You can comment it out and configure the dependency yourself (like adding paths to environment variables). Personally I configured the Google benchmark by just a few shell scripts. The VCPKG has hundreds of libraries available. 
 
-The boost library is used, but not much, we only use its `<boost/numeric/interval.hpp>` for id generation and deletion. Since the boost is almost header only, its configuration should be simple. 
+The `boost` library is used, but not much, we only use its `<boost/numeric/interval.hpp>` for id generation and deletion. Since the boost is almost header only, its configuration should be simple. 
 
-For multi-threading, we have two versions, one use `pthread`, the other one is `openMP`. They always com with the compiler, so it's not a big problem. 
+For multi-threading, we have two versions, one use `pthread`, the other one is `openMP`. They always come with the compiler installation, so it's not a big problem. 
 
 Don't forget to change the `CMakelists.txt`  to redirect the `OpenCV_DIR`, and other path variables. 
 
@@ -73,7 +73,7 @@ make install
 
 Everything related with the rendering tasks are kept in the object of `gl_context`. In this object, we have objects for vertex data, frame buffer, depth buffer, rendering payload, shader, pipeline and some bool flags. 
 
-OpenGL supports `VBO`, `VAO`, `EBO` and other built in objects for storage. We also define them to be class `glStorage<class T>` in file `globj.h / globj.cpp`. We use class `glManager` to map key value to these storage objects. If you are familiar with OpenGL, you will also know that the GL system is more like a state machine, so current objects belong to `GL_ARRAY_BUFFER` or `GL_TEXTURE_2D` are those actually participating in the rendering process. So the class `glPipeline` is like a place to share data structures between different stages of rendering pipeline and the `glRenderPayload` keeps tracks of the current object binding to `GL_ARRAY_BUFFER`, `GL_FRAMEBUFFER`, and `GL_TEXTURE_2D` and things like that. 
+OpenGL supports `VBO`, `VAO`, `EBO` and other built in objects for storage. We also define them to be class `glStorage<class T>` in file `globj.h / globj.cpp`. We use class `glManager` to map the key value to these storage objects. If you are familiar with OpenGL, you will also know that the GL system is more like a state machine, so current objects belong to `GL_ARRAY_BUFFER` or `GL_TEXTURE_2D` are those actually participating in the rendering process. So the class `glPipeline` is like a place to share data structures between different stages of rendering pipeline, and the `glRenderPayload` keeps tracks of the current object binding to `GL_ARRAY_BUFFER`, `GL_FRAMEBUFFER`, and `GL_TEXTURE_2D` and things like that. 
 
 In `src/gl/render.cpp`, we write many functions for rendering,  but few of them are really useful. It's because we are always testing different approaches to render the scene. So we really want our pipeline to be modularized. So we put data structures shared between rendering functions into `glPipeline` (like a list of triangles), and we forced a uniform function signature which is `void func(void)`. That way we can define a function pointer like below. 
 
@@ -81,11 +81,11 @@ In `src/gl/render.cpp`, we write many functions for rendering,  but few of them 
 typedef void (*render_fp)();
 ```
 
-When we want to test something out, we just put the function pointers we want inside `glPipeline::exec` (which is defined as `std::list<render_fp> exec`). As you can see, our final choices (maybe changed in the future) are `programmable_process_geometry_openmp` and `programmable_rasterize_with_shading_openmp`. 
+When we want to test something out, we just put the function pointers we want inside `glPipeline::exec` (which is defined as `std::list<render_fp> exec`). As you can see from the `globj.cpp`, our final choices are `programmable_process_geometry_openmp` and `programmable_rasterize_with_shading_openmp` (may get changed in the future) . 
 
 #### GLSL Parser By YACC
 
-The basic logic behind the YACC is the *Backus-Naur form*, by which we can define the grammar rules recursively. The basic components of a parser consists of a `.y` file for grammar rules and a `.l` file to define words and tokens. The tool to process `.l` file is called the `lexer`, we use `flex` from GNU to compile our lexer, the output is by default called `lex.yy.c`. For the `.y` file, we use `bison` (also from GNU) to generate grammar rules written in C code, and they are by default `y.tab.c / y.tab.h`.  We use Makefile to control this process.
+The basic logic behind the YACC is the *Backus-Naur form*, by which we can define the grammar rules recursively. The basic components of a parser consists of a `.y` file for grammar rules and a `.l` file to define words and tokens. The tool to process `.l` file is called the `lexer`, we use `flex` from GNU to compile our lexer, the output is called `lex.yy.c` by default. For the `.y` file, we use `bison` (also from GNU) to generate grammar rules written in C code, and they are by default `y.tab.c / y.tab.h`.  We use Makefile to control this process.
 
 ```makefile
 parser: grammar.y lexer.l
@@ -99,9 +99,9 @@ clean:
 	rm *.output
 ```
 
-With those files generated, we can add them to the source list of our graphics library project. Then the rest of the problem becomes how can we use that parser inside our project. Since `bison` enable us to define `C code actions` when some specific grammar patterns are matched, so we can keep track of which variables for the glsl code are `in / out`, which are `uniform`, and which should be initialized by pipeline (by the `layout` keyword). For each of the shader inner variables, the parser will automatically generate its own `set / get` functions. Our pipeline can control the shader by those interface functions. 
+With those files generated, we can add them to the source list of our graphics library project. Then the rest of the problem becomes how can we use that parser inside our project. Since `bison` enables us to define `C code actions` when some specific grammar patterns are matched, so we can keep track of which variables for the glsl code are `in / out`, which are `uniform`, and which should be initialized by pipeline (by the `layout` keyword). For each of the shader inner variables, the parser will automatically generate its own `set / get` functions. Our pipeline can control the shader by those interface functions. 
 
-To implement IO functionalities with shader inner variables, we can wrap everything defined in the shader in a class called `GLSLShader` which is a derived class of `ShaderInterface`. 
+To implement IO functionalities with shader inner variables, we can wrap everything defined by the GLSL code in a class called `GLSLShader` which is a derived class of `ShaderInterface`. We can do it because the grammar of GLSL is so familiar with C++, we can directly treat it as C++ after small modifications. For example, if we add `using namespace glm`, the shader can directly access all the GLM types, like `vec3`, `mat4`, and high optimized algorithm like `reflect` and `normalize`. 
 
 ```C++
 union data_t{
@@ -131,7 +131,7 @@ class ShaderInterface{
 };
 ```
 
-Then you can see that, we pass value to shader variables by either a `data_t` or a `std::map` of it. That way, we can pass different types of data packed in an `union`. Also note that the names of members in the union are encoded with a specific pattern `type_var`. With this trick, our parser can easily generate the `set / get` code by concatenating the string for some variable type with the `"_var"`. Let's say our shader defines `uniform vec3 lightpos`, our parser can then automatically generate code like below.
+You can also see that, we pass value to shader variables by either a `data_t` or a `std::map` of it. That way, we can pass different types of data packed in an `union`. Also note that the names of members in the union are encoded with a specific pattern: `type_var`. With this trick, our parser can easily generate the `set / get` code by concatenating the string for some variable type with the `"_var"`. Let's say our shader defines `uniform vec3 lightpos`, our parser can then automatically generate code like below.
 
 ```C++
 void set_uniform_lightpos(data_t data){
@@ -174,9 +174,9 @@ Author#1: Zhu Zhongbo from ZJU-UIUC Institute
 Email: Zhongbo.18@intl.zju.edu.cn
 ```
 
-Author#2: Zheng Juncheng from ZJU, graduate school of software engineering
+Author#2: Zheng Chengjun from ZJU, graduate school of software engineering
 
 ```
-Email: 
+Email: zhengchengjun@zju.edu.cn
 ```
 
