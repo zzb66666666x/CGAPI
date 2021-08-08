@@ -10,7 +10,21 @@ The whole set of API provides nearly all the OpenGL functions, and a shader lang
 
 ## Build
 
-First, you should make sure you have GCC and CMake. Then to make the GUI work, you should also have OpenCV installed. We only use it for GUI and window creation. For Windows users with MinGW toolchain, you are highly recommended to compile the OpenCV. My own version of OpenCV was released in the May of 2020. 
+First, you should make sure you have GCC and CMake. We chose C++ 17 in this project, but C++11 can also work. The recommended platform for this library is Windows. I also tried to make it cross platform, but we do not have enough time to fully test it though. 
+
+To make the GUI work, you should also have OpenCV installed. We only use it for GUI and window creation. For Windows users with MinGW toolchain, you are highly recommended to compile the OpenCV. My own version of OpenCV was released in the May of 2020. 
+
+This project also relies on GLM as math package support. 
+
+The Google benchmark are used for testing performance, which is totally unrelated with the library itself, you can comment out some executable targets. 
+
+The VCPKG is a tool from Microsoft to manage the dependencies, If you don't use it, that's fine. You can comment it out and configure the dependency yourself (like adding paths to environment variables). 
+
+The boost library is used, but not much, we only use its `<boost/numeric/interval.hpp>` for id generation and deletion. Since the boost is almost header only, its configuration should be simple. 
+
+For multi-threading, we have two versions, one use `pthread`, the other one is `openMP`. They always com with the compiler, so it's not a big problem. 
+
+Don't forget to change the `CMakelists.txt`  to redirect the `OpenCV_DIR`, and other path variables. 
 
 Once you have the dependency resolved. you can compile the source code.
 
