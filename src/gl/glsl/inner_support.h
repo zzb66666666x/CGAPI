@@ -2,12 +2,19 @@
 #define _INNER_SUPPORT_H
 
 #include <map>
+#include <vector>
 #include <stdio.h>
+#include <omp.h>
+#include <thread>
 
 #ifdef GLSL_CODE
 enum filter_type{
     NEAREST,
-    BILINEAR
+    LINEAR,
+    NEAREST_MIPMAP_NEAREST,
+    LINEAR_MIPMAP_NEAREST,
+    NEAREST_MIPMAP_LINEAR,
+    LINEAR_MIPMAP_LINEAR
 };
 #else
 #include "texture.h"
@@ -15,7 +22,20 @@ enum filter_type{
 #include "../formats.h"
 #endif
 
-typedef struct{
+struct sampler_info_t;
+class MipmapStorage;
+
+struct ProgrammablePixel {
+    ProgrammablePixel()
+        : write(false)
+    {}
+    bool write;
+    std::map<std::string, data_t> frag_shader_in, frag_shader_out;
+    glm::vec2 texcoord;
+};
+
+
+typedef struct {
     void* tex_data;
     int width;
     int height;
@@ -23,12 +43,84 @@ typedef struct{
     int wrap_s;
     int wrap_t;
     glm::vec4 border_val;
-    filter_type filter;
-}sampler_data_pack;
+    MipmapStorage *mipmap;
+    int min_filter;
+    int mag_filter;
+} sampler_data_pack;
+
+struct sampler_info_t {
+    int width;
+    int height;
+    int format_size;
+    void* data;
+    sampler_info_t(int w, int h, int fs, void* d)
+        : width(w)
+        , height(h)
+        , format_size(fs)
+    {
+        data = nullptr;
+        if (d != nullptr) {
+            data = malloc(fs * w * h);
+            memcpy(data, d, fs * w * h);
+        }
+    }
+
+    ~sampler_info_t()
+    {
+        free(data);
+    }
+};
+
+class MipmapStorage {
+public:
+    MipmapStorage()
+        : nlevel(0)
+    {
+    }
+    MipmapStorage(int nl)
+        : nlevel(nl)
+    {
+        _pyramids.resize(nl);
+        std::fill(_pyramids.begin(), _pyramids.end(), nullptr);
+    }
+    ~MipmapStorage()
+    {
+        for (int i = 0; i < nlevel; ++i) {
+            delete _pyramids[i];
+        }
+    }
+    void set_pyramid(int index, sampler_info_t* samp)
+    {
+        if (index < 0 || index >= nlevel) {
+            return;
+        }
+        _pyramids[index] = samp;
+    }
+    int get_nlevel()
+    {
+        return nlevel;
+    }
+    sampler_info_t* get_mipmap_sampler(float delta){
+        delta = glm::clamp(delta, 0.0f, 1.0f);
+        int idx = delta * nlevel;
+        idx = (idx == nlevel) ? nlevel - 1 : idx;
+        return _pyramids[idx];
+        // return _pyramids[5];
+    }
+    sampler_info_t* get_mipmap_sampler(int level_idx)
+    {
+        level_idx = glm::clamp(level_idx, 0, nlevel);
+        return _pyramids[level_idx];
+    }
+
+private:
+    std::vector<sampler_info_t*> _pyramids;
+    int nlevel;
+};
 
 // the call back to enable glsl code to fetch data from graphics pipeline
 typedef sampler_data_pack (*get_sampler2D_data_fptr)(int texunit_id);
-
+typedef sampler_info_t* (*get_mipmap_sampler_fptr)(int thread_id, MipmapStorage *mipmap);
 class ShaderInterface{
     public:
     virtual ~ShaderInterface(){}
@@ -40,6 +132,7 @@ class ShaderInterface{
     virtual void set_inner_variable(int variable, data_t& data) = 0;
     virtual void get_inner_variable(int variable, data_t& data) = 0;
     virtual void set_sampler2D_callback(get_sampler2D_data_fptr func) = 0;
+    virtual void set_mipmap_sampler_callback(get_mipmap_sampler_fptr func) = 0;
 };
 
 #ifdef GLSL_CODE
@@ -51,6 +144,7 @@ typedef void (GLSLShader::*set_uniform)(data_t& var);
 typedef data_t (GLSLShader::*get_uniform)(void);
 
 get_sampler2D_data_fptr get_sampler2D;
+get_mipmap_sampler_fptr get_mipmap_sampler;
 
 class sampler2D{
     public:
@@ -66,7 +160,10 @@ class sampler2D{
     int wrap_t;
     glm::vec4 border_val;
     void* data;
-    filter_type filter;
+    // filter_type filter;
+    MipmapStorage* mipmap;
+    int min_filter;
+    int mag_filter;
     sampler2D& operator=(int val){
         texunit_id = val;
         loaded_texture = false;
@@ -74,15 +171,19 @@ class sampler2D{
         return *this;
     }
     inline void load_texture(){
-        if (loaded_texture)
+        if (loaded_texture){
             return;
+        }
         sampler_data_pack tmp = get_sampler2D(texunit_id);
+        mipmap = tmp.mipmap;
         width = tmp.width;
         height = tmp.height;
         size = width * height;
         color_format = tmp.color_format;
         data = tmp.tex_data;
-        filter = tmp.filter;
+        // filter = tmp.filter;
+        min_filter = tmp.min_filter;
+        mag_filter = tmp.mag_filter;
         wrap_s = tmp.wrap_s;
         wrap_t = tmp.wrap_t;
         loaded_texture = true;
@@ -147,57 +248,70 @@ glm::vec4 texture(sampler2D &samp, glm::vec2 &texcoord)
                 break;
         }
     }
-    if (samp.filter == filter_type::NEAREST)
-    {
-        int x = tx * samp.width;
-        int y = ty * samp.height;
-        int index = y * samp.width + x;
+    int width, height;
+    void* data;
+    if (is_char) {
+        sampler_info_t* s = get_mipmap_sampler(omp_get_thread_num(), samp.mipmap);
+        data = s->data;
+        width = s->width;
+        height = s->height;
+    } else {
+        data = samp.data;
+        width = samp.width;
+        height = samp.height;
+    }
+    // if (samp.min_filter == GL_LINEAR_MIPMAP_NEAREST) {
+        int x = tx * width;
+        int y = ty * height;
+        int index = y * width + x;
+        // printf("index: %d, width: %d, height: %d\n", index, width, height);
         for (int i = 0; i < channel; ++i) {
             if (is_char){
-                unsigned char* sampler_data_array = (unsigned char*)samp.data;
+                unsigned char* sampler_data_array = (unsigned char*)data;
                 res[i] = ((float)sampler_data_array[index * channel + i]) * scale;
             }else{
-                float * sampler_data_array = (float*)samp.data;
+                float * sampler_data_array = (float*)data;
                 res[i] = ((float)sampler_data_array[index * channel + i]) * scale;
             }
         }
-    }
-    else if (samp.filter == filter_type::BILINEAR)
-    {
-        float x = tx * samp.width;
-        float y = ty * samp.height;
-        glm::vec4 u00, u01, u10, u11;
-        int i00, i01, i11, i10;
-        i00 = (int)y * samp.width + (int)x;
-        i01 = (int)(y + 0.5f) * samp.width + (int)x;
-        i10 = (int)y * samp.width + (int)(x + 0.5f);
-        i11 = (int)(y + 0.5f) * samp.width + (int)(x + 0.5f);
-        i01 = i00 >= samp.size ? samp.size - 1 : i00;
-        i10 = i10 >= samp.size ? samp.size - 1 : i10;
-        i11 = i11 >= samp.size ? samp.size - 1 : i11;
-        for (int i = 0;i < channel;++i){
-            if (is_char){
-                unsigned char* sampler_data_array = (unsigned char*)samp.data;
-                u00[i] = ((float)sampler_data_array[i00 * channel + i]) * scale;
-                u01[i] = ((float)sampler_data_array[i01 * channel + i]) * scale;
-                u10[i] = ((float)sampler_data_array[i10 * channel + i]) * scale;
-                u11[i] = ((float)sampler_data_array[i11 * channel + i]) * scale;
-            }else{
-                float * sampler_data_array = (float*)samp.data;
-                u00[i] = ((float)sampler_data_array[i00 * channel + i]) * scale;
-                u01[i] = ((float)sampler_data_array[i01 * channel + i]) * scale;
-                u10[i] = ((float)sampler_data_array[i10 * channel + i]) * scale;
-                u11[i] = ((float)sampler_data_array[i11 * channel + i]) * scale;
-            }
-        }
-        float s = x - (int)x;
-        float t = y - (int)y;
-        glm::vec4 u0 = u00 + s * (u10 - u00);
-        glm::vec4 u1 = u01 + s * (u11 - u01);
+        // printf("res = [ %d, %d, %d ]\n",(int) res[0],(int) res[1],(int) res[2]);
+    // }
+    // else if (samp.filter == filter_type::LINEAR)
+    // {
+    //     float x = tx * samp.width;
+    //     float y = ty * samp.height;
+    //     glm::vec4 u00, u01, u10, u11;
+    //     int i00, i01, i11, i10;
+    //     i00 = (int)y * samp.width + (int)x;
+    //     i01 = (int)(y + 0.5f) * samp.width + (int)x;
+    //     i10 = (int)y * samp.width + (int)(x + 0.5f);
+    //     i11 = (int)(y + 0.5f) * samp.width + (int)(x + 0.5f);
+    //     i01 = i00 >= samp.size ? samp.size - 1 : i00;
+    //     i10 = i10 >= samp.size ? samp.size - 1 : i10;
+    //     i11 = i11 >= samp.size ? samp.size - 1 : i11;
+    //     for (int i = 0;i < channel;++i){
+    //         if (is_char){
+    //             unsigned char* sampler_data_array = (unsigned char*)samp.data;
+    //             u00[i] = ((float)sampler_data_array[i00 * channel + i]) * scale;
+    //             u01[i] = ((float)sampler_data_array[i01 * channel + i]) * scale;
+    //             u10[i] = ((float)sampler_data_array[i10 * channel + i]) * scale;
+    //             u11[i] = ((float)sampler_data_array[i11 * channel + i]) * scale;
+    //         }else{
+    //             float * sampler_data_array = (float*)samp.data;
+    //             u00[i] = ((float)sampler_data_array[i00 * channel + i]) * scale;
+    //             u01[i] = ((float)sampler_data_array[i01 * channel + i]) * scale;
+    //             u10[i] = ((float)sampler_data_array[i10 * channel + i]) * scale;
+    //             u11[i] = ((float)sampler_data_array[i11 * channel + i]) * scale;
+    //         }
+    //     }
+    //     float s = x - (int)x;
+    //     float t = y - (int)y;
+    //     glm::vec4 u0 = u00 + s * (u10 - u00);
+    //     glm::vec4 u1 = u01 + s * (u11 - u01);
 
-        // lerp
-        res = u0 + t * (u1 - u0);
-    }
+    //     // lerp
+    //     res = u0 + t * (u1 - u0);
+    // }
 
     return res;
 }

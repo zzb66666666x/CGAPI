@@ -1296,7 +1296,29 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
         target.emplace(it->first, interp_data);
     }
 }
-
+static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, ProgrammablePixel &pixel)
+{
+    std::map<std::string, data_t>& frag_shader_in = pixel.frag_shader_in;
+    for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); ++it) {
+        int dtype = shader_ptr->io_profile[it->first].dtype;
+        data_t interp_data;
+        switch (dtype) {
+            case TYPE_VEC2:
+                interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var, 1.0f);
+                pixel.texcoord = interp_data.vec2_var;
+                break;
+            case TYPE_VEC3:
+                interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var, 1.0f);
+                break;
+            case TYPE_VEC4:
+                interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var, 1.0f);
+                break;
+            default:
+                throw std::runtime_error("don't interp on these types now\n");
+        }
+        frag_shader_in.emplace(it->first, interp_data);
+    }
+}
 static void programmable_view_port(ProgrammableTriangle* t)
 {
     GET_CURRENT_CONTEXT(ctx);
@@ -1577,13 +1599,11 @@ void programmable_rasterize_with_shading_openmp()
     ShaderInterface* functions = nullptr;
     std::map<std::string, data_t> frag_shader_in, frag_shader_out;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(t) private(screen_pos) private(w_inv) \
-     private(frag_shader_in) private(frag_shader_out) private(functions)
+#pragma omp parallel for private(t) private(screen_pos) private(w_inv) private(functions) private(frag_shader_in) private(frag_shader_out)
 #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
-        int thread_id = omp_get_thread_num();
-        functions = shader_interfaces[thread_id];
+        functions = shader_interfaces[omp_get_thread_num()];
 
         if (t->culling) {
             t->culling = false;
@@ -1637,25 +1657,32 @@ void programmable_rasterize_with_shading_openmp()
                     omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
-                        programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
-                        functions->input_port(frag_shader_in);
-                        functions->glsl_main();
-                        functions->output_port(frag_shader_out);
-                        data_t frag_color_union;
-                        functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
-                        if (ctx->draw_color_buf){
-                            frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
-                            frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
-                            frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                        if (ctx->draw_color_buf) {
+                            ctx->pipeline.prog_pixel_tasks[index].frag_shader_in.clear();
+                            programmable_interpolate(fragment_shader, t, alpha, beta, gamma, ctx->pipeline.prog_pixel_tasks[index]);
+                            ctx->pipeline.prog_pixel_tasks[index].write = true;
                         }
+                        // omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
+                        // programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
+                        // functions->input_port(frag_shader_in);
+                        // functions->glsl_main();
+                        // functions->output_port(frag_shader_out);
+                        // data_t frag_color_union;
+                        // functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
+                        // if (ctx->draw_color_buf){
+                        //     frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
+                        //     frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
+                        //     frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                        // }
                     }
                     omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
-                    frag_shader_in.clear();
-                    frag_shader_out.clear();
+                    // frag_shader_in.clear();
+                    // frag_shader_out.clear();
                 }
             }
         }
     }
+    // printf("rasterization end\n");
     // FILE* fp = NULL;
     // fp = fopen("shadow.txt","w");
     // int tmp = width * height;
@@ -1663,6 +1690,54 @@ void programmable_rasterize_with_shading_openmp()
     //     fprintf(fp, "%f\n", zbuf[i]);
     // }
     // fclose(fp);
+}
+
+void programmable_process_pixel(){
+    GET_CURRENT_CONTEXT(ctx);
+    if (!ctx->draw_color_buf) {
+        return;
+    }
+    std::vector<ProgrammablePixel>& prog_pixel_tasks = ctx->pipeline.prog_pixel_tasks;
+    color_t* frame_buf;
+    if (!ctx->override_default_framebuf) {
+        frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+    } else {
+        frame_buf = ctx->override_color_buf;
+    }
+    Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
+    std::vector<ShaderInterface*> shader_interfaces;
+    shader_interfaces.resize(ctx->pipeline.cpu_num);
+    for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
+        shader_interfaces[i] = fragment_shader->get_shader_utils(i);
+    }
+    int len = prog_pixel_tasks.size();
+    std::vector<std::vector<ProgrammablePixel*>> &pixel_block = ctx->pipeline.pixel_block;
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for
+#endif
+    for (int i = 0; i < len;++i){
+        if(prog_pixel_tasks[i].write){
+            int thread_id = omp_get_thread_num();
+            ShaderInterface* functions = shader_interfaces[thread_id];
+            pixel_block[thread_id][0] = &prog_pixel_tasks[i];
+            // y * width + x;
+            bool f1 = (i % ctx->width) == ctx->width - 1, f2 = len - i <= ctx->width;
+            pixel_block[thread_id][1] = f1 ? &prog_pixel_tasks[i] : &prog_pixel_tasks[i + 1];
+            pixel_block[thread_id][2] = f2 ? &prog_pixel_tasks[i] : &prog_pixel_tasks[i + ctx->width];
+            pixel_block[thread_id][3] = (f1 || f2) ? &prog_pixel_tasks[i] : &prog_pixel_tasks[i + ctx->width + 1];
+            functions->input_port(prog_pixel_tasks[i].frag_shader_in);
+            functions->glsl_main();
+            functions->output_port(prog_pixel_tasks[i].frag_shader_out);
+            data_t frag_color_union;
+            functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
+            frame_buf[i].R = frag_color_union.vec4_var.x * 255.0f;
+            frame_buf[i].G = frag_color_union.vec4_var.y * 255.0f;
+            frame_buf[i].B = frag_color_union.vec4_var.z * 255.0f;
+            prog_pixel_tasks[i].frag_shader_in.clear();
+            prog_pixel_tasks[i].frag_shader_out.clear();
+            prog_pixel_tasks[i].write = false;
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

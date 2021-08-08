@@ -9,13 +9,14 @@
 
 using namespace std;
 
-#define CONST_HEADER  1
+#define CONST_HEADER  0
 
 static string macros = \
 "#define GLSL_CODE \n" 
 "#include <stdio.h> \n"
 "#include <map> \n"
 "#include <string> \n"
+"#include <omp.h> \n"
 ;
 
 static string prefix = \
@@ -54,6 +55,9 @@ static string class_shader_code = \
 "void set_sampler2D_callback(get_sampler2D_data_fptr func){\n "
 "    get_sampler2D = func; \n "
 "}\n "
+"void set_mipmap_sampler_callback(get_mipmap_sampler_fptr func){\n"
+"    get_mipmap_sampler = func; \n"
+"}\n"
 ;
 
 static string postfix = \
@@ -481,7 +485,7 @@ static string extract_headers(vector<string>& headers){
 }
 
 void cpp_code_generate(string& src, string& dest){
-    #if (CONST_HEADER == 0)
+#if (CONST_HEADER == 0)
     vector<string> headers;
     headers.push_back(string("../src/gl/glsl/os.h"));
     headers.push_back(string("../src/gl/formats.h"));
@@ -490,8 +494,9 @@ void cpp_code_generate(string& src, string& dest){
     headers.push_back(string("../src/gl/glsl/inner_variable.h"));
     headers.push_back(string("../src/gl/glsl/inner_support.h"));
     dest = macros + extract_headers(headers) + prefix + class_shader_code + src + postfix;
-    #else
+    // printf("generate!\n");
+#else
     dest = macros + const_header + prefix + class_shader_code + src + postfix;
-    #endif
+#endif
 }
 

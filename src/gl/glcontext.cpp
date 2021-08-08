@@ -35,7 +35,8 @@ gl_context::gl_context(int npixels, bool double_buf){
     shader.initialize_layouts();
     // payload = glRenderPayload();
     // pipeline = glPipeline();
-    pipeline.pixel_tasks = std::vector<Pixel>(npixels);
+    pipeline.pixel_tasks.resize(npixels);
+    pipeline.prog_pixel_tasks.resize(npixels);
     pipeline.init_pixel_locks();
     clear_color.R = 0;
     clear_color.G = 0;

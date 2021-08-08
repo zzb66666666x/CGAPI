@@ -27,6 +27,10 @@ extern "C" {
 // texture filtering parameters
 #define GL_NEAREST 0x2600
 #define GL_LINEAR 0x2601
+#define GL_NEAREST_MIPMAP_NEAREST 0x2700
+#define GL_LINEAR_MIPMAP_NEAREST 0x2701
+#define GL_NEAREST_MIPMAP_LINEAR 0x2702
+#define GL_LINEAR_MIPMAP_LINEAR 0x2703
 
 // cull face. The initial value is GL_BACK.
 #define GL_FRONT 0x0404
