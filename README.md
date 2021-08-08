@@ -1,6 +1,14 @@
 # OpenGL on CPU
 
-[toc]
+- [OpenGL on CPU](#opengl-on-cpu)
+  - [Intro](#intro)
+  - [Build](#build)
+  - [File Structure](#file-structure)
+  - [Design Choices](#design-choices)
+      - [Basics](#basics)
+      - [GLSL Parser By YACC](#glsl-parser-by-yacc)
+  - [Off Screen Rendering](#off-screen-rendering)
+  - [Contact Us](#contact-us)
 
 ## Intro
 
