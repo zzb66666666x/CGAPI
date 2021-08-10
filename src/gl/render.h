@@ -25,6 +25,13 @@ typedef void (*render_fp)();
 #define GET_INDEX_NO_FLIP(x, y, width, height) ((y) * (width) + (x))
 #define GENERAL_INTERP(alpha, beta, gamma, vert1, vert2, vert3, weight) ((alpha * vert1 + beta * vert2 + gamma * vert3) / weight)
 
+struct bin_data_t {
+    int b_minx;
+    int b_maxx;
+    int b_miny;
+    int b_maxy;
+};
+
 // single thread interface
 void process_geometry();
 void rasterize();
@@ -46,7 +53,6 @@ void rasterize_threadmain();
 // programmable version of code
 void programmable_process_geometry_openmp();
 void programmable_rasterize_with_shading_openmp();
-void programmable_process_pixel();
 void programmable_rasterize_with_scanline();
 
 #endif

@@ -7,16 +7,14 @@ bool Triangle::inside(float x, float y)
 {
     glm::vec3 f0, f1, f2;
     glm::vec3 v[3];
-    for (int i = 0; i < 3; ++i)
-    {
-        v[i] = {screen_pos[i].x, screen_pos[i].y, 1.0};
+    for (int i = 0; i < 3; ++i) {
+        v[i] = { screen_pos[i].x, screen_pos[i].y, 1.0 };
     }
     f0 = glm::cross(v[1], v[0]);
     f1 = glm::cross(v[2], v[1]);
     f2 = glm::cross(v[0], v[2]);
     glm::vec3 p(x, y, 1.0f);
-    if ((glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0))
-    {
+    if ((glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0)) {
         return true;
     }
     return false;
@@ -24,14 +22,15 @@ bool Triangle::inside(float x, float y)
 
 glm::vec3 Triangle::computeBarycentric2D(float x, float y)
 {
-    glm::vec4 *v = screen_pos;
-    float c1 = (x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*y + v[1].x*v[2].y - v[2].x*v[1].y) / (v[0].x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*v[0].y + v[1].x*v[2].y - v[2].x*v[1].y);
-    float c2 = (x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*y + v[2].x*v[0].y - v[0].x*v[2].y) / (v[1].x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*v[1].y + v[2].x*v[0].y - v[0].x*v[2].y);
-    float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
-    return {c1, c2, c3};
+    glm::vec4* v = screen_pos;
+    float c1 = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y - v[2].x * v[1].y) / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
+    float c2 = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y - v[0].x * v[2].y) / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
+    float c3 = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y - v[1].x * v[0].y) / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);
+    return { c1, c2, c3 };
 }
 
-TriangleCrawler::TriangleCrawler(){
+TriangleCrawler::TriangleCrawler()
+{
     data_float_vec4.emplace(VSHADER_OUT_POSITION, std::queue<glm::vec4>());
     data_float_vec3.emplace(VSHADER_OUT_COLOR, std::queue<glm::vec3>());
     data_float_vec3.emplace(VSHADER_OUT_NORMAL, std::queue<glm::vec3>());
@@ -39,7 +38,8 @@ TriangleCrawler::TriangleCrawler(){
     data_float_vec2.emplace(VSHADER_OUT_TEXCOORD, std::queue<glm::vec2>());
 }
 
-int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgram& shader){
+int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgram& shader)
+{
     void* input_ptr;
     char* buf;
     GET_CURRENT_CONTEXT(C);
@@ -72,8 +72,7 @@ int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgr
         }
         if (input_ptr == nullptr)
             continue;
-        buf = source + first_vertex * (config.strides[layout]) +
-                (config.indices[layout] + config.offsets[layout]);
+        buf = source + first_vertex * (config.strides[layout]) + (config.indices[layout] + config.offsets[layout]);
         switch (config.dtypes[layout]) {
         case GL_FLOAT:
             switch (config.sizes[layout]) {
@@ -110,16 +109,17 @@ int TriangleCrawler::crawl(char* source, int buf_size, int first_vertex, glProgr
     // if (shader.gl_Position.x < 0 || shader.gl_Position.y < 0 || shader.gl_Position.x > C->width || shader.gl_Position.y > C->height){
     //     throw std::runtime_error("outside of screen?\n");
     // }
-    shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;   
+    shader.gl_Position.z = shader.gl_Position.z * 0.5 + 0.5;
     data_float_vec4[VSHADER_OUT_POSITION].push(shader.gl_Position);
     data_float_vec3[VSHADER_OUT_COLOR].push(shader.gl_VertexColor);
     data_float_vec3[VSHADER_OUT_FRAGPOS].push(shader.frag_Pos);
     data_float_vec3[VSHADER_OUT_NORMAL].push(shader.gl_Normal);
     data_float_vec2[VSHADER_OUT_TEXCOORD].push(shader.iTexcoord);
-    return GL_SUCCESS; 
+    return GL_SUCCESS;
 }
 
-bool ProgrammableTriangle::inside(float x, float y){
+bool ProgrammableTriangle::inside(float x, float y)
+{
     glm::vec3 f0, f1, f2;
     glm::vec3 v[3];
     v[0] = { screen_pos[0].x, screen_pos[0].y, 1.0 };
@@ -132,11 +132,12 @@ bool ProgrammableTriangle::inside(float x, float y){
     return (glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0);
 }
 
-glm::vec3 ProgrammableTriangle::computeBarycentric2D(float x, float y){
-    glm::vec4 *v = screen_pos;
-    float c1 = (x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*y + v[1].x*v[2].y - v[2].x*v[1].y) / (v[0].x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*v[0].y + v[1].x*v[2].y - v[2].x*v[1].y);
-    float c2 = (x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*y + v[2].x*v[0].y - v[0].x*v[2].y) / (v[1].x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*v[1].y + v[2].x*v[0].y - v[0].x*v[2].y);
-    float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
+glm::vec3 ProgrammableTriangle::computeBarycentric2D(float x, float y)
+{
+    glm::vec4* v = screen_pos;
+    float c1 = (x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * y + v[1].x * v[2].y - v[2].x * v[1].y) / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
+    float c2 = (x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * y + v[2].x * v[0].y - v[0].x * v[2].y) / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
+    float c3 = (x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * y + v[0].x * v[1].y - v[1].x * v[0].y) / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);
     return { c1, c2, c3 };
 }
 
@@ -150,7 +151,7 @@ bool ProgrammableTriangle::outside_clip_space()
         }
     }
 #else
-    for (int i = 0; i < 3;++i){
+    for (int i = 0; i < 3; ++i) {
         if ((vertices[0].screen_pos[i] > vertices[0].screen_pos.w && vertices[1].screen_pos[i] > vertices[1].screen_pos.w && vertices[2].screen_pos[i] > vertices[2].screen_pos.w)
             || (vertices[0].screen_pos[i] < -vertices[0].screen_pos.w && vertices[1].screen_pos[i] < -vertices[1].screen_pos.w && vertices[2].screen_pos[i] < -vertices[2].screen_pos.w)) {
             return true;
@@ -214,30 +215,46 @@ void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& pl
         vertex_list[i].vertex_attrib = this->vertices[i].vertex_attrib;
 #endif
     }
-
+    int size = 3;
     for (i = 0, len = planes.size(); i < len; ++i) {
-        std::vector<ProgrammableVertex> input(vertex_list);
-        vertex_list.clear();
+        std::vector<ProgrammableVertex> input;
+        input.insert(input.end(), vertex_list.begin(), vertex_list.begin() + size);
+        size = 0;
         for (j = 0, jlen = input.size(); j < jlen; ++j) {
             ProgrammableVertex& current = input[j];
             ProgrammableVertex& last = input[(j + jlen - 1) % jlen];
             if (inside_plane(planes[i], current.screen_pos)) {
                 if (!inside_plane(planes[i], last.screen_pos)) {
+                    if (size < vertex_list.size()) {
+                        vertex_list[size] = this->intersect(last, current, planes[i]);
+                    } else { 
+                        vertex_list.push_back(this->intersect(last, current, planes[i]));
+                    }
+                    ++size;
+                }
+                if (size < vertex_list.size()) {
+                    vertex_list[size] = current;
+                } else {
+                    vertex_list.push_back(current);
+                }
+                ++size;
+            } else if (inside_plane(planes[i], last.screen_pos)) {
+                if (size < vertex_list.size()) {
+                    vertex_list[size] = this->intersect(last, current, planes[i]);
+                } else {
                     vertex_list.push_back(this->intersect(last, current, planes[i]));
                 }
-                vertex_list.push_back(current);
-            } else if (inside_plane(planes[i], last.screen_pos)) {
-                vertex_list.push_back(this->intersect(last, current, planes[i]));
+                ++size;
             }
         }
     }
     // printf("vertex_list size: %d\n", vertex_list.size());
-    if (vertex_list.size() < 3) {
+    if (size < 3) {
         return;
     }
 
     ProgrammableTriangle* tri = nullptr;
-    res.resize(vertex_list.size() - 3 + 1);
+    res.resize(size - 3 + 1);
     int next = 1;
     for (i = 0, len = res.size(); i < len; ++i) {
         tri = new ProgrammableTriangle();
@@ -247,3 +264,34 @@ void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& pl
         res[i] = tri;
     }
 }
+
+// void ProgrammableTriangle::backface_culling()
+// {
+//     glm::vec3 v01 = screen_pos[1] - screen_pos[0];
+//     glm::vec3 v02 = screen_pos[2] - screen_pos[0];
+//     glm::vec3 normal = glm::normalize(glm::cross(v01, v02));
+
+//     glm::vec3 view_dir = glm::normalize((screen_pos[0] + screen_pos[1] + screen_pos[2]) * 0.333333f);
+//     culling = glm::dot(normal, view_dir) < -0.05f;
+// }
+
+// void ProgrammableTriangle::perspective_division()
+// {
+//     w_inversed[0] = 1.0f / screen_pos[0].w;
+//     screen_pos[0].x *= w_inversed[0];
+//     screen_pos[0].y *= w_inversed[0];
+//     z[0] = screen_pos[0].z;
+//     screen_pos[0].z *= w_inversed[0];
+
+//     w_inversed[1] = 1.0f / screen_pos[1].w;
+//     screen_pos[1].x *= w_inversed[1];
+//     screen_pos[1].y *= w_inversed[1];
+//     z[1] = screen_pos[1].z;
+//     screen_pos[1].z *= w_inversed[1];
+
+//     w_inversed[2] = 1.0f / screen_pos[2].w;
+//     screen_pos[2].x *= w_inversed[2];
+//     screen_pos[2].y *= w_inversed[2];
+//     z[2] = screen_pos[2].z;
+//     screen_pos[2].z *= w_inversed[2];
+// }

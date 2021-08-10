@@ -100,13 +100,7 @@ public:
         this->indices.insert(this->indices.end(), indices.begin(), indices.end());
         offset += vertices.size();
     }
-
-private:
-    // render data
-    unsigned int VBO, EBO;
-    bool _init;
-
-    // initializes all the buffer objects/arrays
+// initializes all the buffer objects/arrays
     void setupMesh()
     {
         if (_init) {
@@ -149,5 +143,11 @@ private:
 
         this->_init = true;
     }
+private:
+    // render data
+    unsigned int VBO, EBO;
+    bool _init;
+
+    
 };
 #endif

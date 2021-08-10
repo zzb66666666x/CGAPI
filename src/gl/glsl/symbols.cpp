@@ -66,7 +66,7 @@ static void assign_input_value(string& code, const char* name, int dtype){
 static void fetch_output_value(string& code, const char* name, int dtype){
     string var_name = name;
     string type_name = type_string_map[dtype];
-    code = string("    outdata.emplace(\"") + var_name + string("\", (data_t){.") + type_name + string("_var = ") + var_name + string("});\n");
+    code = string("    outdata[\"") + var_name + string("\"] = (data_t){.") + type_name + string("_var = ") + var_name + string("};\n");
 }
 
 static string uniform_var_input_port(const char* name, int dtype){
@@ -90,7 +90,8 @@ static string uniform_var_output_port(const char* name, int dtype){
 
 void emplace_profile(const char* name, int io, int dtype, int layout){
     string key = name;
-    io_profile.emplace(key, (io_attrib){io, dtype, layout});
+    // io_profile.emplace(key, (io_attrib){io, dtype, layout});
+    io_profile[key] = (io_attrib) { io, dtype, layout };
 }
 
 buffer_t code_for_input(){

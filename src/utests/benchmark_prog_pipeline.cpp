@@ -215,12 +215,12 @@ static void prepareElement(GLenum mode, int count, unsigned int type, const void
     // }
 }
 
-/////////////////////////////////////////// test //////////////////////////////////////////////
+/////////////////////////////////////////// sponza //////////////////////////////////////////////
 GLVStream* window = nullptr;
 Model* model = nullptr;
 ShaderWrapper* shader = nullptr;
 
-void initialize()
+void initializeSponza()
 {
     if (!glvInit()) {
         std::cout << "glv Init failed\n";
@@ -229,6 +229,7 @@ void initialize()
 
     window = glvCreateStream(WIDTH, HEIGHT, "sponza atrium", GLV_STREAM_WINDOW);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     glm::mat4 modelMatrix(1.0f);
     glm::mat4 viewMatrix(1.0f);
@@ -262,9 +263,9 @@ void memoryCollection(){
     glvTerminate();
 }
 
-static void testProgPipeline(benchmark::State& state){
+static void test_sponza_rendering(benchmark::State& state){
 
-    initialize();
+    initializeSponza();
     // Perform setup here
     for (auto _ : state) {
         if (glvWindowShouldClose(window)) {
@@ -276,8 +277,347 @@ static void testProgPipeline(benchmark::State& state){
 
         shader->use();
 
+        for (unsigned int j = 0; j < model->meshes.size(); ++j) {
+            model->meshes[j].setupMesh();
+            // bind appropriate textures
+            unsigned int diffuseNr = 1;
+            unsigned int specularNr = 1;
+            unsigned int normalNr = 1;
+            unsigned int heightNr = 1;
+            for (unsigned int i = 0; i < model->meshes[j].textures.size(); i++) {
+                glActiveTexture((GLenum)(GL_TEXTURE0 + i)); // active proper texture unit before binding
+                // retrieve texture number (the N in diffuse_textureN)
+                string number;
+                string name = model->meshes[j].textures[i].type;
+                if (name == "texture_diffuse")
+                    number = std::to_string(diffuseNr++);
+                else if (name == "texture_specular")
+                    number = std::to_string(specularNr++); // transfer unsigned int to stream
+                else if (name == "texture_normal")
+                    number = std::to_string(normalNr++); // transfer unsigned int to stream
+                else if (name == "texture_height")
+                    number = std::to_string(heightNr++); // transfer unsigned int to stream
+
+                // now set the sampler to the correct texture unit
+                glUniform1i(glGetUniformLocation(shader->ID, (name + number).c_str()), i);
+                // and finally bind the texture
+                glBindTexture(GL_TEXTURE_2D, model->meshes[j].textures[i].id);
+            }
+
+            // draw mesh
+            glBindVertexArray(model->meshes[j].VAO);
+
+            // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+            prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
+
+            programmable_process_geometry_openmp();
+            programmable_rasterize_with_shading_openmp();
+            // programmable_rasterize_with_scanline();
+            glBindVertexArray(0);
+
+            // always good practice to set everything back to defaults once configured.
+            glActiveTexture(GL_TEXTURE0);
+        }
+
+        // for (auto it = model->diff_mesh_map.begin(); it != model->diff_mesh_map.end();++it){
+        //     Mesh& mesh = it->second;
+        //     mesh.setupMesh();
+        //     // bind appropriate textures
+        //     unsigned int diffuseNr = 1;
+        //     unsigned int specularNr = 1;
+        //     unsigned int normalNr = 1;
+        //     unsigned int heightNr = 1;
+        //     for (unsigned int i = 0; i < mesh.textures.size(); i++) {
+        //         glActiveTexture((GLenum)(GL_TEXTURE0 + i)); // active proper texture unit before binding
+        //         // retrieve texture number (the N in diffuse_textureN)
+        //         string number;
+        //         string name = mesh.textures[i].type;
+        //         if (name == "texture_diffuse")
+        //             number = std::to_string(diffuseNr++);
+        //         else if (name == "texture_specular")
+        //             number = std::to_string(specularNr++); // transfer unsigned int to stream
+        //         else if (name == "texture_normal")
+        //             number = std::to_string(normalNr++); // transfer unsigned int to stream
+        //         else if (name == "texture_height")
+        //             number = std::to_string(heightNr++); // transfer unsigned int to stream
+
+        //         // now set the sampler to the correct texture unit
+        //         glUniform1i(glGetUniformLocation(shader->ID, (name + number).c_str()), i);
+        //         // and finally bind the texture
+        //         glBindTexture(GL_TEXTURE_2D, mesh.textures[i].id);
+        //     }
+
+        //     // draw mesh
+        //     glBindVertexArray(mesh.VAO);
+
+        //     // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        //     prepareElement(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, 0);
+
+        //     programmable_process_geometry_openmp();
+        //     programmable_rasterize_with_shading_openmp();
+        //     // programmable_rasterize_with_scanline();
+        //     glBindVertexArray(0);
+
+        //     // always good practice to set everything back to defaults once configured.
+        //     glActiveTexture(GL_TEXTURE0);
+        // }
+
+        glvWriteStream(window);
+    }
+
+    memoryCollection();
+}
+
+static void test_sponza_process_geometry(benchmark::State& state)
+{
+    initializeSponza();
+    // Perform setup here
+    for (auto _ : state) {
+        state.PauseTiming();
+        if (glvWindowShouldClose(window)) {
+            break;
+        }
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader->use();
+
+        for (unsigned int j = 0; j < model->meshes.size(); ++j) {
+            model->meshes[j].setupMesh();
+            // bind appropriate textures
+            unsigned int diffuseNr = 1;
+            unsigned int specularNr = 1;
+            unsigned int normalNr = 1;
+            unsigned int heightNr = 1;
+            for (unsigned int i = 0; i < model->meshes[j].textures.size(); i++) {
+                glActiveTexture((GLenum)(GL_TEXTURE0 + i)); // active proper texture unit before binding
+                // retrieve texture number (the N in diffuse_textureN)
+                string number;
+                string name = model->meshes[j].textures[i].type;
+                if (name == "texture_diffuse")
+                    number = std::to_string(diffuseNr++);
+                else if (name == "texture_specular")
+                    number = std::to_string(specularNr++); // transfer unsigned int to stream
+                else if (name == "texture_normal")
+                    number = std::to_string(normalNr++); // transfer unsigned int to stream
+                else if (name == "texture_height")
+                    number = std::to_string(heightNr++); // transfer unsigned int to stream
+
+                // now set the sampler to the correct texture unit
+                glUniform1i(glGetUniformLocation(shader->ID, (name + number).c_str()), i);
+                // and finally bind the texture
+                glBindTexture(GL_TEXTURE_2D, model->meshes[j].textures[i].id);
+            }
+
+            // draw mesh
+            glBindVertexArray(model->meshes[j].VAO);
+
+            // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+            prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
+
+            state.ResumeTiming();
+            programmable_process_geometry_openmp();
+            state.PauseTiming();
+            programmable_rasterize_with_shading_openmp();
+            // programmable_rasterize_with_scanline();
+            glBindVertexArray(0);
+
+            // always good practice to set everything back to defaults once configured.
+            glActiveTexture(GL_TEXTURE0);
+        }
+
+        glvWriteStream(window);
+        state.ResumeTiming();
+    }
+
+    memoryCollection();
+}
+
+static void test_sponza_rasterizationWithShading(benchmark::State& state)
+{
+    initializeSponza();
+    // Perform setup here
+    for (auto _ : state) {
+        state.PauseTiming();
+        if (glvWindowShouldClose(window)) {
+            break;
+        }
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader->use();
+
+        for (unsigned int j = 0; j < model->meshes.size(); ++j) {
+            model->meshes[j].setupMesh();
+            // bind appropriate textures
+            unsigned int diffuseNr = 1;
+            unsigned int specularNr = 1;
+            unsigned int normalNr = 1;
+            unsigned int heightNr = 1;
+            for (unsigned int i = 0; i < model->meshes[j].textures.size(); i++) {
+                glActiveTexture((GLenum)(GL_TEXTURE0 + i)); // active proper texture unit before binding
+                // retrieve texture number (the N in diffuse_textureN)
+                string number;
+                string name = model->meshes[j].textures[i].type;
+                if (name == "texture_diffuse")
+                    number = std::to_string(diffuseNr++);
+                else if (name == "texture_specular")
+                    number = std::to_string(specularNr++); // transfer unsigned int to stream
+                else if (name == "texture_normal")
+                    number = std::to_string(normalNr++); // transfer unsigned int to stream
+                else if (name == "texture_height")
+                    number = std::to_string(heightNr++); // transfer unsigned int to stream
+
+                // now set the sampler to the correct texture unit
+                glUniform1i(glGetUniformLocation(shader->ID, (name + number).c_str()), i);
+                // and finally bind the texture
+                glBindTexture(GL_TEXTURE_2D, model->meshes[j].textures[i].id);
+            }
+
+            // draw mesh
+            glBindVertexArray(model->meshes[j].VAO);
+
+            // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+            prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
+
+            programmable_process_geometry_openmp();
+            state.ResumeTiming();
+            programmable_rasterize_with_shading_openmp();
+            state.PauseTiming();
+            // programmable_rasterize_with_scanline();
+            glBindVertexArray(0);
+
+            // always good practice to set everything back to defaults once configured.
+            glActiveTexture(GL_TEXTURE0);
+        }
+
+        glvWriteStream(window);
+        state.ResumeTiming();
+    }
+
+    memoryCollection();
+}
+
+void pipeline(benchmark::State& state)
+{
+
+}
+
+static void testPerStatement(benchmark::State& state)
+{
+    initializeSponza();
+    // Perform setup here
+    for (auto _ : state) {
+        state.PauseTiming();
+        if (glvWindowShouldClose(window)) {
+            break;
+        }
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader->use();
+
         // model.Draw(shader);
         for (unsigned int j = 0; j < model->meshes.size(); ++j) {
+            model->meshes[j].setupMesh();
+            // bind appropriate textures
+            unsigned int diffuseNr = 1;
+            unsigned int specularNr = 1;
+            unsigned int normalNr = 1;
+            unsigned int heightNr = 1;
+            for (unsigned int i = 0; i < model->meshes[j].textures.size(); i++) {
+                glActiveTexture((GLenum)(GL_TEXTURE0 + i)); // active proper texture unit before binding
+                // retrieve texture number (the N in diffuse_textureN)
+                string number;
+                string name = model->meshes[j].textures[i].type;
+                if (name == "texture_diffuse")
+                    number = std::to_string(diffuseNr++);
+                else if (name == "texture_specular")
+                    number = std::to_string(specularNr++); // transfer unsigned int to stream
+                else if (name == "texture_normal")
+                    number = std::to_string(normalNr++); // transfer unsigned int to stream
+                else if (name == "texture_height")
+                    number = std::to_string(heightNr++); // transfer unsigned int to stream
+
+                // now set the sampler to the correct texture unit
+                glUniform1i(glGetUniformLocation(shader->ID, (name + number).c_str()), i);
+                // and finally bind the texture
+                glBindTexture(GL_TEXTURE_2D, model->meshes[j].textures[i].id);
+            }
+
+            // draw mesh
+            glBindVertexArray(model->meshes[j].VAO);
+
+            // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+            prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
+            pipeline(state);
+            glBindVertexArray(0);
+
+            // always good practice to set everything back to defaults once configured.
+            glActiveTexture(GL_TEXTURE0);
+        }
+
+        glvWriteStream(window);
+        state.ResumeTiming();
+    }
+
+    memoryCollection();
+}
+
+/////////////////////////////////////// bunny rendering ///////////////////////////////////////////
+float angle = 0.0f;
+void initializeBunny()
+{
+    if (!glvInit()) {
+        std::cout << "glv Init failed\n";
+        return;
+    }
+
+    window = glvCreateStream(WIDTH, HEIGHT, "bunny", GLV_STREAM_WINDOW);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+
+    glm::mat4 modelMatrix(1.0f), viewMatrix(1.0f), projectionMatrix(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -1.0f, 0.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.9f, 0.9f, 0.9f));
+    // modelMatrix = glm::scale(modelMatrix, glm::vec3(0.7f, 0.7f, 0.7f));
+
+    glm::vec3 eyepos(0.0f, 0.0f, 5.0f);
+    glm::vec3 front(0.0f, 0.0f, -1.0f);
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
+    viewMatrix = glm::lookAt(eyepos, eyepos + front, up);
+    projectionMatrix = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, ZNEAR, ZFAR);
+
+    shader = new ShaderWrapper("../shader/bunny_vert.glsl", "../shader/bunny_frag.glsl");
+
+    shader->use();
+    shader->setMat4("model", modelMatrix);
+    shader->setMat4("view", viewMatrix);
+    shader->setMat4("projection", projectionMatrix);
+
+    model = new Model("../resources/bunny/bunny.obj");
+}
+
+void test_bunny_rendering(benchmark::State& state)
+{
+    initializeBunny();
+    // Perform setup here
+    for (auto _ : state) {
+        if (glvWindowShouldClose(window)) {
+            break;
+        }
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader->use();
+
+        for (unsigned int j = 0; j < model->meshes.size(); ++j) {
+            model->meshes[j].setupMesh();
             // bind appropriate textures
             unsigned int diffuseNr = 1;
             unsigned int specularNr = 1;
@@ -323,76 +663,12 @@ static void testProgPipeline(benchmark::State& state){
 
     memoryCollection();
 }
-
-void pipeline(benchmark::State& state)
-{
-
-}
-
-static void testPerStatement(benchmark::State& state)
-{
-    initialize();
-    // Perform setup here
-    for (auto _ : state) {
-        state.PauseTiming();
-        if (glvWindowShouldClose(window)) {
-            break;
-        }
-
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        shader->use();
-
-        // model.Draw(shader);
-        for (unsigned int j = 0; j < model->meshes.size(); ++j) {
-            // bind appropriate textures
-            unsigned int diffuseNr = 1;
-            unsigned int specularNr = 1;
-            unsigned int normalNr = 1;
-            unsigned int heightNr = 1;
-            for (unsigned int i = 0; i < model->meshes[j].textures.size(); i++) {
-                glActiveTexture((GLenum)(GL_TEXTURE0 + i)); // active proper texture unit before binding
-                // retrieve texture number (the N in diffuse_textureN)
-                string number;
-                string name = model->meshes[j].textures[i].type;
-                if (name == "texture_diffuse")
-                    number = std::to_string(diffuseNr++);
-                else if (name == "texture_specular")
-                    number = std::to_string(specularNr++); // transfer unsigned int to stream
-                else if (name == "texture_normal")
-                    number = std::to_string(normalNr++); // transfer unsigned int to stream
-                else if (name == "texture_height")
-                    number = std::to_string(heightNr++); // transfer unsigned int to stream
-
-                // now set the sampler to the correct texture unit
-                glUniform1i(glGetUniformLocation(shader->ID, (name + number).c_str()), i);
-                // and finally bind the texture
-                glBindTexture(GL_TEXTURE_2D, model->meshes[j].textures[i].id);
-            }
-
-            // draw mesh
-            glBindVertexArray(model->meshes[j].VAO);
-
-            // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-            prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
-            pipeline(state);
-            glBindVertexArray(0);
-
-            // always good practice to set everything back to defaults once configured.
-            glActiveTexture(GL_TEXTURE0);
-        }
-
-        glvWriteStream(window);
-        state.ResumeTiming();
-    }
-
-    memoryCollection();
-}
-
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-BENCHMARK(testProgPipeline)->Iterations(128);
+BENCHMARK(test_bunny_rendering)->Iterations(128);
+BENCHMARK(test_sponza_rendering)->Iterations(128);
+BENCHMARK(test_sponza_process_geometry)->Iterations(128);
+BENCHMARK(test_sponza_rasterizationWithShading)->Iterations(128);
 // BENCHMARK(testPerStatement)->Iterations(128);
 // Run the benchmark
 BENCHMARK_MAIN();

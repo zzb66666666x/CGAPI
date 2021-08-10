@@ -49,9 +49,12 @@ public:
         for (unsigned int i = 0; i < meshes.size(); i++)
             meshes[i].Draw(shader);
 
+        // printf("draw call number: %d\n", meshes.size());
+
         // for (auto it = diff_mesh_map.begin(); it != diff_mesh_map.end(); ++it) {
         //     it->second.Draw(shader);
         // }
+        // printf("draw call number: %d\n", diff_mesh_map.size());
     }
 
     // report and print data about this model

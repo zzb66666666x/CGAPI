@@ -38,15 +38,6 @@ inline static void backface_culling(Triangle& t)
     t.culling = res.z < -0.01f;
 }
 
-inline static void backface_culling(ProgrammableTriangle& t){
-    glm::vec3 v01 = t.screen_pos[1] - t.screen_pos[0];
-    glm::vec3 v02 = t.screen_pos[2] - t.screen_pos[0];
-    glm::vec3 res = glm::normalize(glm::cross(v01, v02));
-
-    // the parallel plane will not be culled.
-    t.culling = res.z < -0.01f;
-}
-
 /////////////////////////////////////// view frustum culling function //////////////////////////////////
 static const std::vector<glm::vec4> planes = {
     //Near
@@ -1316,40 +1307,44 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
             default:
                 throw std::runtime_error("don't interp on these types now\n");
         }
-        frag_shader_in.emplace(it->first, interp_data);
+        frag_shader_in[it->first] = interp_data;
     }
 }
-static void programmable_view_port(ProgrammableTriangle* t)
+
+inline static void programmable_view_port(ProgrammableTriangle* t)
 {
     GET_CURRENT_CONTEXT(ctx);
-    for (int i = 0; i < 3; ++i) {
-#ifndef GL_SCANLINE
-        t->w_inversed[i] = 1.0f / t->screen_pos[i].w;
-        t->screen_pos[i].x *= t->w_inversed[i];
-        t->screen_pos[i].y *= t->w_inversed[i];
-        // t->screen_pos[i].z *= t->w_inversed[i];
-        // printf("1/w: %f, x: %f, y: %f, z: %f\n", t->screen_pos[i].w, t->screen_pos[i].x, t->screen_pos[i].y, t->screen_pos[i].z);
+//     for (int i = 0; i < 3; ++i) {
+// #ifndef GL_SCANLINE
+//         // printf("1/w: %f, x: %f, y: %f, z: %f\n", t->screen_pos[i].w, t->screen_pos[i].x, t->screen_pos[i].y, t->screen_pos[i].z);
 
-        // view port transformation
-        t->screen_pos[i].x = (0.5f * ctx->width * (t->screen_pos[i].x + 1.0f)) + (float)ctx->start_pos_x;
-        t->screen_pos[i].y = (0.5f * ctx->height * (t->screen_pos[i].y + 1.0f)) + (float)ctx->start_pos_y;
+//         // view port transformation
+//         t->screen_pos[i].x = (0.5f * ctx->width * (t->screen_pos[i].x + 1.0f)) + (float)ctx->start_pos_x;
+//         t->screen_pos[i].y = (0.5f * ctx->height * (t->screen_pos[i].y + 1.0f)) + (float)ctx->start_pos_y;
 
-        // [-1,1] to [0,1]
-        // t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
-#else
-        t->w_inversed[i] = 1.0f / t->vertices[i].screen_pos.w;
-        t->vertices[i].screen_pos.x *= t->w_inversed[i];
-        t->vertices[i].screen_pos.y *= t->w_inversed[i];
-        t->vertices[i].screen_pos.z *= t->w_inversed[i];
+//         // [-1,1] to [0,1]
+//         // t->screen_pos[i].z = t->screen_pos[i].z * 0.5f + 0.5f;
+// #else
+//         t->w_inversed[i] = 1.0f / t->vertices[i].screen_pos.w;
+//         t->vertices[i].screen_pos.x *= t->w_inversed[i];
+//         t->vertices[i].screen_pos.y *= t->w_inversed[i];
+//         t->vertices[i].screen_pos.z *= t->w_inversed[i];
 
-        // view port transformation
-        t->screen_pos[i].x = (0.5f * ctx->width * (t->screen_pos[i].x + 1.0f)) + (float)ctx->start_pos_x;
-        t->screen_pos[i].y = (0.5f * ctx->height * (t->screen_pos[i].y + 1.0f)) + (float)ctx->start_pos_y;
+//         // view port transformation
+//         t->screen_pos[i].x = (0.5f * ctx->width * (t->screen_pos[i].x + 1.0f)) + (float)ctx->start_pos_x;
+//         t->screen_pos[i].y = (0.5f * ctx->height * (t->screen_pos[i].y + 1.0f)) + (float)ctx->start_pos_y;
 
-        // [-1,1] to [0,1]
-        t->vertices[i].screen_pos.z = t->vertices[i].screen_pos.z * 0.5f + 0.5f;
-#endif
-    }
+//         // [-1,1] to [0,1]
+//         t->vertices[i].screen_pos.z = t->vertices[i].screen_pos.z * 0.5f + 0.5f;
+// #endif
+    // }
+
+    t->screen_pos[0].x = (0.5f * ctx->width * (t->screen_pos[0].x + 1.0f)) + (float)ctx->start_pos_x;
+    t->screen_pos[0].y = (0.5f * ctx->height * (t->screen_pos[0].y + 1.0f)) + (float)ctx->start_pos_y;
+    t->screen_pos[1].x = (0.5f * ctx->width * (t->screen_pos[1].x + 1.0f)) + (float)ctx->start_pos_x;
+    t->screen_pos[1].y = (0.5f * ctx->height * (t->screen_pos[1].y + 1.0f)) + (float)ctx->start_pos_y;
+    t->screen_pos[2].x = (0.5f * ctx->width * (t->screen_pos[2].x + 1.0f)) + (float)ctx->start_pos_x;
+    t->screen_pos[2].y = (0.5f * ctx->height * (t->screen_pos[2].y + 1.0f)) + (float)ctx->start_pos_y;
 }
 
 static std::vector<int>* programmable_parse_indices(int &triangle_size)
@@ -1423,6 +1418,7 @@ static std::vector<int>* programmable_parse_indices(int &triangle_size)
 
     return indices;
 }
+
 void programmable_process_geometry_openmp()
 {
     /**
@@ -1467,9 +1463,11 @@ void programmable_process_geometry_openmp()
     unsigned char* buf;
     int thread_id;
     std::vector<ProgrammableTriangle*> vfc_list;
+    data_t gl_pos_inner;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(input_ptr) private(buf) private(vs_input) \
-    private(vs_output) private(thread_id) private(vfc_list)
+    private(vs_output) private(thread_id) private(vfc_list) \
+    private(gl_pos_inner) schedule(dynamic, 4)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
@@ -1502,7 +1500,6 @@ void programmable_process_geometry_openmp()
             shader_interfaces[thread_id]->output_port(vs_output);
 
             // assemble triangle
-            data_t gl_pos_inner;
             shader_interfaces[thread_id]->get_inner_variable(INNER_GL_POSITION, gl_pos_inner);
 #ifndef GL_SCANLINE
             triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
@@ -1511,34 +1508,24 @@ void programmable_process_geometry_openmp()
             triangle_list[tri_ind]->vertices[i].screen_pos = gl_pos_inner.vec4_var;
             triangle_list[tri_ind]->vertices[i].vertex_attrib = vs_output;
 #endif
-            vs_input.clear();
-            vs_output.clear();
+            
         }
 
         // view frustum culling list
         triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);
         if (vfc_list.size() != 0) {
-            if(ctx->cull_face.open){
-                // for (int tind = 0, tlen = vfc_list.size(); tind < tlen; ++tind) {
-                //     // backface_culling(*vfc_list[tind]);
-                //     if (vfc_list[tind]->culling) {
-                //         delete vfc_list[tind];
-                //     } else {
-                //         tri_cullings[thread_id].push_back(vfc_list[tind]);
-                //     }
-                // }
-            } else {
-                tri_cullings[thread_id].insert(tri_cullings[thread_id].end(), vfc_list.begin(), vfc_list.end());
-            }
+            tri_cullings[thread_id].insert(tri_cullings[thread_id].end(), vfc_list.begin(), vfc_list.end());
             vfc_list.clear();
-        } else if (ctx->cull_face.open && !triangle_list[tri_ind]->culling) {
-            backface_culling(*triangle_list[tri_ind]);
         }
 
         if (triangle_list[tri_ind]->culling) {
             continue;
         }
+        triangle_list[tri_ind]->perspective_division();
 
+        if(ctx->cull_face.open){
+            triangle_list[tri_ind]->backface_culling();
+        }
         programmable_view_port(triangle_list[tri_ind]);
     }
 
@@ -1557,22 +1544,26 @@ void programmable_process_geometry_openmp()
         fill(triangle_list.begin() + begin, triangle_list.end(), nullptr);
     }
 
+    int index;
     for (int j = 0; j < ppl->cpu_num; ++j) {
         int tri_ind = 0, len = tri_cullings[j].size();
         for (; tri_ind < len; ++tri_ind) {
-            programmable_view_port(tri_cullings[j][tri_ind]);
-            delete triangle_list[ind + tri_ind];
-            triangle_list[ind + tri_ind] = tri_cullings[j][tri_ind];
+            delete triangle_list[index = ind + tri_ind];
+            triangle_list[index] = tri_cullings[j][tri_ind];
+            triangle_list[index]->perspective_division();
+            if (ctx->cull_face.open) {
+                triangle_list[index]->backface_culling();
+                if (!triangle_list[index]->culling) {
+                    programmable_view_port(triangle_list[index]);
+                }
+            }else{
+                programmable_view_port(triangle_list[index]);
+            }
         }
         ind += len;
     }
 }
-struct bin_data_t{
-    int b_minx;
-    int b_maxx;
-    int b_miny;
-    int b_maxy;
-};
+
 void programmable_rasterize_with_shading_openmp()
 {
     // printf("rasterization begin\n");
@@ -1599,7 +1590,6 @@ void programmable_rasterize_with_shading_openmp()
     bin_data.resize(ctx->pipeline.cpu_num);
     for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
         shader_interfaces[i] = fragment_shader->get_shader_utils(i);
-        
         bin_data[i].b_minx = width - 1;
         bin_data[i].b_maxx = 0;
         bin_data[i].b_miny = height - 1;
@@ -1614,13 +1604,16 @@ void programmable_rasterize_with_shading_openmp()
     glm::vec4* screen_pos = nullptr;
     float* w_inv = nullptr;
     ShaderInterface* functions = nullptr;
-    std::map<std::string, data_t> frag_shader_in, frag_shader_out;
+    // std::map<std::string, data_t> frag_shader_in, frag_shader_out;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for private(t) private(screen_pos) private(w_inv) private(functions) private(frag_shader_in) private(frag_shader_out)
+#pragma omp parallel for private(t) private(screen_pos) private(w_inv) \
+    private(functions) schedule(dynamic, 1)
 #endif
     for (int i = 0; i < len; ++i) {
         t = prog_triangle_list[i];
         int index;
+        float zp, invwp;
+        float alpha, beta, gamma, Z_viewspace;
         int thread_id = omp_get_thread_num();
         functions = shader_interfaces[thread_id];
 
@@ -1663,8 +1656,7 @@ void programmable_rasterize_with_shading_openmp()
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
 
                 // perspective correction
-                float alpha, beta, gamma;
-                float Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
+                Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
                 alpha = coef[0] * Z_viewspace * w_inv[0];
                 beta = coef[1] * Z_viewspace * w_inv[1];
                 gamma = coef[2] * Z_viewspace * w_inv[2];
@@ -1672,38 +1664,36 @@ void programmable_rasterize_with_shading_openmp()
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    float zp;
-                    float invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
-                    zp = alpha * screen_pos[0].z + beta * screen_pos[1].z + gamma * screen_pos[2].z;
+                    invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
+                    zp = alpha * t->z[0] + beta * t->z[1] + gamma * t->z[2];
                     zp *= invwp;
                     zp = zp * 0.5f + 0.5f;
                     omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
                         if (ctx->draw_color_buf) {
-                            prog_pixel_tasks[index].frag_shader_in.clear();
                             programmable_interpolate(fragment_shader, t, alpha, beta, gamma, prog_pixel_tasks[index]);
-                            omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
                             prog_pixel_tasks[index].write = true;
                         }
-                        // omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
+                        omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
+                        // std::map<std::string, data_t> frag_shader_in, frag_shader_out;
                         // programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
-                        
                         // functions->input_port(frag_shader_in);
                         // functions->glsl_main();
                         // functions->output_port(frag_shader_out);
                         // data_t frag_color_union;
                         // functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
                         // if (ctx->draw_color_buf){
-                        //     frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
-                        //     frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
-                        //     frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                        //     // frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
+                        //     // frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
+                        //     // frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+                        //     frame_buf[index].R = 255.0f;
+                        //     frame_buf[index].G = 255.0f;
+                        //     frame_buf[index].B = 255.0f;
                         // }
                     }else{
                         omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
                     }
-                    // frag_shader_in.clear();
-                    // frag_shader_out.clear();
                 }
             }
         }
@@ -1741,20 +1731,24 @@ void programmable_rasterize_with_shading_openmp()
     // printf("b_minx: %d, b_maxx: %d, b_miny: %d, b_maxy: %d\n", b_minx, b_maxx, b_miny, b_maxy);
     // functions = shader_interfaces[0];
 
+    data_t frag_color_union;
+    int thread_id, index;
+    bool f1, f2;
 #ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for
+#pragma omp parallel for private(frag_color_union) private(functions) private(thread_id) \
+    private(index) private(f1) private(f2) schedule(dynamic,1)
 #endif
     for (int y = b_miny; y <= b_maxy; ++y) {
         for (int x = b_minx; x <= b_maxx; ++x) {
-            int index = GET_INDEX(x, y, width, height);
+            index = GET_INDEX(x, y, width, height);
             if (!prog_pixel_tasks[index].write) {
                 continue;
             }
-            int thread_id = omp_get_thread_num();
-            ShaderInterface* functions = shader_interfaces[thread_id];
+            thread_id = omp_get_thread_num();
+            functions = shader_interfaces[thread_id];
             pixel_block[thread_id][0] = &prog_pixel_tasks[index];
             // y * width + x;
-            bool f1 = (index % width) == width - 1, f2 = pixel_num - index <= width;
+            f1 = (index % width) == width - 1, f2 = pixel_num - index <= width;
             pixel_block[thread_id][1] = f1 ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + 1];
             pixel_block[thread_id][2] = f2 ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + width];
             pixel_block[thread_id][3] = (f1 || f2) ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + width + 1];
@@ -1769,12 +1763,10 @@ void programmable_rasterize_with_shading_openmp()
             functions->input_port(prog_pixel_tasks[index].frag_shader_in);
             functions->glsl_main();
             functions->output_port(prog_pixel_tasks[index].frag_shader_out);
-            data_t frag_color_union;
             functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
             frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
             frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
             frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
-            prog_pixel_tasks[index].frag_shader_out.clear();
             prog_pixel_tasks[index].write = false;
         }
     }
@@ -1786,54 +1778,6 @@ void programmable_rasterize_with_shading_openmp()
     //     fprintf(fp, "%f\n", zbuf[i]);
     // }
     // fclose(fp);
-    }
-
-void programmable_process_pixel(){
-    GET_CURRENT_CONTEXT(ctx);
-    if (!ctx->draw_color_buf) {
-        return;
-    }
-    std::vector<ProgrammablePixel>& prog_pixel_tasks = ctx->pipeline.prog_pixel_tasks;
-    color_t* frame_buf;
-    if (!ctx->override_default_framebuf) {
-        frame_buf = (color_t*)ctx->framebuf->getDataPtr();
-    } else {
-        frame_buf = ctx->override_color_buf;
-    }
-    Shader* fragment_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
-    std::vector<ShaderInterface*> shader_interfaces;
-    shader_interfaces.resize(ctx->pipeline.cpu_num);
-    for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
-        shader_interfaces[i] = fragment_shader->get_shader_utils(i);
-    }
-    int len = prog_pixel_tasks.size();
-    std::vector<std::vector<ProgrammablePixel*>> &pixel_block = ctx->pipeline.pixel_block;
-#ifdef GL_PARALLEL_OPEN
-#pragma omp parallel for
-#endif
-    for (int i = 0; i < len;++i){
-        if (!prog_pixel_tasks[i].write) {
-            continue;
-        }
-        int thread_id = omp_get_thread_num();
-        ShaderInterface* functions = shader_interfaces[thread_id];
-        pixel_block[thread_id][0] = &prog_pixel_tasks[i];
-        // y * width + x;
-        bool f1 = (i % ctx->width) == ctx->width - 1, f2 = len - i <= ctx->width;
-        pixel_block[thread_id][1] = f1 ? &prog_pixel_tasks[i] : &prog_pixel_tasks[i + 1];
-        pixel_block[thread_id][2] = f2 ? &prog_pixel_tasks[i] : &prog_pixel_tasks[i + ctx->width];
-        pixel_block[thread_id][3] = (f1 || f2) ? &prog_pixel_tasks[i] : &prog_pixel_tasks[i + ctx->width + 1];
-        functions->input_port(prog_pixel_tasks[i].frag_shader_in);
-        functions->glsl_main();
-        functions->output_port(prog_pixel_tasks[i].frag_shader_out);
-        data_t frag_color_union;
-        functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
-        frame_buf[i].R = frag_color_union.vec4_var.x * 255.0f;
-        frame_buf[i].G = frag_color_union.vec4_var.y * 255.0f;
-        frame_buf[i].B = frag_color_union.vec4_var.z * 255.0f;
-        prog_pixel_tasks[i].frag_shader_out.clear();
-        prog_pixel_tasks[i].write = false;
-    }
 }
 
 

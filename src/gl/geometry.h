@@ -204,7 +204,7 @@ public:
     std::map<std::string, data_t> vertex_attribs[3];
 
     bool culling = false;
-    float w_inversed[3];
+    float w_inversed[3], z[3];
 
     ProgrammableVertex vertices[3];
 
@@ -212,7 +212,38 @@ public:
 
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
+    // culling 
     void view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res);
+    void backface_culling()
+    {
+        glm::vec3 v01 = screen_pos[1] - screen_pos[0];
+        glm::vec3 v02 = screen_pos[2] - screen_pos[0];
+        glm::vec3 normal = glm::normalize(glm::cross(v01, v02));
+
+        glm::vec3 view_dir = glm::normalize((screen_pos[0] + screen_pos[1] + screen_pos[2]) * 0.333333f);
+        culling = glm::dot(normal, view_dir) < -0.01f;
+    }
+
+    void perspective_division()
+    {
+        w_inversed[0] = 1.0f / screen_pos[0].w;
+        screen_pos[0].x *= w_inversed[0];
+        screen_pos[0].y *= w_inversed[0];
+        z[0] = screen_pos[0].z;
+        screen_pos[0].z *= w_inversed[0];
+
+        w_inversed[1] = 1.0f / screen_pos[1].w;
+        screen_pos[1].x *= w_inversed[1];
+        screen_pos[1].y *= w_inversed[1];
+        z[1] = screen_pos[1].z;
+        screen_pos[1].z *= w_inversed[1];
+
+        w_inversed[2] = 1.0f / screen_pos[2].w;
+        screen_pos[2].x *= w_inversed[2];
+        screen_pos[2].y *= w_inversed[2];
+        z[2] = screen_pos[2].z;
+        screen_pos[2].z *= w_inversed[2];
+    }
 
     inline void setVertex(int index, ProgrammableVertex& v)
     {

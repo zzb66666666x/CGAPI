@@ -41,18 +41,18 @@ public:
         loadModel(path);
 
         // merge mesh by diffuse texture id
-        mergeMesh();
+        // mergeMesh();
     }
 
     // draws the model, and thus all its meshes
     void Draw(ShaderWrapper& shader)
     {
-        // for (unsigned int i = 0; i < meshes.size(); i++)
-        //     meshes[i].Draw(shader);
-        
-        for(auto it = diff_mesh_map.begin(); it != diff_mesh_map.end(); ++it){
-            it->second.Draw(shader);
-        }
+        for (unsigned int i = 0; i < meshes.size(); ++i)
+            meshes[i].Draw(shader);
+        printf("draw call count: %d\n", meshes.size());
+        // for(auto it = diff_mesh_map.begin(); it != diff_mesh_map.end(); ++it){
+        //     it->second.Draw(shader);
+        // }
     }
 
     // report and print data about this model

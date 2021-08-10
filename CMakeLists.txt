@@ -145,9 +145,9 @@ add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
 add_executable(test_sampler2D_type ${GL_PARSER} src/utests/test_sampler2D_type.cpp)
 target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
 
-# add_executable(benchmark_prog_pipeline src/utests/benchmark_prog_pipeline.cpp ${UTESTS_HEADER_ASSIMP})
-# target_link_libraries(benchmark_prog_pipeline glite)
-# target_link_libraries(benchmark_prog_pipeline assimp)
+add_executable(benchmark_prog_pipeline src/utests/benchmark_prog_pipeline.cpp ${UTESTS_HEADER_ASSIMP})
+target_link_libraries(benchmark_prog_pipeline glite)
+target_link_libraries(benchmark_prog_pipeline assimp)
 
 
 ################################################
@@ -205,12 +205,12 @@ target_link_libraries(test_prog_basics glite)
 add_executable(test_prog_cow tests/test_prog_cow.cpp)
 target_link_libraries(test_prog_cow glite)
 
-add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
-target_link_libraries(test_prog_sponza_texture glite)
-target_link_libraries(test_prog_sponza_texture assimp)
+# add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
+# target_link_libraries(test_prog_sponza_texture glite)
+# target_link_libraries(test_prog_sponza_texture assimp)
 
 add_executable(test_prog_bunny tests/test_prog_bunny.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
 target_link_libraries(test_prog_bunny glite)
 
-# add_executable(test_shadow_mapping tests/test_shadow_mapping.cpp ${TESTS_HEADER_ASSIMP})
-# target_link_libraries(test_shadow_mapping glite)
+add_executable(test_shadow_mapping tests/test_shadow_mapping.cpp ${TESTS_HEADER_ASSIMP})
+target_link_libraries(test_shadow_mapping glite)
