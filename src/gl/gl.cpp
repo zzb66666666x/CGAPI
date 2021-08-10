@@ -977,7 +977,7 @@ void glClear(unsigned int bitfields){
             size = C->zbuf->getSize();
         }
         if (zbuf != nullptr){
-            #pragma omp parallel for
+#pragma omp parallel for
             for (int i=0; i<size; i++){
                 zbuf[i] = 1.0f;
             }
@@ -996,7 +996,7 @@ void glClear(unsigned int bitfields){
             size = C->framebuf->getSize();
         }
         if (data != nullptr){
-            #pragma omp parallel for
+#pragma omp parallel for
             for (int i=0; i<size; i++){
                 data[i] = C->clear_color;
             }
@@ -1106,6 +1106,7 @@ sampler_info_t* get_mipmap_sampler_fdef(int thread_id, MipmapStorage* mipmap){
 
     float delta = std::max(glm::dot(dx, dx), glm::dot(dy, dy));
     // printf("delta: %f\n", delta * mipmap->get_nlevel());
+    // this is a empirical formula.
     return mipmap->get_mipmap_sampler(-0.03f * log2(delta));
 }
 

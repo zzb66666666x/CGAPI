@@ -323,14 +323,16 @@ glPipeline::glPipeline()
     // exec.emplace_back(rasterize_with_shading_openmp);
     // exec.emplace_back(process_pixel_openmp);
 
-    exec.emplace_back(programmable_process_geometry_openmp);
-
 #ifndef GL_SCANLINE
+    exec.emplace_back(programmable_process_geometry_openmp);
     exec.emplace_back(programmable_rasterize_with_shading_openmp);
-    exec.emplace_back(programmable_process_pixel);
 #else
+    exec.emplace_back(programmable_process_geometry_openmp);
     exec.emplace_back(programmable_rasterize_with_scanline);
 #endif
+
+    // exec.emplace_back(programmable_process_geometry_with_rasterization);
+    // exec.emplace_back(programmable_process_pixel);
 
     vao_ptr = nullptr;
     vbo_ptr = nullptr;

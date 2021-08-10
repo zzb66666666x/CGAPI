@@ -18,6 +18,7 @@
 #include <sstream>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <vector>
 using namespace std;
 
@@ -32,17 +33,25 @@ public:
     string directory;
     bool gammaCorrection;
 
+    std::unordered_map<int, Mesh> diff_mesh_map;
     // constructor, expects a filepath to a 3D model.
     Model(string const &path, bool gamma = false) : gammaCorrection(gamma)
     {
-        loadModel(path);
+        loadModel(path); 
+        
+        // merge mesh by diffuse texture id
+        mergeMesh();
     }
 
     // draws the model, and thus all its meshes
     void Draw(Shader &shader)
     {
-        for(unsigned int i = 0; i < meshes.size(); i++)
+        for (unsigned int i = 0; i < meshes.size(); i++)
             meshes[i].Draw(shader);
+
+        // for (auto it = diff_mesh_map.begin(); it != diff_mesh_map.end(); ++it) {
+        //     it->second.Draw(shader);
+        // }
     }
 
     // report and print data about this model
@@ -208,11 +217,28 @@ private:
                 texture.id = TextureFromFile(str.C_Str(), this->directory);
                 texture.type = typeName;
                 texture.path = str.C_Str();
+                // printf("id: %d, type: %s, path: %s\n", texture.id, texture.type.c_str(), str.C_Str());
                 textures.push_back(texture);
                 textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecesery load duplicate textures.
             }
         }
         return textures;
+    }
+
+    void mergeMesh()
+    {
+        for (int i = 0, len = meshes.size(); i < len; ++i) {
+            for (int j = 0, jlen = meshes[i].textures.size(); j < jlen; ++j) {
+                if (meshes[i].textures[j].type == "texture_diffuse") {
+                    auto it = diff_mesh_map.find(meshes[i].textures[j].id);
+                    if (it == diff_mesh_map.end()) {
+                        diff_mesh_map.emplace(meshes[i].textures[j].id, Mesh(meshes[i].vertices, meshes[i].indices, meshes[i].textures));
+                    } else {
+                        it->second.mergeNewMesh(meshes[i].vertices, meshes[i].indices);
+                    }
+                }
+            }
+        }
     }
 };
 

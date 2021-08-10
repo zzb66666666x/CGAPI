@@ -18,6 +18,7 @@
 #include <sstream>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <vector>
 using namespace std;
 
@@ -31,18 +32,27 @@ public:
     string directory;
     bool gammaCorrection;
 
+    std::unordered_map<int, Mesh> diff_mesh_map;
+
     // constructor, expects a filepath to a 3D model.
     Model(string const& path, bool gamma = false)
         : gammaCorrection(gamma)
     {
         loadModel(path);
+
+        // merge mesh by diffuse texture id
+        mergeMesh();
     }
 
     // draws the model, and thus all its meshes
     void Draw(ShaderWrapper& shader)
     {
-        for (unsigned int i = 0; i < meshes.size(); i++)
-            meshes[i].Draw(shader);
+        // for (unsigned int i = 0; i < meshes.size(); i++)
+        //     meshes[i].Draw(shader);
+        
+        for(auto it = diff_mesh_map.begin(); it != diff_mesh_map.end(); ++it){
+            it->second.Draw(shader);
+        }
     }
 
     // report and print data about this model
@@ -176,6 +186,21 @@ private:
         return Mesh(vertices, indices, textures);
     }
 
+    void mergeMesh(){
+        for(int i = 0,len = meshes.size(); i < len; ++i){
+            for (int j = 0, jlen = meshes[i].textures.size(); j < jlen; ++j){
+                if(meshes[i].textures[j].type == "texture_diffuse"){
+                    auto it = diff_mesh_map.find(meshes[i].textures[j].id);
+                    if(it == diff_mesh_map.end()){
+                        diff_mesh_map.emplace(meshes[i].textures[j].id, Mesh(meshes[i].vertices, meshes[i].indices, meshes[i].textures));
+                    } else {
+                        it->second.mergeNewMesh(meshes[i].vertices, meshes[i].indices);
+                    }
+                }
+            }
+        }
+    }
+
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
     // the required info is returned as a Texture struct.
     vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName)
@@ -227,6 +252,12 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
 
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         stbi_image_free(data);
     } else {

@@ -12,6 +12,7 @@
 #include <vector>
 #include <chrono>
 
+// const int WIDTH = 1024, HEIGHT = 768;
 const int WIDTH = 800, HEIGHT = 600;
 const float NEAR = 0.1f, FAR = 500.0f;
 

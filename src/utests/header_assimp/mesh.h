@@ -38,20 +38,24 @@ public:
     vector<Texture> textures;
     unsigned int VAO;
 
+    int offset;
+
     // constructor
     Mesh(vector<Vert> vertices, vector<unsigned int> indices, vector<Texture> textures)
+        : _init(false)
     {
         this->vertices = vertices;
         this->indices = indices;
         this->textures = textures;
-
+        offset = vertices.size();
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
-        setupMesh();
+        // setupMesh();
     }
 
     // render the mesh
     void Draw(ShaderWrapper& shader)
     {
+        setupMesh();
         // bind appropriate textures
         unsigned int diffuseNr = 1;
         unsigned int specularNr = 1;
@@ -80,19 +84,34 @@ public:
         // draw mesh
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
         glBindVertexArray(0);
 
         // always good practice to set everything back to defaults once configured.
         glActiveTexture(GL_TEXTURE0);
     }
 
+    void mergeNewMesh(vector<Vert> vertices, vector<unsigned int> indices)
+    {
+        this->vertices.insert(this->vertices.end(), vertices.begin(), vertices.end());
+        for(int i = 0, len = indices.size();i<len;++i){
+            indices[i] += offset;
+        }
+        this->indices.insert(this->indices.end(), indices.begin(), indices.end());
+        offset += vertices.size();
+    }
+
 private:
     // render data
     unsigned int VBO, EBO;
+    bool _init;
 
     // initializes all the buffer objects/arrays
     void setupMesh()
     {
+        if (_init) {
+            return;
+        }
         // create buffers/arrays
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
@@ -127,6 +146,8 @@ private:
         glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void*)offsetof(Vert, Bitangent));
 
         glBindVertexArray(0);
+
+        this->_init = true;
     }
 };
 #endif
