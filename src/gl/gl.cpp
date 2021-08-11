@@ -635,8 +635,8 @@ static void _generate_texture2D_mipmap(gl_context* ctx, int ID, sampler_config &
         h = h > 1 ? h : 1;
         samp = new sampler_info_t(w, h, format_size, nullptr);
         samp->data = malloc(w * h * format_size);
-        for (int x = 0; x < w; ++x){
-            for (int y = 0; y < h; ++y){
+        for (int y = 0; y < h; ++y){
+            for (int x = 0; x < w; ++x){
                 for (int j = 0; j < format_size; ++j) {
                     // c1 c2
                     // c3 c4
@@ -1103,11 +1103,14 @@ sampler_info_t* get_mipmap_sampler_fdef(int thread_id, MipmapStorage* mipmap){
     std::vector<std::vector<ProgrammablePixel*>> &pixel_block = ctx->pipeline.pixel_block;
     glm::vec2 dx = pixel_block[thread_id][1]->texcoord - pixel_block[thread_id][0]->texcoord;
     glm::vec2 dy = pixel_block[thread_id][2]->texcoord - pixel_block[thread_id][0]->texcoord;
+    sampler_info_t* main_samp = mipmap->get_mipmap_sampler(0);
+    dx *= main_samp->width;
+    dy *= main_samp->height;
+    float rho = std::max(glm::dot(dx, dx), glm::dot(dy, dy));
+    float lambda = 0.5f * glm::log2(rho);
+    // printf("lambda: %f\n",lambda);
 
-    float delta = std::max(glm::dot(dx, dx), glm::dot(dy, dy));
-    // printf("delta: %f\n", delta * mipmap->get_nlevel());
-    // this is a empirical formula.
-    return mipmap->get_mipmap_sampler(-0.03f * log2(delta));
+    return mipmap->get_mipmap_sampler(lambda);
 }
 
 void glCompileShader(unsigned int shader){

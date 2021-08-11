@@ -1643,8 +1643,8 @@ void programmable_rasterize_with_shading_openmp()
         bin_data[thread_id].b_maxy = MAX(bin_data[thread_id].b_maxy, maxy);
 
         // AABB algorithm
-        for (y = maxy; y >= miny; --y) {
-            for (x = maxx; x >= minx; --x) {
+        for (y = miny; y <= maxy; ++y) {
+            for (x = minx; x <= maxx; ++x) {
                 if (ctx->flip_image)
                     index = GET_INDEX(x, y, width, height);
                 else    
@@ -1746,12 +1746,14 @@ void programmable_rasterize_with_shading_openmp()
             }
             thread_id = omp_get_thread_num();
             functions = shader_interfaces[thread_id];
+            // 0 1
+            // 2 3
             pixel_block[thread_id][0] = &prog_pixel_tasks[index];
             // y * width + x;
             f1 = (index % width) == width - 1, f2 = pixel_num - index <= width;
             pixel_block[thread_id][1] = f1 ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + 1];
             pixel_block[thread_id][2] = f2 ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + width];
-            pixel_block[thread_id][3] = (f1 || f2) ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + width + 1];
+            // pixel_block[thread_id][3] = (f1 || f2) ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + width + 1];
 
             // pixel_block[0][0] = &prog_pixel_tasks[index];
             // // y * width + x;

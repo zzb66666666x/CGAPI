@@ -100,16 +100,10 @@ public:
     {
         return nlevel;
     }
-    sampler_info_t* get_mipmap_sampler(float delta){
-        delta = glm::clamp(delta, 0.0f, 1.0f);
-        int idx = delta * nlevel;
-        idx = (idx == nlevel) ? nlevel - 1 : idx;
-        return _pyramids[idx];
-        // return _pyramids[5];
-    }
     sampler_info_t* get_mipmap_sampler(int level_idx)
     {
-        level_idx = glm::clamp(level_idx, 0, nlevel);
+        level_idx = glm::clamp(level_idx, 0, nlevel - 1);
+        // printf("level_idx: %d\n", level_idx);
         return _pyramids[level_idx];
     }
 

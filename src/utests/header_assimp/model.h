@@ -41,7 +41,7 @@ public:
         loadModel(path);
 
         // merge mesh by diffuse texture id
-        // mergeMesh();
+        mergeMesh();
     }
 
     // draws the model, and thus all its meshes
