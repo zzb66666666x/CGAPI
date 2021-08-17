@@ -238,8 +238,8 @@ void glProgrammableShader::link_programs(){
     }
     // merge the uniform variables
     int uniform_id = 0;
-    for (auto it = shaders.begin(); it != shaders.end(); it++){
-        for (auto it2 = it->second->uniform_map.begin(); it2 != it->second->uniform_map.end(); it2++){
+    for (auto it = shaders.begin(); it != shaders.end(); ++it){
+        for (auto it2 = it->second->uniform_map.begin(); it2 != it->second->uniform_map.end(); ++it2) {
             if (merged_uniform_maps.find(it2->first) != merged_uniform_maps.end()){
                 // already has item inside
                 merged_uniform_maps[it2->first].uniform_ftable_idx.emplace(it->first, it2->second);
@@ -250,8 +250,8 @@ void glProgrammableShader::link_programs(){
                 uvar.uniform_ftable_idx.emplace(it->first, it2->second);
                 merged_uniform_maps.emplace(it2->first, uvar);
                 uniform_id_to_name.emplace(uniform_id, it2->first);
-                uniform_id++;
-            }   
+                ++uniform_id;
+            }
         }
     }
 }
@@ -304,6 +304,7 @@ glPipeline::glPipeline()
 {
     cpu_num = std::thread::hardware_concurrency();
     pixel_block.resize(cpu_num);
+    bin_data.resize(cpu_num);
     for(int i = 0;i<cpu_num;++i){
         pixel_block[i].resize(4);
     }
@@ -326,13 +327,13 @@ glPipeline::glPipeline()
 #ifndef GL_SCANLINE
     exec.emplace_back(programmable_process_geometry_openmp);
     exec.emplace_back(programmable_rasterize_with_shading_openmp);
+
+    // exec.emplace_back(programmable_process_geometry_with_rasterization);
+    // exec.emplace_back(programmable_process_pixel);
 #else
     exec.emplace_back(programmable_process_geometry_openmp);
     exec.emplace_back(programmable_rasterize_with_scanline);
 #endif
-
-    // exec.emplace_back(programmable_process_geometry_with_rasterization);
-    // exec.emplace_back(programmable_process_pixel);
 
     vao_ptr = nullptr;
     vbo_ptr = nullptr;

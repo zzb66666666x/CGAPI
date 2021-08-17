@@ -310,9 +310,13 @@ static void test_sponza_rendering(benchmark::State& state){
             // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
 
-            programmable_process_geometry_openmp();
-            programmable_rasterize_with_shading_openmp();
+            // programmable_process_geometry_openmp();
+            // programmable_rasterize_with_shading_openmp();
             // programmable_rasterize_with_scanline();
+
+            programmable_process_geometry_with_rasterization();
+            programmable_process_pixel();
+            
             glBindVertexArray(0);
 
             // always good practice to set everything back to defaults once configured.
@@ -583,7 +587,7 @@ void initializeBunny()
     glm::mat4 modelMatrix(1.0f), viewMatrix(1.0f), projectionMatrix(1.0f);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -1.0f, 0.0f));
     modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.9f, 0.9f, 0.9f));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(1.1f, 1.1f, 1.1f));
     // modelMatrix = glm::scale(modelMatrix, glm::vec3(0.7f, 0.7f, 0.7f));
 
     glm::vec3 eyepos(0.0f, 0.0f, 5.0f);
@@ -649,9 +653,13 @@ void test_bunny_rendering(benchmark::State& state)
             // glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             prepareElement(GL_TRIANGLES, model->meshes[j].indices.size(), GL_UNSIGNED_INT, 0);
 
-            programmable_process_geometry_openmp();
-            programmable_rasterize_with_shading_openmp();
+            // programmable_process_geometry_openmp();
+            // programmable_rasterize_with_shading_openmp();
             // programmable_rasterize_with_scanline();
+
+            programmable_process_geometry_with_rasterization();
+            programmable_process_pixel();
+
             glBindVertexArray(0);
 
             // always good practice to set everything back to defaults once configured.
@@ -665,10 +673,10 @@ void test_bunny_rendering(benchmark::State& state)
 }
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-BENCHMARK(test_bunny_rendering)->Iterations(128);
-BENCHMARK(test_sponza_rendering)->Iterations(128);
-BENCHMARK(test_sponza_process_geometry)->Iterations(128);
-BENCHMARK(test_sponza_rasterizationWithShading)->Iterations(128);
+// BENCHMARK(test_bunny_rendering)->Iterations(512);
+BENCHMARK(test_sponza_rendering)->Iterations(512);
+// BENCHMARK(test_sponza_process_geometry)->Iterations(512);
+// BENCHMARK(test_sponza_rasterizationWithShading)->Iterations(128);
 // BENCHMARK(testPerStatement)->Iterations(128);
 // Run the benchmark
 BENCHMARK_MAIN();

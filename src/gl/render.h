@@ -55,4 +55,7 @@ void programmable_process_geometry_openmp();
 void programmable_rasterize_with_shading_openmp();
 void programmable_rasterize_with_scanline();
 
+void programmable_process_geometry_with_rasterization();
+void programmable_process_pixel();
+
 #endif

@@ -383,6 +383,9 @@ class glPipeline{
         std::list<render_fp> exec;
         // pixel processing task list
         std::vector<Pixel> pixel_tasks;
+
+        // for calculating bounding box of a mesh
+        std::vector<bin_data_t> bin_data;
         // programmable pixel processing task list;
         std::vector<ProgrammablePixel> prog_pixel_tasks;
 

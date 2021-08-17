@@ -190,7 +190,7 @@ public:
                 default:
                     throw std::runtime_error("vertex don't interp on these types now\n");
             }
-            res.vertex_attrib.emplace(it->first, interp_data);
+            res.vertex_attrib[it->first] = interp_data;
         }
         return res;
     }
@@ -220,7 +220,7 @@ public:
         glm::vec3 v02 = screen_pos[2] - screen_pos[0];
         glm::vec3 normal = glm::normalize(glm::cross(v01, v02));
 
-        glm::vec3 view_dir = glm::normalize((screen_pos[0] + screen_pos[1] + screen_pos[2]) * 0.333333f);
+        glm::vec3 view_dir = glm::normalize((screen_pos[0] + screen_pos[1] + screen_pos[2]) / 3.0f);
         culling = glm::dot(normal, view_dir) < -0.01f;
     }
 

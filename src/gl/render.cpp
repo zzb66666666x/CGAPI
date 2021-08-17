@@ -1453,7 +1453,7 @@ void programmable_process_geometry_openmp()
     std::vector<ShaderInterface*> shader_interfaces;
     shader_interfaces.resize(ppl->cpu_num);
     tri_cullings.resize(ppl->cpu_num);
-    for (int i = 0; i < ppl->cpu_num; i++) {
+    for (int i = 0; i < ppl->cpu_num; ++i) {
         shader_interfaces[i] = vert_shader->get_shader_utils(i);
     }
 
@@ -1541,13 +1541,13 @@ void programmable_process_geometry_openmp()
         int begin = triangle_list.size();
         triangle_list.resize(ppl->prog_triangle_size);
         // Deleting null pointer has a definition.
-        fill(triangle_list.begin() + begin, triangle_list.end(), nullptr);
+        std::fill(triangle_list.begin() + begin, triangle_list.end(), nullptr);
     }
 
     int index;
     for (int j = 0; j < ppl->cpu_num; ++j) {
-        int tri_ind = 0, len = tri_cullings[j].size();
-        for (; tri_ind < len; ++tri_ind) {
+        int len = tri_cullings[j].size();
+        for (int tri_ind = 0; tri_ind < len; ++tri_ind) {
             delete triangle_list[index = ind + tri_ind];
             triangle_list[index] = tri_cullings[j][tri_ind];
             triangle_list[index]->perspective_division();
@@ -1588,7 +1588,7 @@ void programmable_rasterize_with_shading_openmp()
     std::vector<bin_data_t> bin_data;
     shader_interfaces.resize(ctx->pipeline.cpu_num);
     bin_data.resize(ctx->pipeline.cpu_num);
-    for (int i = 0; i < ctx->pipeline.cpu_num; i++) {
+    for (int i = 0; i < ctx->pipeline.cpu_num; ++i) {
         shader_interfaces[i] = fragment_shader->get_shader_utils(i);
         bin_data[i].b_minx = width - 1;
         bin_data[i].b_maxx = 0;
@@ -1645,12 +1645,11 @@ void programmable_rasterize_with_shading_openmp()
         // AABB algorithm
         for (y = miny; y <= maxy; ++y) {
             for (x = minx; x <= maxx; ++x) {
-                if (ctx->flip_image)
-                    index = GET_INDEX(x, y, width, height);
-                else    
-                    index = GET_INDEX_NO_FLIP(x, y, width, height);
-                if (!t->inside(x + 0.5f, y + 0.5f))
+                if (!t->inside(x + 0.5f, y + 0.5f)){
                     continue;
+                }
+
+                index = ctx->flip_image ? (GET_INDEX(x, y, width, height)) : (GET_INDEX_NO_FLIP(x, y, width, height));
 
                 // alpha beta gamma
                 glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
@@ -1675,7 +1674,6 @@ void programmable_rasterize_with_shading_openmp()
                             programmable_interpolate(fragment_shader, t, alpha, beta, gamma, prog_pixel_tasks[index]);
                             prog_pixel_tasks[index].write = true;
                         }
-                        omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
                         // std::map<std::string, data_t> frag_shader_in, frag_shader_out;
                         // programmable_interpolate(fragment_shader, t, alpha, beta, gamma, frag_shader_in);
                         // functions->input_port(frag_shader_in);
@@ -1691,9 +1689,8 @@ void programmable_rasterize_with_shading_openmp()
                         //     frame_buf[index].G = 255.0f;
                         //     frame_buf[index].B = 255.0f;
                         // }
-                    }else{
-                        omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
                     }
+                    omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
                 }
             }
         }
@@ -1710,6 +1707,7 @@ void programmable_rasterize_with_shading_openmp()
         b_maxx = MAX(b_maxx, bin_data[i].b_maxx);
         b_maxy = MAX(b_maxy, bin_data[i].b_maxy);
     }
+    // printf("b_minx: %d, b_maxx: %d ,b_miny: %d, b_maxy: %d\n", b_minx, b_maxx, b_miny, b_maxy);
 
     // for (int i = 0; i < len; ++i) {
     //     t = prog_triangle_list[i];
@@ -1782,7 +1780,287 @@ void programmable_rasterize_with_shading_openmp()
     // fclose(fp);
 }
 
+static void programmable_inner_rasterize(gl_context* ctx, ProgrammableTriangle* t, color_t* frame_buf, float *zbuf
+    , Shader *frag_shader, bin_data_t &bin_data)
+{
+    int width = ctx->width, height = ctx->height;
+    // printf("triangle length: %d\n", len);
+    std::vector<ProgrammablePixel>& prog_pixel_tasks = ctx->pipeline.prog_pixel_tasks;
 
+    glm::vec4* screen_pos = t->screen_pos;
+    float* w_inv = t->w_inversed;
+    int index;
+    float zp, invwp;
+    float alpha, beta, gamma, Z_viewspace;
+
+    int minx, maxx, miny, maxy, x, y;
+    minx = MAX(0, MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x)));
+    miny = MAX(0, MIN(screen_pos[0].y, MIN(screen_pos[1].y, screen_pos[2].y)));
+    maxx = MIN(width - 1, MAX(screen_pos[0].x, MAX(screen_pos[1].x, screen_pos[2].x)));
+    maxy = MIN(height - 1, MAX(screen_pos[0].y, MAX(screen_pos[1].y, screen_pos[2].y)));
+
+    // view shrinking in rasterization
+    // minx = minx < 0 ? 0 : minx;
+    // miny = miny < 0 ? 0 : miny;
+    // maxx = maxx >= width ? width - 1 : maxx;
+    // maxy = maxy >= height ? height - 1 : maxy;
+
+    bin_data.b_minx = MIN(bin_data.b_minx, minx);
+    bin_data.b_miny = MIN(bin_data.b_miny, miny);
+    bin_data.b_maxx = MAX(bin_data.b_maxx, maxx);
+    bin_data.b_maxy = MAX(bin_data.b_maxy, maxy);
+
+    // AABB algorithm
+    for (y = miny; y <= maxy; ++y) {
+        for (x = minx; x <= maxx; ++x) {
+            if (!t->inside(x + 0.5f, y + 0.5f)){
+                continue;
+            }
+
+            index = ctx->flip_image ? (GET_INDEX(x, y, width, height)) : (GET_INDEX_NO_FLIP(x, y, width, height));
+
+            // alpha beta gamma
+            glm::vec3 coef = t->computeBarycentric2D(x + 0.5f, y + 0.5f);
+
+            // perspective correction
+            Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
+            alpha = coef[0] * Z_viewspace * w_inv[0];
+            beta = coef[1] * Z_viewspace * w_inv[1];
+            gamma = coef[2] * Z_viewspace * w_inv[2];
+            if (!ctx->use_z_test) {
+                throw std::runtime_error("please open the z depth test\n");
+            } else {
+                // zp: z value after interpolation
+                invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
+                zp = alpha * t->z[0] + beta * t->z[1] + gamma * t->z[2];
+                zp *= invwp;
+                zp = zp * 0.5f + 0.5f;
+                omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
+                if (zp < zbuf[index]) {
+                    zbuf[index] = zp;
+                    if (ctx->draw_color_buf) {
+                        programmable_interpolate(frag_shader, t, alpha, beta, gamma, prog_pixel_tasks[index]);
+                        prog_pixel_tasks[index].write = true;
+                    }
+                    
+                }
+                omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
+            }
+        }
+    }
+}
+
+void programmable_process_geometry_with_rasterization()
+{
+    /**
+     * input assembly
+     */
+    GET_PIPELINE(ppl);
+    GET_CURRENT_CONTEXT(ctx);
+
+    vertex_attrib_t* vattrib_data = (vertex_attrib_t*)((vertex_array_object_t*)ppl->vao_ptr->getDataPtr())->attribs;
+    int triangle_size = 0;
+
+    // parse indices
+    std::vector<int>* indices = programmable_parse_indices(triangle_size);
+    unsigned char* vbuf_data = (unsigned char*)ppl->vbo_ptr->getDataPtr();
+
+    std::vector<ProgrammableTriangle*>& triangle_list = ppl->prog_triangle_list;
+
+    // triangle list management
+    if (triangle_list.size() < triangle_size) {
+        // printf("triangle_size: %d\n", triangle_size);
+        int tsize = triangle_list.size();
+        triangle_list.resize(triangle_size);
+        for (int i = tsize, len = triangle_size; i < len; ++i) {
+            triangle_list[i] = new ProgrammableTriangle();
+        }
+    }
+    ppl->prog_triangle_size = triangle_size;
+
+    Shader* vert_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_VERTEX_SHADER);
+    Shader* frag_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
+
+    std::vector<ShaderInterface*> vert_shader_interfaces;
+    std::vector<bin_data_t>& bin_data = ctx->pipeline.bin_data;
+    vert_shader_interfaces.resize(ppl->cpu_num);
+    for (int i = 0; i < ppl->cpu_num; ++i) {
+        vert_shader_interfaces[i] = vert_shader->get_shader_utils(i);
+        bin_data[i].b_minx = ctx->width - 1;
+        bin_data[i].b_maxx = 0;
+        bin_data[i].b_miny = ctx->height - 1;
+        bin_data[i].b_maxy = 0;
+    }
+
+    color_t* frame_buf;
+    float* zbuf;
+    if (!ctx->override_default_framebuf) {
+        frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+        zbuf = (float*)ctx->zbuf->getDataPtr();
+    } else {
+        frame_buf = ctx->override_color_buf;
+        zbuf = ctx->override_depth_buf;
+    }
+
+    // begin parallel block
+    std::map<std::string, data_t> vs_input, vs_output;
+    void* input_ptr;
+    unsigned char* buf;
+    int thread_id;
+    std::vector<ProgrammableTriangle*> vfc_list;
+    data_t gl_pos_inner;
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for private(input_ptr) private(buf) private(vs_input)\
+        private(vs_output) private(thread_id) private(vfc_list)\
+        private(gl_pos_inner) schedule(dynamic, 1)
+#endif
+    for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
+        // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
+        // parse data
+        thread_id = omp_get_thread_num();
+        triangle_list[tri_ind]->cur_shader = vert_shader;
+        for (int i = 0; i < 3; ++i) {
+            // parse VAO
+            for (auto it = vert_shader->layouts.begin(); it != vert_shader->layouts.end(); ++it) {
+                vertex_attrib_t& config = vattrib_data[it->second->layout];
+                buf = vbuf_data + (size_t)((*indices)[tri_ind * 3 + i] * config.stride) + (size_t)config.pointer;
+                if (config.type == GL_FLOAT) {
+                    switch (it->second->dtype) {
+                        case TYPE_VEC2:
+                            vs_input[it->first] = (data_t) { .vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1)) };
+                            break;
+                        case TYPE_VEC3:
+                            vs_input[it->first] = (data_t) { .vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + sizeof(float) * 1), *(float*)(buf + sizeof(float) * 2)) };
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            vert_shader_interfaces[thread_id]->input_port(vs_input);
+
+            // execute vertex shading
+            vert_shader_interfaces[thread_id]->glsl_main();
+            vert_shader_interfaces[thread_id]->output_port(vs_output);
+
+            // assemble triangle
+            vert_shader_interfaces[thread_id]->get_inner_variable(INNER_GL_POSITION, gl_pos_inner);
+#ifndef GL_SCANLINE
+            triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
+            triangle_list[tri_ind]->vertex_attribs[i] = vs_output;
+#else
+            triangle_list[tri_ind]->vertices[i].screen_pos = gl_pos_inner.vec4_var;
+            triangle_list[tri_ind]->vertices[i].vertex_attrib = vs_output;
+#endif
+        }
+
+        // view frustum culling list
+        triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);
+        if (vfc_list.size() != 0) {
+            // tri_cullings[thread_id].insert(tri_cullings[thread_id].end(), vfc_list.begin(), vfc_list.end());
+            for (int i = 0, len = vfc_list.size(); i < len; ++i) {
+                vfc_list[i]->perspective_division();
+                if(ctx->cull_face.open){
+                    vfc_list[i]->backface_culling();
+                    if (!vfc_list[i]->culling) {
+                        programmable_view_port(vfc_list[i]);
+                        programmable_inner_rasterize(ctx, vfc_list[i], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
+                    }
+                }else{
+                    programmable_view_port(vfc_list[i]);
+                    programmable_inner_rasterize(ctx, vfc_list[i], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
+                }
+            }
+            vfc_list.clear();
+        }
+
+        if (triangle_list[tri_ind]->culling) {
+            triangle_list[tri_ind]->culling = false;
+            continue;
+        }
+
+        triangle_list[tri_ind]->perspective_division();
+
+        if (ctx->cull_face.open) {
+            triangle_list[tri_ind]->backface_culling();
+            if (triangle_list[tri_ind]->culling) {
+                triangle_list[tri_ind]->culling = false;
+                continue;
+            }
+        }
+        programmable_view_port(triangle_list[tri_ind]);
+        programmable_inner_rasterize(ctx, triangle_list[tri_ind], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
+    }
+}
+
+void programmable_process_pixel(){
+
+    GET_CURRENT_CONTEXT(ctx);
+    if (!ctx->draw_color_buf) {
+        return;
+    }
+    color_t* frame_buf;
+    if (!ctx->override_default_framebuf) {
+        frame_buf = (color_t*)ctx->framebuf->getDataPtr();
+    } else {
+        frame_buf = ctx->override_color_buf;
+    }
+    std::vector<std::vector<ProgrammablePixel*>>& pixel_block = ctx->pipeline.pixel_block;
+    std::vector<bin_data_t>& bin_data = ctx->pipeline.bin_data;
+    std::vector<ProgrammablePixel>& prog_pixel_tasks = ctx->pipeline.prog_pixel_tasks;
+    int pixel_num = prog_pixel_tasks.size();
+    Shader* frag_shader = ctx->payload.cur_shader_program_ptr->get_shader(GL_FRAGMENT_SHADER);
+    std::vector<ShaderInterface*> frag_shader_interfaces;
+
+    int width = ctx->width, height = ctx->height;
+    int b_minx = width - 1, b_maxx = 0, b_miny = height - 1, b_maxy = 0;
+    frag_shader_interfaces.resize(ctx->pipeline.cpu_num);
+    for (int i = 0; i < ctx->pipeline.cpu_num; ++i) {
+        frag_shader_interfaces[i] = frag_shader->get_shader_utils(i);
+        b_minx = MIN(b_minx, bin_data[i].b_minx);
+        b_miny = MIN(b_miny, bin_data[i].b_miny);
+        b_maxx = MAX(b_maxx, bin_data[i].b_maxx);
+        b_maxy = MAX(b_maxy, bin_data[i].b_maxy);
+    }
+    // printf("b_minx: %d, b_maxx: %d ,b_miny: %d, b_maxy: %d\n", b_minx, b_maxx, b_miny, b_maxy);
+
+    // parallel block
+    ShaderInterface* functions = nullptr;
+    data_t frag_color_union;
+    int thread_id, index;
+    bool f1, f2;
+#ifdef GL_PARALLEL_OPEN
+#pragma omp parallel for private(frag_color_union) private(functions) private(thread_id)\
+        private(index) private(f1) private(f2) schedule(dynamic, 1)
+#endif
+    for (int y = b_miny; y <= b_maxy; ++y) {
+        for (int x = b_minx; x <= b_maxx; ++x) {
+            index = GET_INDEX(x, y, width, height);
+            if (!prog_pixel_tasks[index].write) {
+                continue;
+            }
+            thread_id = omp_get_thread_num();
+            functions = frag_shader_interfaces[thread_id];
+            // 0 1
+            // 2 3
+            pixel_block[thread_id][0] = &prog_pixel_tasks[index];
+            // y * width + x;
+            f1 = (index % width) == width - 1, f2 = pixel_num - index <= width;
+            pixel_block[thread_id][1] = f1 ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + 1];
+            pixel_block[thread_id][2] = f2 ? &prog_pixel_tasks[index] : &prog_pixel_tasks[index + width];
+
+            functions->input_port(prog_pixel_tasks[index].frag_shader_in);
+            functions->glsl_main();
+            functions->output_port(prog_pixel_tasks[index].frag_shader_out);
+            functions->get_inner_variable(INNER_GL_FRAGCOLOR, frag_color_union);
+            frame_buf[index].R = frag_color_union.vec4_var.x * 255.0f;
+            frame_buf[index].G = frag_color_union.vec4_var.y * 255.0f;
+            frame_buf[index].B = frag_color_union.vec4_var.z * 255.0f;
+            prog_pixel_tasks[index].write = false;
+        }
+    }
+}
 ///////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////// scanline //////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
