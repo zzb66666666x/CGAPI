@@ -216,12 +216,18 @@ public:
     void view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res);
     void backface_culling()
     {
+        // glm::vec3 v01 = screen_pos[1] - screen_pos[0];
+        // glm::vec3 v02 = screen_pos[2] - screen_pos[0];
+        // glm::vec3 normal = glm::normalize(glm::cross(v01, v02));
+
+        // glm::vec3 view_dir = glm::normalize((screen_pos[0] + screen_pos[1] + screen_pos[2]) / 3.0f);
+        // culling = glm::dot(normal, view_dir) < -0.01f;
+
         glm::vec3 v01 = screen_pos[1] - screen_pos[0];
         glm::vec3 v02 = screen_pos[2] - screen_pos[0];
         glm::vec3 normal = glm::normalize(glm::cross(v01, v02));
 
-        glm::vec3 view_dir = glm::normalize((screen_pos[0] + screen_pos[1] + screen_pos[2]) / 3.0f);
-        culling = glm::dot(normal, view_dir) < -0.01f;
+        culling = normal.z < 0.0f;
     }
 
     void perspective_division()

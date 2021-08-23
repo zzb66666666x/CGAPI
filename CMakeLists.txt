@@ -14,6 +14,7 @@ set(CMAKE_TOOLCHAIN_FILE ./vcpkg/scripts/buildsystems/vcpkg.cmake
 # set(CMAKE_CXX_FLAGS "-save-temps")
 set(CMAKE_CXX_FLAGS "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS "-fopenmp")
+add_compile_options(-mavx)
 
 # dir settings
 include_directories(
@@ -140,7 +141,7 @@ add_executable(test_pipeline src/utests/test_pipeline.cpp)
 target_link_libraries(test_pipeline glite)
 
 
-add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
+# add_executable(test_glsl ${GL_PARSER} src/utests/test_glsl.cpp)
 
 add_executable(test_sampler2D_type ${GL_PARSER} src/utests/test_sampler2D_type.cpp)
 target_link_libraries(test_sampler2D_type ${OpenCV_LIBRARIES})
@@ -205,9 +206,9 @@ target_link_libraries(test_prog_basics glite)
 add_executable(test_prog_cow tests/test_prog_cow.cpp)
 target_link_libraries(test_prog_cow glite)
 
-# add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
-# target_link_libraries(test_prog_sponza_texture glite)
-# target_link_libraries(test_prog_sponza_texture assimp)
+add_executable(test_prog_sponza_texture tests/test_prog_sponza_texture.cpp ${TESTS_HEADER_ASSIMP})
+target_link_libraries(test_prog_sponza_texture glite)
+target_link_libraries(test_prog_sponza_texture assimp)
 
 add_executable(test_prog_bunny tests/test_prog_bunny.cpp tests/header/mesh.h tests/header/model.h tests/header/shader.h)
 target_link_libraries(test_prog_bunny glite)

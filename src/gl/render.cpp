@@ -1273,13 +1273,13 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
         data_t interp_data;
         switch (dtype) {
             case TYPE_VEC2:
-                interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var, 1.0f);
+                interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var);
                 break;
             case TYPE_VEC3:
-                interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var, 1.0f);
+                interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var);
                 break;
             case TYPE_VEC4:
-                interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var, 1.0f);
+                interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var);
                 break;
             default:
                 throw std::runtime_error("don't interp on these types now\n");
@@ -1287,7 +1287,7 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
         target.emplace(it->first, interp_data);
     }
 }
-static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, float alpha, float beta, float gamma, ProgrammablePixel &pixel)
+static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t, glm::vec3 &coef, ProgrammablePixel &pixel)
 {
     std::map<std::string, data_t>& frag_shader_in = pixel.frag_shader_in;
     for (auto it = (t->vertex_attribs)[0].begin(); it != (t->vertex_attribs)[0].end(); ++it) {
@@ -1295,14 +1295,14 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
         data_t interp_data;
         switch (dtype) {
             case TYPE_VEC2:
-                interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var, 1.0f);
+                interp_data.vec2_var = GENERAL_INTERP(coef[0], coef[1], coef[2], (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var);
                 pixel.texcoord = interp_data.vec2_var;
                 break;
             case TYPE_VEC3:
-                interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var, 1.0f);
+                interp_data.vec3_var = GENERAL_INTERP(coef[0], coef[1], coef[2], (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var);
                 break;
             case TYPE_VEC4:
-                interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var, 1.0f);
+                interp_data.vec4_var = GENERAL_INTERP(coef[0], coef[1], coef[2], (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var);
                 break;
             default:
                 throw std::runtime_error("don't interp on these types now\n");
@@ -1613,7 +1613,7 @@ void programmable_rasterize_with_shading_openmp()
         t = prog_triangle_list[i];
         int index;
         float zp, invwp;
-        float alpha, beta, gamma, Z_viewspace;
+        float Z_viewspace;
         int thread_id = omp_get_thread_num();
         functions = shader_interfaces[thread_id];
 
@@ -1656,22 +1656,22 @@ void programmable_rasterize_with_shading_openmp()
 
                 // perspective correction
                 Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
-                alpha = coef[0] * Z_viewspace * w_inv[0];
-                beta = coef[1] * Z_viewspace * w_inv[1];
-                gamma = coef[2] * Z_viewspace * w_inv[2];
+                coef[0] = coef[0] * Z_viewspace * w_inv[0];
+                coef[1] = coef[1] * Z_viewspace * w_inv[1];
+                coef[2] = coef[2] * Z_viewspace * w_inv[2];
                 if (!ctx->use_z_test) {
                     throw std::runtime_error("please open the z depth test\n");
                 } else {
                     // zp: z value after interpolation
-                    invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
-                    zp = alpha * t->z[0] + beta * t->z[1] + gamma * t->z[2];
+                    invwp = 1.0f / (coef[0] * screen_pos[0].w + coef[1] * screen_pos[1].w + coef[2] * screen_pos[2].w);
+                    zp = coef[0] * t->z[0] + coef[1] * t->z[1] + coef[2] * t->z[2];
                     zp *= invwp;
                     zp = zp * 0.5f + 0.5f;
                     omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
                     if (zp < zbuf[index]) {
                         zbuf[index] = zp;
                         if (ctx->draw_color_buf) {
-                            programmable_interpolate(fragment_shader, t, alpha, beta, gamma, prog_pixel_tasks[index]);
+                            programmable_interpolate(fragment_shader, t, coef, prog_pixel_tasks[index]);
                             prog_pixel_tasks[index].write = true;
                         }
                         // std::map<std::string, data_t> frag_shader_in, frag_shader_out;
@@ -1791,7 +1791,7 @@ static void programmable_inner_rasterize(gl_context* ctx, ProgrammableTriangle* 
     float* w_inv = t->w_inversed;
     int index;
     float zp, invwp;
-    float alpha, beta, gamma, Z_viewspace;
+    float Z_viewspace;
 
     int minx, maxx, miny, maxy, x, y;
     minx = MAX(0, MIN(screen_pos[0].x, MIN(screen_pos[1].x, screen_pos[2].x)));
@@ -1824,22 +1824,22 @@ static void programmable_inner_rasterize(gl_context* ctx, ProgrammableTriangle* 
 
             // perspective correction
             Z_viewspace = 1.0f / (coef[0] * w_inv[0] + coef[1] * w_inv[1] + coef[2] * w_inv[2]);
-            alpha = coef[0] * Z_viewspace * w_inv[0];
-            beta = coef[1] * Z_viewspace * w_inv[1];
-            gamma = coef[2] * Z_viewspace * w_inv[2];
+            coef[0] = coef[0] * Z_viewspace * w_inv[0];
+            coef[1] = coef[1] * Z_viewspace * w_inv[1];
+            coef[2] = coef[2] * Z_viewspace * w_inv[2];
             if (!ctx->use_z_test) {
                 throw std::runtime_error("please open the z depth test\n");
             } else {
                 // zp: z value after interpolation
-                invwp = 1.0f / (alpha * screen_pos[0].w + beta * screen_pos[1].w + gamma * screen_pos[2].w);
-                zp = alpha * t->z[0] + beta * t->z[1] + gamma * t->z[2];
+                invwp = 1.0f / (coef[0] * screen_pos[0].w + coef[1] * screen_pos[1].w + coef[2] * screen_pos[2].w);
+                zp = coef[0] * t->z[0] + coef[1] * t->z[1] + coef[2] * t->z[2];
                 zp *= invwp;
                 zp = zp * 0.5f + 0.5f;
                 omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
                 if (zp < zbuf[index]) {
                     zbuf[index] = zp;
                     if (ctx->draw_color_buf) {
-                        programmable_interpolate(frag_shader, t, alpha, beta, gamma, prog_pixel_tasks[index]);
+                        programmable_interpolate(frag_shader, t, coef, prog_pixel_tasks[index]);
                         prog_pixel_tasks[index].write = true;
                     }
                     

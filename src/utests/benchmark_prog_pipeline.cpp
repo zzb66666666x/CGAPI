@@ -38,13 +38,13 @@ static void programmable_interpolate(Shader* shader_ptr, ProgrammableTriangle* t
         data_t interp_data;
         switch (dtype) {
         case TYPE_VEC2:
-            interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var, 1.0f);
+            interp_data.vec2_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec2_var, (t->vertex_attribs)[1][it->first].vec2_var, t->vertex_attribs[2][it->first].vec2_var);
             break;
         case TYPE_VEC3:
-            interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var, 1.0f);
+            interp_data.vec3_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec3_var, (t->vertex_attribs)[1][it->first].vec3_var, t->vertex_attribs[2][it->first].vec3_var);
             break;
         case TYPE_VEC4:
-            interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var, 1.0f);
+            interp_data.vec4_var = GENERAL_INTERP(alpha, beta, gamma, (t->vertex_attribs)[0][it->first].vec4_var, (t->vertex_attribs)[1][it->first].vec4_var, t->vertex_attribs[2][it->first].vec4_var);
             break;
         default:
             throw std::runtime_error("don't interp on these types now\n");
@@ -587,8 +587,8 @@ void initializeBunny()
     glm::mat4 modelMatrix(1.0f), viewMatrix(1.0f), projectionMatrix(1.0f);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -1.0f, 0.0f));
     modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-    modelMatrix = glm::scale(modelMatrix, glm::vec3(1.1f, 1.1f, 1.1f));
-    // modelMatrix = glm::scale(modelMatrix, glm::vec3(0.7f, 0.7f, 0.7f));
+    // modelMatrix = glm::scale(modelMatrix, glm::vec3(1.1f, 1.1f, 1.1f));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.9f, 0.9f, 0.9f));
 
     glm::vec3 eyepos(0.0f, 0.0f, 5.0f);
     glm::vec3 front(0.0f, 0.0f, -1.0f);
@@ -617,7 +617,12 @@ void test_bunny_rendering(benchmark::State& state)
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        glm::mat4 modelMatrix(1.0f);
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -1.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+        angle += 1.0f;
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.9f, 0.9f, 0.9f));
+        shader->setMat4("model", modelMatrix);
         shader->use();
 
         for (unsigned int j = 0; j < model->meshes.size(); ++j) {

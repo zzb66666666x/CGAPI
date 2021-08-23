@@ -134,7 +134,8 @@ class Shader{
         //     std::cout<<it->first<<"    "<<it->second<<std::endl;
         // }
         // std::cout<<"////////// END OF UNIFORM MAP //////////"<<std::endl;
-        std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -fopenmp -O3 -o ");
+        // std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -fopenmp -mavx -O3 -o");
+        std::string compile_cmd_1("g++ -fPIC -shared -std=c++17 -fopenmp -O3 -o");
         std::string compile_cmd_2(" -x c++ -");
         std::string compile_cmd = compile_cmd_1 + out + compile_cmd_2;
         // FILE *proc = popen("g++ -fPIC -shared -o test.dll -x c++ -", "w");
