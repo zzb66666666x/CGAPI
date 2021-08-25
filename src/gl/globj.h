@@ -391,6 +391,9 @@ class glPipeline{
 
         // get information that 2x2 pixels near the current pixel;
         std::vector<std::vector<ProgrammablePixel*>> pixel_block;
+
+        // view frustum culling triangles
+        std::vector<std::vector<ProgrammableTriangle*>> vfc_list;
         // glManager search cache
         int first_vertex;
         int vertex_num;

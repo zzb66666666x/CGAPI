@@ -304,6 +304,7 @@ glPipeline::glPipeline()
 {
     cpu_num = std::thread::hardware_concurrency();
     pixel_block.resize(cpu_num);
+    vfc_list.resize(cpu_num);
     bin_data.resize(cpu_num);
     for(int i = 0;i<cpu_num;++i){
         pixel_block[i].resize(4);
@@ -351,6 +352,11 @@ glPipeline::~glPipeline()
     }
     for (int i = 0, len = prog_triangle_list.size(); i < len;++i){
         delete prog_triangle_list[i];
+    }
+    for (int i = 0; i < cpu_num;++i){
+        for (int j = 0, len = vfc_list[i].size();j<len;++j){
+            delete vfc_list[i][j];
+        }
     }
     // delete bins;
 }

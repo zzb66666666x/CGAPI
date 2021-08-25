@@ -12,6 +12,7 @@
 #include <queue>
 #include <stdio.h>
 #include "glsl/vec_math.h"
+#include "omp.h"
 
 class Vertex {
 public:
@@ -214,6 +215,7 @@ public:
     glm::vec3 computeBarycentric2D(float x, float y);
     // culling 
     void view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res);
+    void view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res, int &vfc_size);
     void backface_culling()
     {
         glm::vec3 v01 = screen_pos[1] - screen_pos[0];

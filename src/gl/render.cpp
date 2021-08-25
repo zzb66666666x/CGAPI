@@ -1842,7 +1842,6 @@ static void programmable_inner_rasterize(gl_context* ctx, ProgrammableTriangle* 
                         programmable_interpolate(frag_shader, t, coef, prog_pixel_tasks[index]);
                         prog_pixel_tasks[index].write = true;
                     }
-                    
                 }
                 omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
             }
@@ -1892,6 +1891,8 @@ void programmable_process_geometry_with_rasterization()
         bin_data[i].b_maxy = 0;
     }
 
+    std::vector<std::vector<ProgrammableTriangle*>> &vfc_list = ppl->vfc_list;
+
     color_t* frame_buf;
     float* zbuf;
     if (!ctx->override_default_framebuf) {
@@ -1907,11 +1908,11 @@ void programmable_process_geometry_with_rasterization()
     void* input_ptr;
     unsigned char* buf;
     int thread_id;
-    std::vector<ProgrammableTriangle*> vfc_list;
+    int vfc_size;
     data_t gl_pos_inner;
 #ifdef GL_PARALLEL_OPEN
 #pragma omp parallel for private(input_ptr) private(buf) private(vs_input)\
-        private(vs_output) private(thread_id) private(vfc_list)\
+        private(vs_output) private(thread_id) private(vfc_size)\
         private(gl_pos_inner) schedule(dynamic, 1)
 #endif
     for (int tri_ind = 0; tri_ind < triangle_size; ++tri_ind) {
@@ -1956,23 +1957,22 @@ void programmable_process_geometry_with_rasterization()
         }
 
         // view frustum culling list
-        triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list);
-        if (vfc_list.size() != 0) {
-            // tri_cullings[thread_id].insert(tri_cullings[thread_id].end(), vfc_list.begin(), vfc_list.end());
-            for (int i = 0, len = vfc_list.size(); i < len; ++i) {
-                vfc_list[i]->perspective_division();
+        triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list[thread_id], vfc_size);
+        if (vfc_size != 0) {
+            // printf("vfc_size: %d\n", vfc_size);
+            for (int i = 0; i < vfc_size; ++i) {
+                vfc_list[thread_id][i]->perspective_division();
                 if(ctx->cull_face.open){
-                    vfc_list[i]->backface_culling();
-                    if (!vfc_list[i]->culling) {
-                        programmable_view_port(vfc_list[i]);
-                        programmable_inner_rasterize(ctx, vfc_list[i], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
+                    vfc_list[thread_id][i]->backface_culling();
+                    if (!vfc_list[thread_id][i]->culling) {
+                        programmable_view_port(vfc_list[thread_id][i]);
+                        programmable_inner_rasterize(ctx, vfc_list[thread_id][i], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
                     }
                 }else{
-                    programmable_view_port(vfc_list[i]);
-                    programmable_inner_rasterize(ctx, vfc_list[i], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
+                    programmable_view_port(vfc_list[thread_id][i]);
+                    programmable_inner_rasterize(ctx, vfc_list[thread_id][i], frame_buf, zbuf, frag_shader, bin_data[thread_id]);
                 }
             }
-            vfc_list.clear();
         }
 
         if (triangle_list[tri_ind]->culling) {
