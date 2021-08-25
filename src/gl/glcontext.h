@@ -3,6 +3,7 @@
 
 #include "configs.h"
 #include "globj.h"
+#include <atomic>
 
 class gl_context{
     public:
@@ -24,6 +25,8 @@ class gl_context{
     glStorage<float>   *zbuf;
     std::vector<omp_lock_t>* cur_sync_unit;
     std::vector<omp_lock_t> sync_unit;
+    std::vector<std::atomic_bool*>* cur_framebuf_lock;
+    std::vector<std::atomic_bool*> framebuf_lock;
     glStorage<color_t>  framebuf_1;
     glStorage<color_t>  framebuf_2;
     glStorage<float>    zbuf_1;

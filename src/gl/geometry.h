@@ -12,7 +12,6 @@
 #include <queue>
 #include <stdio.h>
 #include "glsl/vec_math.h"
-#include "omp.h"
 
 class Vertex {
 public:

@@ -238,6 +238,7 @@ void glBindFramebuffer(GLenum target, unsigned int ID){
                 C->draw_color_buf = true;
                 C->flip_image = true;
                 C->cur_sync_unit = &(C->sync_unit);
+                C->cur_framebuf_lock = &(C->framebuf_lock);
             }else{
                 // make sure that the ID exists
                 ret = framebufs.searchStorage(&ptr, ID);
@@ -251,6 +252,7 @@ void glBindFramebuffer(GLenum target, unsigned int ID){
                 C->override_buf_npixels = config->buffer_npixels;
                 C->draw_color_buf = config->draw_color_buf;
                 C->cur_sync_unit = &(config->sync_unit);
+                C->cur_framebuf_lock = &(config->framebuf_lock);
                 C->flip_image = config->flip_image;
             }
             break;
@@ -323,6 +325,7 @@ void glFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, 
                     C->override_depth_buf = attachment_configs->depth_buf;
                     C->override_buf_npixels = npixels;
                     C->cur_sync_unit = &(attachment_configs->sync_unit);
+                    C->cur_framebuf_lock = &(attachment_configs->framebuf_lock);
                     C->flip_image  = false;
                 }
             }

@@ -17,7 +17,12 @@ gl_context::gl_context(int npixels, bool double_buf){
     for (int i=0; i < sync_unit.size(); i++) {
         omp_init_lock(&(sync_unit[i]));
     }
+    framebuf_lock.resize(npixels);
+    for (int i = 0; i < npixels; ++i) {
+        framebuf_lock[i] = new std::atomic_bool(false);
+    }
     cur_sync_unit = &sync_unit;
+    cur_framebuf_lock = &framebuf_lock;
     override_color_buf = nullptr;
     override_depth_buf = nullptr;
     override_buf_npixels = 0;

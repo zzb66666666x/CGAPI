@@ -88,8 +88,10 @@ glObject* glManager::__storage(GLenum dtype, int size, GLenum bind){
 
 void framebuf_attachment_t::init_sync_unit(int npixels){
     sync_unit.resize(npixels);
+    framebuf_lock.resize(npixels);
     for (int i=0; i<npixels; i++){
         omp_init_lock(&(sync_unit[i]));
+        framebuf_lock.push_back(new std::atomic_bool(false));
     }
 }
 

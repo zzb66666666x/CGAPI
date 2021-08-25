@@ -678,7 +678,7 @@ void test_bunny_rendering(benchmark::State& state)
 }
 // Register the function as a benchmark
 // Benchmark               Time                 CPU            Iterations
-// BENCHMARK(test_bunny_rendering)->Iterations(512);
+BENCHMARK(test_bunny_rendering)->Iterations(512);
 BENCHMARK(test_sponza_rendering)->Iterations(512);
 // BENCHMARK(test_sponza_process_geometry)->Iterations(512);
 // BENCHMARK(test_sponza_rasterizationWithShading)->Iterations(128);

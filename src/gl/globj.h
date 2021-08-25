@@ -24,6 +24,7 @@
 #include <omp.h>
 #include "glsl/shader.hpp"
 #include "glsl/inner_support.h"
+#include <atomic>
 
 #define TEXTURE_UNIT_CLOSE     -1
 #define TEXTURE_UNIT_TBD        0
@@ -222,6 +223,7 @@ class framebuf_attachment_t{
     bool draw_color_buf;
     bool flip_image;
     std::vector<omp_lock_t> sync_unit;
+    std::vector<std::atomic_bool*> framebuf_lock;
 };
 
 class glShareData{

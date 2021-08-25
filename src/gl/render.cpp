@@ -1835,7 +1835,10 @@ static void programmable_inner_rasterize(gl_context* ctx, ProgrammableTriangle* 
                 zp = coef[0] * t->z[0] + coef[1] * t->z[1] + coef[2] * t->z[2];
                 zp *= invwp;
                 zp = zp * 0.5f + 0.5f;
-                omp_set_lock(&((*(ctx->cur_sync_unit))[index]));
+                bool expected = false;
+                while (!(*ctx->cur_framebuf_lock)[index]->compare_exchange_strong(expected, true, std::memory_order_acquire, std::memory_order_relaxed)) {
+                    expected = false;
+                }
                 if (zp < zbuf[index]) {
                     zbuf[index] = zp;
                     if (ctx->draw_color_buf) {
@@ -1843,7 +1846,7 @@ static void programmable_inner_rasterize(gl_context* ctx, ProgrammableTriangle* 
                         prog_pixel_tasks[index].write = true;
                     }
                 }
-                omp_unset_lock(&((*(ctx->cur_sync_unit))[index]));
+                (*ctx->cur_framebuf_lock)[index]->store(false);
             }
         }
     }
