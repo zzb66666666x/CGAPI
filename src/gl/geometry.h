@@ -176,21 +176,20 @@ public:
         res.screen_pos = v1.screen_pos + (v2.screen_pos - v1.screen_pos) * weight;
         for (auto it = v1.vertex_attrib.begin(); it != v1.vertex_attrib.end(); ++it) {
             int dtype = shader_ptr->io_profile[it->first].dtype;
-            data_t interp_data;
             switch (dtype) {
                 case TYPE_VEC2:
-                    interp_data.vec2_var = it->second.vec2_var + (v2.vertex_attrib[it->first].vec2_var - it->second.vec2_var) * weight;
+                    res.vertex_attrib[it->first].vec2_var = it->second.vec2_var + (v2.vertex_attrib[it->first].vec2_var - it->second.vec2_var) * weight;
                     break;
                 case TYPE_VEC3:
-                    interp_data.vec3_var = it->second.vec3_var + (v2.vertex_attrib[it->first].vec3_var - it->second.vec3_var) * weight;
+                    res.vertex_attrib[it->first].vec3_var = it->second.vec3_var + (v2.vertex_attrib[it->first].vec3_var - it->second.vec3_var) * weight;
                     break;
                 case TYPE_VEC4:
-                    interp_data.vec4_var = it->second.vec4_var + (v2.vertex_attrib[it->first].vec4_var - it->second.vec4_var) * weight;
+                    res.vertex_attrib[it->first].vec4_var = it->second.vec4_var + (v2.vertex_attrib[it->first].vec4_var - it->second.vec4_var) * weight;
                     break;
                 default:
                     throw std::runtime_error("vertex don't interp on these types now\n");
             }
-            res.vertex_attrib[it->first] = interp_data;
+            
         }
         return res;
     }
@@ -229,21 +228,21 @@ public:
     void perspective_division()
     {
         w_inversed[0] = 1.0f / screen_pos[0].w;
+        z[0] = screen_pos[0].z;
         screen_pos[0].x *= w_inversed[0];
         screen_pos[0].y *= w_inversed[0];
-        z[0] = screen_pos[0].z;
         screen_pos[0].z *= w_inversed[0];
 
         w_inversed[1] = 1.0f / screen_pos[1].w;
+        z[1] = screen_pos[1].z;
         screen_pos[1].x *= w_inversed[1];
         screen_pos[1].y *= w_inversed[1];
-        z[1] = screen_pos[1].z;
         screen_pos[1].z *= w_inversed[1];
 
         w_inversed[2] = 1.0f / screen_pos[2].w;
+        z[2] = screen_pos[2].z;
         screen_pos[2].x *= w_inversed[2];
         screen_pos[2].y *= w_inversed[2];
-        z[2] = screen_pos[2].z;
         screen_pos[2].z *= w_inversed[2];
     }
 
@@ -261,8 +260,15 @@ public:
 private:
     bool outside_clip_space();
     bool all_inside_clip_space();
-    bool inside_plane(const glm::vec4& plane, glm::vec4& pos);
-    ProgrammableVertex intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane);
+    bool inside_plane(const glm::vec4& plane, glm::vec4& pos){
+        return glm::dot(pos, plane) < 0;
+    }
+    ProgrammableVertex intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane){
+        float d1 = glm::dot(v1.screen_pos, plane);
+        float d2 = glm::dot(v2.screen_pos, plane);
+        float weight = d1 / (d1 - d2);
+        return ProgrammableVertex::lerp(cur_shader, v1, v2, weight);
+    }
 };
 
 #endif

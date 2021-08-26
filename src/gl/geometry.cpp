@@ -129,7 +129,7 @@ bool ProgrammableTriangle::inside(float x, float y)
     f1 = glm::cross(v[2], v[1]);
     f2 = glm::cross(v[0], v[2]);
     glm::vec3 p(x, y, 1.0f);
-    return (glm::dot(p, f0) * glm::dot(f0, v[2]) > 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) > 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) > 0);
+    return (glm::dot(p, f0) * glm::dot(f0, v[2]) >= 0) && (glm::dot(p, f1) * glm::dot(f1, v[0]) >= 0) && (glm::dot(p, f2) * glm::dot(f2, v[1]) >= 0);
 }
 
 glm::vec3 ProgrammableTriangle::computeBarycentric2D(float x, float y)
@@ -181,17 +181,17 @@ bool ProgrammableTriangle::all_inside_clip_space()
 #endif
     return true;
 }
-bool ProgrammableTriangle::inside_plane(const glm::vec4& plane, glm::vec4& pos)
-{
-    return glm::dot(pos, plane) < 0;
-}
-ProgrammableVertex ProgrammableTriangle::intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane)
-{
-    float d1 = glm::dot(v1.screen_pos, plane);
-    float d2 = glm::dot(v2.screen_pos, plane);
-    float weight = d1 / (d1 - d2);
-    return ProgrammableVertex::lerp(cur_shader, v1, v2, weight);
-}
+// bool ProgrammableTriangle::inside_plane(const glm::vec4& plane, glm::vec4& pos)
+// {
+//     return glm::dot(pos, plane) < 0;
+// }
+// ProgrammableVertex ProgrammableTriangle::intersect(ProgrammableVertex& v1, ProgrammableVertex& v2, const glm::vec4& plane)
+// {
+//     float d1 = glm::dot(v1.screen_pos, plane);
+//     float d2 = glm::dot(v2.screen_pos, plane);
+//     float weight = d1 / (d1 - d2);
+//     return ProgrammableVertex::lerp(cur_shader, v1, v2, weight);
+// }
 
 void ProgrammableTriangle::view_frustum_culling(const std::vector<glm::vec4>& planes, std::vector<ProgrammableTriangle*>& res)
 {

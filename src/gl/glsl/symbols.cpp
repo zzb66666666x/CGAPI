@@ -66,7 +66,8 @@ static void assign_input_value(string& code, const char* name, int dtype){
 static void fetch_output_value(string& code, const char* name, int dtype){
     string var_name = name;
     string type_name = type_string_map[dtype];
-    code = string("    outdata[\"") + var_name + string("\"] = (data_t){.") + type_name + string("_var = ") + var_name + string("};\n");
+    // code = string("    outdata[\"") + var_name + string("\"] = (data_t){.") + type_name + string("_var = ") + var_name + string("};\n");
+    code = string("    outdata[\"") + var_name + string("\"].") + type_name + string("_var = ") + var_name + string(";\n");
 }
 
 static string uniform_var_input_port(const char* name, int dtype){
