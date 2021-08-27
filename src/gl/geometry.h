@@ -207,7 +207,7 @@ public:
 
     ProgrammableVertex vertices[3];
 
-    Shader* cur_shader;
+    Shader* vert_shader;
 
     bool inside(float x, float y);
     glm::vec3 computeBarycentric2D(float x, float y);
@@ -267,7 +267,7 @@ private:
         float d1 = glm::dot(v1.screen_pos, plane);
         float d2 = glm::dot(v2.screen_pos, plane);
         float weight = d1 / (d1 - d2);
-        return ProgrammableVertex::lerp(cur_shader, v1, v2, weight);
+        return ProgrammableVertex::lerp(this->vert_shader, v1, v2, weight);
     }
 };
 

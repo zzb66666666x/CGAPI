@@ -1103,16 +1103,15 @@ sampler_data_pack get_sampler2D_data_fdef(int texunit_id){
 
 sampler_info_t* get_mipmap_sampler_fdef(int thread_id, MipmapStorage* mipmap){
     GET_CURRENT_CONTEXT(ctx);
-    std::vector<std::vector<ProgrammablePixel*>> &pixel_block = ctx->pipeline.pixel_block;
+    std::vector<std::vector<ProgrammablePixel*>>& pixel_block = ctx->pipeline.pixel_block;
+    sampler_info_t* main_samp = mipmap->get_mipmap_sampler(0);
     glm::vec2 dx = pixel_block[thread_id][1]->texcoord - pixel_block[thread_id][0]->texcoord;
     glm::vec2 dy = pixel_block[thread_id][2]->texcoord - pixel_block[thread_id][0]->texcoord;
-    sampler_info_t* main_samp = mipmap->get_mipmap_sampler(0);
     dx *= main_samp->width;
     dy *= main_samp->height;
-    float rho = std::max(glm::dot(dx, dx), glm::dot(dy, dy));
+    float rho = std::min(glm::dot(dx, dx), glm::dot(dy, dy));
     float lambda = 0.5f * glm::log2(rho);
     // printf("lambda: %f\n",lambda);
-
     return mipmap->get_mipmap_sampler((int)(lambda + 0.5f));
 }
 

@@ -1469,7 +1469,7 @@ void programmable_process_geometry_openmp()
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
         thread_id = omp_get_thread_num();
-        triangle_list[tri_ind]->cur_shader = vert_shader;
+        triangle_list[tri_ind]->vert_shader = vert_shader;
         for (int i = 0; i < 3; ++i) {
             // parse VAO
             for (auto it = vert_shader->layouts.begin(); it != vert_shader->layouts.end(); ++it) {
@@ -1920,7 +1920,7 @@ void programmable_process_geometry_with_rasterization()
         // printf("tri_id=%d. Hello! threadID=%d  thraed number:%d\n", tri_ind, omp_get_thread_num(), omp_get_num_threads());
         // parse data
         thread_id = omp_get_thread_num();
-        triangle_list[tri_ind]->cur_shader = vert_shader;
+        triangle_list[tri_ind]->vert_shader = vert_shader;
         for (int i = 0; i < 3; ++i) {
             // parse VAO
             for (auto it = vert_shader->layouts.begin(); it != vert_shader->layouts.end(); ++it) {
@@ -1929,10 +1929,10 @@ void programmable_process_geometry_with_rasterization()
                 if (config.type == GL_FLOAT) {
                     switch (it->second->dtype) {
                         case TYPE_VEC2:
-                            vs_input[it->first].vec2_var = glm::vec2(*(float*)(buf + 0), *(float*)(buf + 4));
+                            vs_input[it->first].vec2_var = glm::vec2(*(float*)(buf), *(float*)(buf + 4));
                             break;
                         case TYPE_VEC3:
-                            vs_input[it->first].vec3_var = glm::vec3(*(float*)(buf + 0), *(float*)(buf + 4), *(float*)(buf + 8));
+                            vs_input[it->first].vec3_var = glm::vec3(*(float*)(buf), *(float*)(buf + 4), *(float*)(buf + 8));
                             break;
                         default:
                             break;
@@ -1945,7 +1945,6 @@ void programmable_process_geometry_with_rasterization()
             // execute vertex shading
             vert_shader_interfaces[thread_id]->glsl_main();
             vert_shader_interfaces[thread_id]->output_port(triangle_list[tri_ind]->vertex_attribs[i]);
-
             // assemble triangle
             vert_shader_interfaces[thread_id]->get_inner_variable(INNER_GL_POSITION, gl_pos_inner);
             triangle_list[tri_ind]->screen_pos[i] = gl_pos_inner.vec4_var;
@@ -1954,7 +1953,6 @@ void programmable_process_geometry_with_rasterization()
         // view frustum culling list
         triangle_list[tri_ind]->view_frustum_culling(planes, vfc_list[thread_id], vfc_size);
         if (vfc_size != 0) {
-            // printf("vfc_size: %d\n", vfc_size);
             if (ctx->cull_face.open) {
                 for (int i = 0; i < vfc_size; ++i) {
                     vfc_list[thread_id][i]->perspective_division();
